@@ -214,6 +214,62 @@ def engineer(raw: pd.DataFrame) -> pd.DataFrame:
     d["EMA_10"]=e10; d["EMA_20"]=e20; d["EMA_50"]=e50; d["EMA_200"]=e200
     d["EMA50_HIGH"]=e50h; d["EMA50_LOW"]=e50l
     d["ATR_14"]=atr; d["MACD"]=macd; d["MACD_SIG"]=macd_sig
+
+    # ── MOMENTUM INDICATORS ────────────────────────────────────────────────────
+
+    # 1. Rate of Change (ROC) — pure price momentum %
+    #    ROC_5  = how much price moved in last 5 days (%)
+    #    ROC_10 = how much price moved in last 10 days (%)
+    #    ROC_20 = how much price moved in last 20 days (%)
+    d["ROC_5"]  = C_.pct_change(5)  * 100
+    d["ROC_10"] = C_.pct_change(10) * 100
+    d["ROC_20"] = C_.pct_change(20) * 100
+
+    # 2. MACD Acceleration — is histogram growing (momentum building)?
+    #    Positive = histogram growing (momentum accelerating up)
+    #    Negative = histogram shrinking (momentum decelerating)
+    d["MACD_ACCEL"] = macd_hist.diff(3)   # 3-day change in MACD histogram
+
+    # 3. EMA Stack — perfect bull alignment score (0–4)
+    #    +1 for each: EMA10>EMA20, EMA20>EMA50, EMA50>EMA200, EMA10>EMA50_HIGH
+    d["EMA_STACK"] = (
+        (e10  > e20).astype(int) +
+        (e20  > e50).astype(int) +
+        (e50  > e200).astype(int) +
+        (e10  > e50h).astype(int)
+    )
+
+    # 4. Volume Momentum — is volume trend accelerating?
+    #    vol_5d_avg > vol_20d_avg = rising volume trend
+    vol_5d_avg  = _sma(V_, 5)
+    vol_20d_avg = _sma(V_, 20)
+    d["VOL_MOMENTUM"] = vol_5d_avg / vol_20d_avg.replace(0, np.nan)
+
+    # 5. Gap Widening — is gap getting wider (momentum building above EMA50H)?
+    #    Positive = gap widening day over day (good for long)
+    #    Negative = gap narrowing (level at risk)
+    gap_series = (e10 - e50h) / atr
+    d["GAP_WIDENING"] = gap_series.diff(3)   # 3-day change in gap (ATR)
+
+    # 6. Price Momentum Score — composite of ROC across timeframes
+    #    All three positive = strong multi-timeframe momentum
+    d["MOM_SCORE"] = (
+        (d["ROC_5"]  > 0).astype(int) +
+        (d["ROC_10"] > 0).astype(int) +
+        (d["ROC_20"] > 0).astype(int)
+    )
+
+    # 7. Stochastic Momentum — Stoch K rising and above Stoch D
+    d["STOCH_RISING"] = (stoch_k > stoch_k.shift(3)).astype(int)
+    d["STOCH_CROSS"]  = (stoch_k > stoch_d).astype(int)
+
+    # 8. Consecutive Up Days — how many days in a row has close been higher?
+    up_days = (C_.diff() > 0).astype(int)
+    consec = up_days.copy().astype(float)
+    for i in range(1, len(consec)):
+        consec.iloc[i] = consec.iloc[i] * (consec.iloc[i-1] + 1) if up_days.iloc[i] else 0
+    d["CONSEC_UP"] = consec
+
     return d
 
 
@@ -229,114 +285,201 @@ def generate_signal(d_eng: pd.DataFrame, symbol: str) -> dict:
     X     = last[feats].values.reshape(1, -1)
     pred  = float(pipe.predict(X)[0])
 
-    gap_atr   = float(last.get("GAP_ATR",   0))
-    rsi       = float(last.get("RSI_14",    50))
-    macd_hist = float(last.get("MACD_HIST", 0))
-    macd_crs  = int(last.get("MACD_CROSS",  0))
-    vol_ratio = float(last.get("VOL_RATIO", 1))
-    close     = float(d_eng["CLOSE"].iloc[-1])
-    e50h      = float(d_eng["EMA50_HIGH"].iloc[-1])
-    e50l      = float(d_eng["EMA50_LOW"].iloc[-1])
-    e10       = float(d_eng["EMA_10"].iloc[-1])
-    atr       = float(d_eng["ATR_14"].iloc[-1])
-    slope     = float(d_eng["SLOPE_10D"].iloc[-1]) if "SLOPE_10D" in d_eng else 0
+    # ── Core indicators ────────────────────────────────────────────────────────
+    gap_atr     = float(last.get("GAP_ATR",      0))
+    rsi         = float(last.get("RSI_14",       50))
+    macd_hist   = float(last.get("MACD_HIST",    0))
+    macd_crs    = int(last.get("MACD_CROSS",     0))
+    vol_ratio   = float(last.get("VOL_RATIO",    1))
+    slope       = float(last.get("SLOPE_10D",    0))
+    close       = float(d_eng["CLOSE"].iloc[-1])
+    e50h        = float(d_eng["EMA50_HIGH"].iloc[-1])
+    e50l        = float(d_eng["EMA50_LOW"].iloc[-1])
+    e10         = float(d_eng["EMA_10"].iloc[-1])
+    atr         = float(d_eng["ATR_14"].iloc[-1])
+    macd_val    = float(d_eng["MACD"].iloc[-1])
 
-    # Streak
+    # ── Momentum indicators ────────────────────────────────────────────────────
+    roc_5        = float(last.get("ROC_5",        0))
+    roc_10       = float(last.get("ROC_10",       0))
+    roc_20       = float(last.get("ROC_20",       0))
+    macd_accel   = float(last.get("MACD_ACCEL",   0))
+    ema_stack    = int(last.get("EMA_STACK",      0))
+    vol_momentum = float(last.get("VOL_MOMENTUM", 1))
+    gap_widening = float(last.get("GAP_WIDENING", 0))
+    mom_score    = int(last.get("MOM_SCORE",      0))
+    stoch_rising = int(last.get("STOCH_RISING",   0))
+    stoch_cross  = int(last.get("STOCH_CROSS",    0))
+    consec_up    = float(last.get("CONSEC_UP",    0))
+    if np.isnan(macd_accel):   macd_accel   = 0
+    if np.isnan(gap_widening): gap_widening = 0
+    if np.isnan(vol_momentum): vol_momentum = 1
+
+    # Streak above EMA50_HIGH
     above  = (d_eng["CLOSE"] > d_eng["EMA50_HIGH"]).astype(int)
     streak = 0
     for v in above.values[::-1]:
         if v == 1: streak += 1
         else: break
 
-    # 52W
+    # 52W position
     high52 = d_eng["HIGH"].tail(252).max()
     low52  = d_eng["LOW"].tail(252).min()
     pos52  = round((close - low52) / (high52 - low52 + 1e-9) * 100, 1)
 
-    # 4-filter score (0–8)
+    # ── 4-filter base score (0–8) ──────────────────────────────────────────────
     gap_s  = 2 if gap_atr>=1.0  else (1 if gap_atr>=0.3 else 0)
     rsi_s  = 2 if rsi<=60       else (1 if rsi<=70      else 0)
     macd_s = 2 if (macd_hist>0 and macd_crs==1) else (1 if macd_hist>0 else 0)
     vol_s  = 2 if vol_ratio>=1.2 else (1 if vol_ratio>=0.8 else 0)
     total  = gap_s + rsi_s + macd_s + vol_s
 
-    if   total >= 7: sig="STRONG BUY"
-    elif total >= 5: sig="BUY"
-    elif total >= 3: sig="WATCH"
-    else:            sig="AVOID"
+    if   total >= 7: sig = "STRONG BUY"
+    elif total >= 5: sig = "BUY"
+    elif total >= 3: sig = "WATCH"
+    else:            sig = "AVOID"
 
-    # ── Signal Strength 1–5 ────────────────────────────────────────────────────
-    # Uses 5 factors with partial scores for finer granularity than 0–8.
-    #   Gap size · RSI zone · MACD momentum · Volume · Slope
+    # ── MOMENTUM BOOST: override to STRONG BUY if momentum fully aligned ──────
+    # All momentum must fire together to boost signal
+    momentum_aligned = (
+        macd_accel   > 0          and   # MACD histogram growing (accelerating)
+        gap_widening > 0          and   # Gap getting wider (cushion building)
+        mom_score    >= 2         and   # At least 2 of 3 ROC timeframes positive
+        vol_momentum >= 1.1       and   # Volume trend rising
+        ema_stack    >= 3         and   # At least 3 of 4 EMAs in bull order
+        macd_val     > 0               # MACD line above zero
+    )
+    if momentum_aligned and sig in ("BUY", "WATCH") and gap_atr > 0.3:
+        sig = "STRONG BUY"   # momentum boost
+
+    # ── Signal Strength 1–5 with momentum ─────────────────────────────────────
+    # Base 5 factors (max 5.0 pts) + momentum bonus (max 3.0 pts) = max 8.0
+    # Maps to 1–5 rating with momentum able to push borderline signals higher
     s = 0.0
-    if   gap_atr >= 1.5: s += 1.0   # large cushion
-    elif gap_atr >= 0.5: s += 0.5   # thin cushion
-    if   30 < rsi <= 60: s += 1.0   # ideal entry zone
-    elif 60 < rsi <= 72: s += 0.5   # acceptable
-    if   macd_hist > 0 and float(d_eng["MACD"].iloc[-1]) > 0: s += 1.0
-    elif macd_hist > 0:                                        s += 0.5
-    if   vol_ratio >= 1.5: s += 1.0  # strong institutional
+
+    # Base factors
+    if   gap_atr >= 1.5: s += 1.0
+    elif gap_atr >= 0.5: s += 0.5
+    if   30 < rsi <= 60: s += 1.0
+    elif 60 < rsi <= 72: s += 0.5
+    if   macd_hist > 0 and macd_val > 0: s += 1.0
+    elif macd_hist > 0:                  s += 0.5
+    if   vol_ratio >= 1.5: s += 1.0
     elif vol_ratio >= 1.0: s += 0.5
-    if   slope > 0: s += 1.0         # trending up
-    if   s >= 4.5: strength = 5
-    elif s >= 3.5: strength = 4
-    elif s >= 2.5: strength = 3
+    if   slope > 0: s += 1.0
+
+    # ── Momentum bonus points ──────────────────────────────────────────────────
+    # MACD acceleration: histogram growing = momentum building
+    if   macd_accel > 0.5:  s += 0.75   # strong acceleration
+    elif macd_accel > 0:    s += 0.40   # mild acceleration
+    elif macd_accel < -0.5: s -= 0.50   # decelerating (penalty)
+
+    # EMA stack alignment: perfect bull order boosts confidence
+    if   ema_stack == 4: s += 0.75   # perfect alignment
+    elif ema_stack == 3: s += 0.40
+    elif ema_stack <= 1: s -= 0.25   # misaligned (penalty)
+
+    # Multi-timeframe ROC: all 3 positive = real trend momentum
+    if   mom_score == 3: s += 0.75   # all timeframes up
+    elif mom_score == 2: s += 0.35
+    elif mom_score == 0: s -= 0.25   # all timeframes down (penalty)
+
+    # Gap widening: cushion building = strong signal
+    if   gap_widening > 0.2:  s += 0.40
+    elif gap_widening < -0.3: s -= 0.40   # gap narrowing fast (danger)
+
+    # Volume momentum: rising participation confirms move
+    if   vol_momentum >= 1.3: s += 0.35
+    elif vol_momentum >= 1.1: s += 0.15
+
+    # Stochastic: rising + above signal line = momentum confirmation
+    if stoch_rising and stoch_cross: s += 0.25
+
+    # Consecutive up days: 3+ days = trend continuity
+    if   consec_up >= 4: s += 0.25
+    elif consec_up >= 2: s += 0.10
+
+    # Map to 1–5
+    if   s >= 6.0: strength = 5
+    elif s >= 4.5: strength = 4
+    elif s >= 3.0: strength = 3
     elif s >= 1.5: strength = 2
     else:          strength = 1
 
-    # Strength label
     strength_label = {
-        5: "Exceptional — all 5 factors aligned",
-        4: "Strong — 4 factors confirmed",
-        3: "Moderate — 3 factors confirmed",
-        2: "Weak — only 2 factors",
-        1: "Very weak — avoid entry",
+        5: "Exceptional — momentum + all 5 factors fully aligned",
+        4: "Strong — most factors + momentum confirmed",
+        3: "Moderate — base factors ok, momentum partial",
+        2: "Weak — momentum missing or mixed",
+        1: "Very weak — momentum against, avoid entry",
     }[strength]
 
-    # Price history for sparkline (last 90 days)
+    # ── Momentum summary dict for frontend display ─────────────────────────────
+    momentum_detail = {
+        "macd_accel":    round(macd_accel,   3),
+        "ema_stack":     ema_stack,
+        "mom_score":     mom_score,
+        "roc_5":         round(roc_5,         2),
+        "roc_10":        round(roc_10,        2),
+        "roc_20":        round(roc_20,        2),
+        "gap_widening":  round(gap_widening,  3),
+        "vol_momentum":  round(vol_momentum,  2),
+        "stoch_rising":  bool(stoch_rising),
+        "consec_up":     int(consec_up),
+        # Status strings
+        "macd_accel_status":  "BUILDING" if macd_accel > 0.5 else
+                              "MILD"     if macd_accel > 0   else
+                              "FADING"   if macd_accel > -0.5 else "WEAKENING",
+        "ema_stack_status":   f"{ema_stack}/4 aligned",
+        "roc_status":         "ALL UP"   if mom_score==3 else
+                              "MIXED"    if mom_score==2 else
+                              "PARTIAL"  if mom_score==1 else "ALL DOWN",
+        "gap_status":         "WIDENING" if gap_widening > 0.1 else
+                              "STABLE"   if gap_widening > -0.1 else "NARROWING",
+        "vol_trend":          "RISING"   if vol_momentum >= 1.2 else
+                              "FLAT"     if vol_momentum >= 0.9 else "FALLING",
+        "momentum_aligned":   bool(momentum_aligned),
+        "momentum_boost":     bool(momentum_aligned and sig == "STRONG BUY"),
+    }
+
+    # Price history for sparkline
     hist90 = d_eng.tail(90)[["DATE","CLOSE","EMA50_HIGH","EMA50_LOW","EMA_10",
                                "GAP_ATR","RSI_14","MACD_HIST"]].copy()
     hist90["DATE"] = hist90["DATE"].astype(str)
 
     return {
-        "symbol":           symbol.upper(),
-        "signal":           sig,
-        "score":            total,
-        "max_score":        8,
-        "strength":         strength,
-        "strength_label":   strength_label,
-        "pred_5d_pct":      round(pred, 2),
-        "date":             str(d_eng["DATE"].iloc[-1])[:10],
-        # Price levels
-        "close":        round(close, 2),
-        "ema10":        round(e10, 2),
-        "ema50_high":   round(e50h, 2),
-        "ema50_low":    round(e50l, 2),
-        "atr":          round(atr, 2),
-        # Gap
-        "gap_rs":       round(e10 - e50h, 2),
-        "gap_atr":      round(gap_atr, 2),
-        # Indicators
-        "rsi":          round(rsi, 1),
-        "macd_hist":    round(macd_hist, 3),
-        "vol_ratio":    round(vol_ratio, 2),
-        "slope_10d":    round(slope, 3),
-        "streak_days":  streak,
-        "pos_52w":      pos52,
-        # Filter signals
-        "gap_signal":   ["AVOID","WAIT","GO"][gap_s],
-        "rsi_signal":   ["AVOID","WAIT","GO"][rsi_s],
-        "macd_signal":  ["AVOID","WAIT","GO"][macd_s],
-        "vol_signal":   ["AVOID","WAIT","GO"][vol_s],
-        # Trade levels
-        "stop_loss":    round(e50l, 2),
-        "entry_price":  round(close, 2),
-        "target_1m":    round(close * (1 + max(pred, 2) / 100), 2),
-        # Chart data
-        "history":      hist90.to_dict("records"),
-        # Model info
-        "model_name":   MODEL_BUNDLE["metrics"]["model"] if MODEL_BUNDLE else "N/A",
-        "model_acc":    MODEL_BUNDLE["metrics"]["dir_acc"] if MODEL_BUNDLE else 0,
+        "symbol":            symbol.upper(),
+        "signal":            sig,
+        "score":             total,
+        "max_score":         8,
+        "strength":          strength,
+        "strength_label":    strength_label,
+        "momentum":          momentum_detail,
+        "pred_5d_pct":       round(pred, 2),
+        "date":              str(d_eng["DATE"].iloc[-1])[:10],
+        "close":             round(close, 2),
+        "ema10":             round(e10, 2),
+        "ema50_high":        round(e50h, 2),
+        "ema50_low":         round(e50l, 2),
+        "atr":               round(atr, 2),
+        "gap_rs":            round(e10 - e50h, 2),
+        "gap_atr":           round(gap_atr, 2),
+        "rsi":               round(rsi, 1),
+        "macd_hist":         round(macd_hist, 3),
+        "vol_ratio":         round(vol_ratio, 2),
+        "slope_10d":         round(slope, 3),
+        "streak_days":       streak,
+        "pos_52w":           pos52,
+        "gap_signal":        ["AVOID","WAIT","GO"][gap_s],
+        "rsi_signal":        ["AVOID","WAIT","GO"][rsi_s],
+        "macd_signal":       ["AVOID","WAIT","GO"][macd_s],
+        "vol_signal":        ["AVOID","WAIT","GO"][vol_s],
+        "stop_loss":         round(e50l, 2),
+        "entry_price":       round(close, 2),
+        "target_1m":         round(close * (1 + max(pred, 2) / 100), 2),
+        "history":           hist90.to_dict("records"),
+        "model_name":        MODEL_BUNDLE["metrics"]["model"] if MODEL_BUNDLE else "N/A",
+        "model_acc":         MODEL_BUNDLE["metrics"]["dir_acc"] if MODEL_BUNDLE else 0,
     }
 
 
@@ -401,22 +544,42 @@ def build_pdf(result: dict, d_eng: pd.DataFrame) -> str:
             color=CLR_CLOSE, lw=2.0, alpha=0.85, zorder=6, label="Close")
 
     # ── SIGNAL STRENGTH 1–5 ───────────────────────────────────────────────────
-    def calc_strength(gap, rsi, macd_hist, macd_val, vol_ratio, slope):
-        score = 0.0
-        if   gap >= 1.5:         score += 1.0
-        elif gap >= 0.5:         score += 0.5
-        if   30 < rsi <= 60:     score += 1.0
-        elif 60 < rsi <= 72:     score += 0.5
-        if   macd_hist > 0 and macd_val > 0: score += 1.0
-        elif macd_hist > 0:      score += 0.5
-        if   vol_ratio >= 1.5:   score += 1.0
-        elif vol_ratio >= 1.0:   score += 0.5
-        if   slope > 0:          score += 1.0
-        if   score >= 4.5: return 5
-        elif score >= 3.5: return 4
-        elif score >= 2.5: return 3
-        elif score >= 1.5: return 2
-        else:              return 1
+    def calc_strength(gap, rsi, macd_hist, macd_val, vol_ratio, slope,
+                      macd_accel=0, ema_stack=0, mom_score=0,
+                      gap_widening=0, vol_momentum=1,
+                      stoch_rising=0, consec_up=0):
+        # Base factors (max 5.0)
+        s = 0.0
+        if   gap >= 1.5:           s += 1.0
+        elif gap >= 0.5:           s += 0.5
+        if   30 < rsi <= 60:       s += 1.0
+        elif 60 < rsi <= 72:       s += 0.5
+        if   macd_hist > 0 and macd_val > 0: s += 1.0
+        elif macd_hist > 0:        s += 0.5
+        if   vol_ratio >= 1.5:     s += 1.0
+        elif vol_ratio >= 1.0:     s += 0.5
+        if   slope > 0:            s += 1.0
+        # Momentum bonus (max 3.0)
+        if   macd_accel > 0.5:    s += 0.75
+        elif macd_accel > 0:      s += 0.40
+        elif macd_accel < -0.5:   s -= 0.50
+        if   ema_stack == 4:      s += 0.75
+        elif ema_stack == 3:      s += 0.40
+        elif ema_stack <= 1:      s -= 0.25
+        if   mom_score == 3:      s += 0.75
+        elif mom_score == 2:      s += 0.35
+        elif mom_score == 0:      s -= 0.25
+        if   gap_widening > 0.2:  s += 0.40
+        elif gap_widening < -0.3: s -= 0.40
+        if   vol_momentum >= 1.3: s += 0.35
+        elif vol_momentum >= 1.1: s += 0.15
+        if   stoch_rising and consec_up >= 2: s += 0.25
+        # Map to 1–5
+        if   s >= 6.0: return 5
+        elif s >= 4.5: return 4
+        elif s >= 3.0: return 3
+        elif s >= 1.5: return 2
+        else:          return 1
 
     cross_up   = hist["EMA10_GT_50H"].diff() > 0
     cross_down = hist["EMA10_GT_50H"].diff() < 0
@@ -432,7 +595,14 @@ def build_pdf(result: dict, d_eng: pd.DataFrame) -> str:
         volr = float(hist["VOL_RATIO"].iloc[i])if "VOL_RATIO" in hist.columns else 1
         slp  = float(hist["SLOPE_10D"].iloc[i])if "SLOPE_10D" in hist.columns else 0
         if np.isnan(slp): slp = 0
-        r = calc_strength(gap, rsi, mh, mv, volr, slp)
+        r = calc_strength(gap, rsi, mh, mv, volr, slp,
+                          macd_accel=float(hist["MACD_ACCEL"].iloc[i]) if "MACD_ACCEL" in hist.columns else 0,
+                          ema_stack=int(hist["EMA_STACK"].iloc[i])     if "EMA_STACK"  in hist.columns else 0,
+                          mom_score=int(hist["MOM_SCORE"].iloc[i])     if "MOM_SCORE"  in hist.columns else 0,
+                          gap_widening=float(hist["GAP_WIDENING"].iloc[i]) if "GAP_WIDENING" in hist.columns else 0,
+                          vol_momentum=float(hist["VOL_MOMENTUM"].iloc[i]) if "VOL_MOMENTUM" in hist.columns else 1,
+                          stoch_rising=int(hist["STOCH_RISING"].iloc[i])   if "STOCH_RISING" in hist.columns else 0,
+                          consec_up=float(hist["CONSEC_UP"].iloc[i])       if "CONSEC_UP"    in hist.columns else 0)
         entry_signals.append((hist["DATE"].iloc[i], float(hist["EMA_10"].iloc[i]), r))
 
     for i in hist.index[cross_down]:
@@ -627,7 +797,186 @@ def build_pdf(result: dict, d_eng: pd.DataFrame) -> str:
     pdf.savefig(fig, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
 
-    # ── PAGE 2: 3-Month Forecast ──────────────────────────────────────────────
+    # ── PAGE 2: Momentum Dashboard ────────────────────────────────────────────
+    try:
+        hist_m = d_eng.tail(252).reset_index(drop=True)
+
+        fig2 = plt.figure(figsize=(20, 24), facecolor=BG)
+        gs2  = gridspec.GridSpec(4, 2, fig2, hspace=0.45, wspace=0.32,
+                                  height_ratios=[1.2, 1.2, 1.2, 1.2])
+
+        # ── Panel 1: ROC — Rate of Change (3 timeframes) ──────────────────────
+        ax = fig2.add_subplot(gs2[0, :])
+        ax.plot(hist_m["DATE"], hist_m["ROC_5"],  color="#69ff47", lw=1.8,
+                label="ROC 5d  (short-term)")
+        ax.plot(hist_m["DATE"], hist_m["ROC_10"], color="#ffd740", lw=1.6,
+                label="ROC 10d (medium-term)")
+        ax.plot(hist_m["DATE"], hist_m["ROC_20"], color="#40c4ff", lw=1.4,
+                label="ROC 20d (long-term)")
+        ax.fill_between(hist_m["DATE"], hist_m["ROC_5"], 0,
+                        where=hist_m["ROC_5"] > 0, alpha=0.12, color="#69ff47")
+        ax.fill_between(hist_m["DATE"], hist_m["ROC_5"], 0,
+                        where=hist_m["ROC_5"] <= 0, alpha=0.12, color="#ff3d57")
+        ax.axhline(0, color="white", lw=0.8, ls="--", alpha=0.5)
+        # Current values annotated
+        for val, lbl, clr in [
+            (float(hist_m["ROC_5"].iloc[-1]),  f"5d {hist_m['ROC_5'].iloc[-1]:+.1f}%",  "#69ff47"),
+            (float(hist_m["ROC_10"].iloc[-1]), f"10d {hist_m['ROC_10'].iloc[-1]:+.1f}%","#ffd740"),
+            (float(hist_m["ROC_20"].iloc[-1]), f"20d {hist_m['ROC_20'].iloc[-1]:+.1f}%","#40c4ff"),
+        ]:
+            ax.annotate(lbl, xy=(hist_m["DATE"].iloc[-1], val),
+                        xytext=(6, 0), textcoords="offset points",
+                        fontsize=8, color=clr, fontweight="bold", clip_on=False)
+        ax.set_title("Rate of Change  (ROC)  —  price momentum across 3 timeframes  |  all positive = strong",
+                     fontsize=10, color="#8899aa", pad=5)
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=0, fontsize=7.5)
+        ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.1f%%"))
+        ax.legend(fontsize=8, loc="upper left"); ax.grid(True, alpha=0.15)
+
+        # ── Panel 2: MACD Acceleration ────────────────────────────────────────
+        ax = fig2.add_subplot(gs2[1, :])
+        macd_hist_s = hist_m["MACD_HIST"]
+        macd_acc_s  = hist_m["MACD_ACCEL"] if "MACD_ACCEL" in hist_m.columns else macd_hist_s.diff(3)
+        ax.bar(hist_m["DATE"], macd_hist_s,
+               color=[C[2] if v >= 0 else C[3] for v in macd_hist_s],
+               width=0.9, alpha=0.55, label="MACD Histogram")
+        ax.plot(hist_m["DATE"], macd_acc_s, color="#ffab40", lw=1.8,
+                label="MACD Acceleration (3d change in hist)")
+        ax.fill_between(hist_m["DATE"], macd_acc_s, 0,
+                        where=macd_acc_s > 0, alpha=0.20, color="#ffab40")
+        ax.axhline(0, color="white", lw=0.7, ls="--", alpha=0.5)
+        cur_acc = float(macd_acc_s.iloc[-1]) if not np.isnan(macd_acc_s.iloc[-1]) else 0
+        acc_lbl = "BUILDING" if cur_acc > 0.5 else "MILD" if cur_acc > 0 else "FADING"
+        acc_clr = "#69ff47" if cur_acc > 0.5 else "#ffd740" if cur_acc > 0 else "#ff3d57"
+        ax.annotate(f"{cur_acc:+.3f}  {acc_lbl}",
+                    xy=(hist_m["DATE"].iloc[-1], cur_acc),
+                    xytext=(6, 0), textcoords="offset points",
+                    fontsize=8.5, color=acc_clr, fontweight="bold", clip_on=False)
+        ax.set_title("MACD Histogram + Acceleration  |  orange rising = momentum building",
+                     fontsize=10, color="#8899aa", pad=5)
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=0, fontsize=7.5)
+        ax.legend(fontsize=8, loc="upper left"); ax.grid(True, alpha=0.15)
+
+        # ── Panel 3: EMA Stack + Volume Momentum ──────────────────────────────
+        ax3l = fig2.add_subplot(gs2[2, 0])
+        if "EMA_STACK" in hist_m.columns:
+            ema_s = hist_m["EMA_STACK"]
+            clrs_s = ["#69ff47" if v==4 else "#ffd740" if v==3 else
+                      "#ffab40" if v==2 else "#ff3d57" for v in ema_s]
+            ax3l.bar(hist_m["DATE"], ema_s, color=clrs_s, width=0.9, alpha=0.85)
+            ax3l.axhline(3, color="#ffd740", lw=0.7, ls=":", alpha=0.7, label="3/4 threshold")
+            ax3l.axhline(4, color="#69ff47", lw=0.7, ls=":", alpha=0.7, label="Perfect (4/4)")
+            ax3l.set_ylim(0, 4.5)
+            ax3l.annotate(f"{int(ema_s.iloc[-1])}/4",
+                          xy=(hist_m["DATE"].iloc[-1], float(ema_s.iloc[-1])),
+                          xytext=(6,0), textcoords="offset points",
+                          fontsize=9, color="#69ff47" if ema_s.iloc[-1]==4 else "#ffd740",
+                          fontweight="bold", clip_on=False)
+        ax3l.set_title("EMA Stack  (0=misaligned  4=perfect bull)",
+                       fontsize=9, color="#8899aa", pad=5)
+        ax3l.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1,4,7,10]))
+        ax3l.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+        plt.setp(ax3l.xaxis.get_majorticklabels(), fontsize=7.5)
+        ax3l.legend(fontsize=7.5); ax3l.grid(True, alpha=0.15)
+
+        ax3r = fig2.add_subplot(gs2[2, 1])
+        if "VOL_MOMENTUM" in hist_m.columns:
+            vm = hist_m["VOL_MOMENTUM"]
+            ax3r.plot(hist_m["DATE"], vm, color="#38bdf8", lw=1.8)
+            ax3r.fill_between(hist_m["DATE"], vm, 1,
+                              where=vm >= 1, alpha=0.25, color="#38bdf8")
+            ax3r.fill_between(hist_m["DATE"], vm, 1,
+                              where=vm < 1, alpha=0.20, color="#ff3d57")
+            ax3r.axhline(1.0, color="white", lw=0.7, ls="--", alpha=0.5)
+            ax3r.axhline(1.3, color="#69ff47", lw=0.7, ls=":", alpha=0.6, label="1.3x rising")
+            cur_vm = float(vm.iloc[-1]) if not np.isnan(vm.iloc[-1]) else 1
+            vm_lbl = "RISING" if cur_vm >= 1.2 else "FLAT" if cur_vm >= 0.9 else "FALLING"
+            vm_clr = "#69ff47" if cur_vm >= 1.2 else "#ffd740" if cur_vm >= 0.9 else "#ff3d57"
+            ax3r.annotate(f"{cur_vm:.2f}x  {vm_lbl}",
+                          xy=(hist_m["DATE"].iloc[-1], cur_vm),
+                          xytext=(6,0), textcoords="offset points",
+                          fontsize=8.5, color=vm_clr, fontweight="bold", clip_on=False)
+        ax3r.set_title("Volume Momentum  (5d avg / 20d avg)  |  > 1 = rising participation",
+                       fontsize=9, color="#8899aa", pad=5)
+        ax3r.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1,4,7,10]))
+        ax3r.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+        plt.setp(ax3r.xaxis.get_majorticklabels(), fontsize=7.5)
+        ax3r.legend(fontsize=7.5); ax3r.grid(True, alpha=0.15)
+
+        # ── Panel 4: Gap Widening + MOM Score ─────────────────────────────────
+        ax4l = fig2.add_subplot(gs2[3, 0])
+        if "GAP_WIDENING" in hist_m.columns:
+            gw = hist_m["GAP_WIDENING"]
+            ax4l.fill_between(hist_m["DATE"], gw, 0,
+                              where=gw > 0,  alpha=0.50, color="#69ff47")
+            ax4l.fill_between(hist_m["DATE"], gw, 0,
+                              where=gw <= 0, alpha=0.50, color="#ff3d57")
+            ax4l.plot(hist_m["DATE"], gw, color="#c8d6e8", lw=1.0, alpha=0.6)
+            ax4l.axhline(0, color="white", lw=0.7, ls="--", alpha=0.5)
+            ax4l.axhline(0.2,  color="#69ff47", lw=0.6, ls=":", alpha=0.6)
+            ax4l.axhline(-0.3, color="#ff3d57", lw=0.6, ls=":", alpha=0.6)
+            cur_gw = float(gw.iloc[-1]) if not np.isnan(gw.iloc[-1]) else 0
+            gw_lbl = "WIDENING" if cur_gw > 0.1 else "STABLE" if cur_gw > -0.1 else "NARROWING"
+            gw_clr = "#69ff47" if cur_gw > 0.1 else "#ffd740" if cur_gw > -0.1 else "#ff3d57"
+            ax4l.annotate(f"{cur_gw:+.3f}  {gw_lbl}",
+                          xy=(hist_m["DATE"].iloc[-1], cur_gw),
+                          xytext=(6,0), textcoords="offset points",
+                          fontsize=8.5, color=gw_clr, fontweight="bold", clip_on=False)
+        ax4l.set_title("Gap Widening  (3d change in Gap/ATR)  |  green=cushion growing",
+                       fontsize=9, color="#8899aa", pad=5)
+        ax4l.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1,4,7,10]))
+        ax4l.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+        plt.setp(ax4l.xaxis.get_majorticklabels(), fontsize=7.5)
+        ax4l.grid(True, alpha=0.15)
+
+        ax4r = fig2.add_subplot(gs2[3, 1])
+        if "MOM_SCORE" in hist_m.columns:
+            ms = hist_m["MOM_SCORE"]
+            clrs_ms = ["#69ff47" if v==3 else "#ffd740" if v==2 else
+                       "#ffab40" if v==1 else "#ff3d57" for v in ms]
+            ax4r.bar(hist_m["DATE"], ms, color=clrs_ms, width=0.9, alpha=0.85)
+            ax4r.axhline(2, color="#ffd740", lw=0.7, ls=":", alpha=0.7)
+            ax4r.axhline(3, color="#69ff47", lw=0.7, ls=":", alpha=0.7, label="All 3 up")
+            ax4r.set_ylim(0, 3.5)
+            cur_ms = int(ms.iloc[-1])
+            ms_lbl = "ALL UP" if cur_ms==3 else "MIXED" if cur_ms==2 else "PARTIAL" if cur_ms==1 else "ALL DOWN"
+            ms_clr = "#69ff47" if cur_ms==3 else "#ffd740" if cur_ms==2 else "#ffab40" if cur_ms==1 else "#ff3d57"
+            ax4r.annotate(f"{cur_ms}/3  {ms_lbl}",
+                          xy=(hist_m["DATE"].iloc[-1], float(ms.iloc[-1])),
+                          xytext=(6,0), textcoords="offset points",
+                          fontsize=8.5, color=ms_clr, fontweight="bold", clip_on=False)
+        ax4r.set_title("Momentum Score  (ROC 5+10+20d all positive = 3/3)",
+                       fontsize=9, color="#8899aa", pad=5)
+        ax4r.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1,4,7,10]))
+        ax4r.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+        plt.setp(ax4r.xaxis.get_majorticklabels(), fontsize=7.5)
+        ax4r.legend(fontsize=7.5); ax4r.grid(True, alpha=0.15)
+
+        # Momentum summary footer
+        mom = result.get("momentum", {})
+        fig2.text(0.02, 0.005,
+            f"MACD Accel:{mom.get('macd_accel_status','?')}  "
+            f"EMA Stack:{mom.get('ema_stack_status','?')}  "
+            f"ROC:{mom.get('roc_status','?')}  "
+            f"Gap:{mom.get('gap_status','?')}  "
+            f"Vol Trend:{mom.get('vol_trend','?')}  "
+            f"{'⚡ MOMENTUM BOOST ACTIVE' if mom.get('momentum_boost') else ''}",
+            fontsize=8.5, color="#ffd740" if mom.get("momentum_boost") else "#6a7f99",
+            fontfamily="monospace")
+
+        fig2.suptitle(f"{symbol}  —  Momentum Dashboard  |  {result['date']}",
+                      fontsize=13, fontweight="bold", color=sig_clr)
+        plt.tight_layout(rect=[0, 0.02, 1, 1])
+        pdf.savefig(fig2, bbox_inches="tight", facecolor=BG)
+        plt.close(fig2)
+    except Exception as me:
+        logger.warning(f"Momentum page failed for {symbol}: {me}")
+
+    # ── PAGE 3: 3-Month Forecast ──────────────────────────────────────────────
     try:
         if MODEL_BUNDLE:
             pipe  = MODEL_BUNDLE["model"]

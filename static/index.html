@@ -115,8 +115,25 @@ body::before{content:"";position:fixed;inset:0;
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{font-size:12px;letter-spacing:2px;text-transform:uppercase}
 .loading-steps{margin-top:12px;font-size:11px;color:var(--text-faint)}
-.loading-step{opacity:0;transition:.3s}
-.loading-step.active{opacity:1;color:var(--teal)}
+.loading-step{
+  opacity:0;
+  max-height:0;
+  overflow:hidden;
+  transition:opacity .25s, max-height .25s, margin .25s;
+  margin:0;
+}
+.loading-step.active{
+  opacity:1;
+  max-height:40px;
+  color:var(--teal);
+  margin-top:4px;
+}
+.loading-step.done{
+  opacity:0;
+  max-height:0;
+  margin:0;
+  transition:opacity .3s ease, max-height .4s ease .1s, margin .4s ease .1s;
+}
 
 /* ── Error ────────────────────────────────────────────────────────────── */
 .error-block{background:rgba(248,113,113,.08);border:1px solid var(--red-dim);
@@ -302,6 +319,29 @@ canvas.sparkline{width:100%;height:100%}
 .strength-value{font-family:var(--font-display);font-size:20px;font-weight:800;
   min-width:28px;text-align:center}
 .strength-desc{font-size:9px;color:var(--text-dim);flex:1}
+
+
+/* ── Momentum panel ───────────────────────────────────────────────────── */
+.momentum-panel{background:var(--bg);border:1px solid var(--border);
+  border-radius:6px;padding:12px 14px;margin-bottom:12px}
+.momentum-title{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--text-dim);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.momentum-boost{background:rgba(255,234,0,.15);color:#ffea00;border:1px solid rgba(255,234,0,.3);
+  padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:1px}
+.mom-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mom-item{background:var(--panel);border-radius:4px;padding:7px 8px;border:1px solid var(--border)}
+.mom-label{font-size:8px;color:var(--text-faint);text-transform:uppercase;
+  letter-spacing:.8px;margin-bottom:3px}
+.mom-val{font-size:11px;font-weight:600}
+.mom-status{font-size:8px;margin-top:2px}
+.mom-up   {color:#69ff47}
+.mom-mid  {color:#ffd740}
+.mom-down {color:#ff3d57}
+.roc-row{display:flex;gap:6px;margin-top:6px}
+.roc-item{flex:1;background:var(--panel);border-radius:4px;
+  padding:5px 8px;text-align:center;border:1px solid var(--border)}
+.roc-label{font-size:8px;color:var(--text-faint)}
+.roc-val{font-size:11px;font-weight:600}
 
 </style>
 </head>
@@ -500,10 +540,24 @@ async function analyze() {
   document.getElementById("results").innerHTML = "";
   document.getElementById("emptyState").style.display = "none";
 
-  // Animate loading steps
+  // Animate loading steps — each appears then vanishes before next shows
   const steps = ["step1","step2","step3","step4"];
-  steps.forEach((s,i) => {
-    setTimeout(() => document.getElementById(s)?.classList.add("active"), i * 700);
+  const STEP_DUR = 900;   // ms each step stays visible before vanishing
+  steps.forEach((s, i) => {
+    const showAt = i * STEP_DUR;
+    const hideAt = showAt + STEP_DUR - 150;
+    // Show
+    setTimeout(() => {
+      const el = document.getElementById(s);
+      if (el) el.classList.add("active");
+    }, showAt);
+    // Hide (all except last — last stays until request completes)
+    if (i < steps.length - 1) {
+      setTimeout(() => {
+        const el = document.getElementById(s);
+        if (el) { el.classList.remove("active"); el.classList.add("done"); }
+      }, hideAt);
+    }
   });
 
   try {
@@ -530,7 +584,10 @@ async function analyze() {
     document.getElementById("emptyState").style.display = "block";
   } finally {
     setLoading(false);
-    steps.forEach(s => document.getElementById(s)?.classList.remove("active"));
+    steps.forEach(s => {
+      const el = document.getElementById(s);
+      if (el) { el.classList.remove("active"); el.classList.add("done"); }
+    });
   }
 }
 
@@ -582,6 +639,7 @@ function buildCard(r) {
         <div class="score-text">${r.score} / ${r.max_score}</div>
       </div>
       ${buildStrengthMeter(r.strength || 1, r.strength_label || "")}
+      ${buildMomentumPanel(r.momentum)}
     </div>
     <div class="card-body">
       <!-- Levels -->
@@ -765,6 +823,61 @@ function clearErrors() {
 
 
 // ── Strength Meter ────────────────────────────────────────────────────────────
+
+function buildMomentumPanel(m) {
+  if (!m) return "";
+  const boosted = m.momentum_boost;
+  const aligned = m.momentum_aligned;
+  const boostBadge = boosted
+    ? '<span class="momentum-boost">⚡ MOMENTUM BOOST</span>' : "";
+
+  function mClr(status) {
+    if (["BUILDING","ALL UP","WIDENING","RISING","aligned"].some(s => status?.includes(s))) return "mom-up";
+    if (["FADING","MIXED","NARROWING","FALLING"].some(s => status?.includes(s))) return "mom-mid";
+    return "mom-down";
+  }
+
+  const items = [
+    { label:"MACD Accel",   val: (m.macd_accel>0?"+":"")+m.macd_accel?.toFixed(3), status: m.macd_accel_status },
+    { label:"EMA Stack",    val: m.ema_stack_status,   status: m.ema_stack===4?"PERFECT":m.ema_stack>=3?"GOOD":"PARTIAL" },
+    { label:"Gap Trend",    val: (m.gap_widening>0?"+":"")+m.gap_widening?.toFixed(3)+"x", status: m.gap_status },
+    { label:"Vol Trend",    val: m.vol_momentum?.toFixed(2)+"x",  status: m.vol_trend },
+  ];
+
+  const rocs = [
+    { label:"ROC 5d",  val: m.roc_5,  },
+    { label:"ROC 10d", val: m.roc_10, },
+    { label:"ROC 20d", val: m.roc_20, },
+  ];
+
+  return `
+    <div class="momentum-panel">
+      <div class="momentum-title">
+        Momentum Analysis ${boostBadge}
+        ${aligned ? '<span style="color:var(--green);font-size:9px">✓ All momentum aligned</span>' : ""}
+      </div>
+      <div class="mom-grid">
+        ${items.map(it => `
+          <div class="mom-item">
+            <div class="mom-label">${it.label}</div>
+            <div class="mom-val ${mClr(it.status)}">${it.val}</div>
+            <div class="mom-status ${mClr(it.status)}">${it.status||""}</div>
+          </div>`).join("")}
+      </div>
+      <div class="roc-row">
+        ${rocs.map(r => `
+          <div class="roc-item">
+            <div class="roc-label">${r.label}</div>
+            <div class="roc-val ${r.val>=0?"mom-up":"mom-down"}">${r.val>=0?"+":""}${r.val?.toFixed(2)}%</div>
+          </div>`).join("")}
+        <div class="roc-item">
+          <div class="roc-label">Consec Up</div>
+          <div class="roc-val ${m.consec_up>=2?"mom-up":"mom-mid"}">${m.consec_up}d</div>
+        </div>
+      </div>
+    </div>`;
+}
+
 function buildStrengthMeter(strength, label) {
   const colours = {5:"#ffea00",4:"#69ff47",3:"#40c4ff",2:"#888888",1:"#555555"};
   const clr = colours[strength] || "#555";
