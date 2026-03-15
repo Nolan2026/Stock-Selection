@@ -1,0 +1,864 @@
+"""
+Stock Analysis FastAPI Backend
+================================
+Routes:
+  GET  /                        → serve frontend
+  POST /api/analyze             → analyze one or more stocks
+  GET  /api/history             → get recent stock searches
+  DELETE /api/history/{symbol}  → remove from history
+  GET  /api/download/{symbol}   → download PDF report
+  GET  /api/health              → health check
+"""
+
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import pickle, json, os, io, logging, asyncio
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import List, Optional
+import numpy  as np
+import pandas as pd
+
+# ── Setup ─────────────────────────────────────────────────────────────────────
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="NSE Stock Analysis API",
+    description="EMA gap analysis + ML signal generation for NSE stocks",
+    version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Return validation errors as JSON with detail instead of 422
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={"detail": str(exc.errors()), "body": str(exc.body)},
+    )
+
+BASE_DIR    = Path(__file__).parent.parent
+MODEL_PATH  = BASE_DIR / "models" / "stock_model.pkl"
+HISTORY_PATH= BASE_DIR / "data"   / "search_history.json"
+PDF_DIR     = BASE_DIR / "data"   / "reports"
+STATIC_DIR  = BASE_DIR / "static"
+
+os.makedirs(BASE_DIR / "data",   exist_ok=True)
+os.makedirs(PDF_DIR,             exist_ok=True)
+os.makedirs(STATIC_DIR,         exist_ok=True)
+
+# Mount static files so index.html loads fonts/CSS properly
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+# ── Load Model ────────────────────────────────────────────────────────────────
+MODEL_BUNDLE = None
+
+def load_model():
+    global MODEL_BUNDLE
+    if MODEL_PATH.exists():
+        with open(MODEL_PATH, "rb") as f:
+            MODEL_BUNDLE = pickle.load(f)
+        logger.info(f"Model loaded: {MODEL_BUNDLE['metrics']['model']} "
+                    f"DirAcc={MODEL_BUNDLE['metrics']['dir_acc']:.1f}%")
+    else:
+        logger.warning(f"Model not found at {MODEL_PATH}. "
+                       "Run Cell 17 in Colab first and place stock_model.pkl in /models/")
+
+load_model()
+
+# ── History Store ─────────────────────────────────────────────────────────────
+def read_history() -> list:
+    if HISTORY_PATH.exists():
+        with open(HISTORY_PATH) as f:
+            return json.load(f)
+    return []
+
+def write_history(history: list):
+    with open(HISTORY_PATH, "w") as f:
+        json.dump(history, f, indent=2)
+
+def add_to_history(symbol: str, name: str, signal: str):
+    history = read_history()
+    # Remove if already exists
+    history = [h for h in history if h["symbol"] != symbol.upper()]
+    history.insert(0, {
+        "symbol":     symbol.upper(),
+        "name":       name,
+        "signal":     signal,
+        "searched_at": datetime.now().isoformat(),
+    })
+    write_history(history[:20])   # keep last 20
+
+
+# ── Indicator helpers ─────────────────────────────────────────────────────────
+def _ema(s, n): return s.ewm(span=n, adjust=False).mean()
+def _sma(s, n): return s.rolling(n).mean()
+def _rsi(s, p=14):
+    d = s.diff()
+    g = d.clip(lower=0).rolling(p).mean()
+    l = (-d.clip(upper=0)).rolling(p).mean()
+    return 100 - 100 / (1 + g / l.replace(0, np.nan))
+def _slope(s, w=10):
+    out = np.full(len(s), np.nan); sv = s.values
+    for i in range(w, len(sv)):
+        y = sv[i-w:i]
+        if not np.any(np.isnan(y)):
+            out[i] = np.polyfit(np.arange(w), y, 1)[0]
+    return pd.Series(out, index=s.index)
+
+
+# ── Fetch from Yahoo Finance ──────────────────────────────────────────────────
+def fetch_yahoo(symbol: str, period: str = "3y") -> pd.DataFrame:
+    """Download OHLCV from Yahoo Finance. Appends .NS for NSE stocks."""
+    try:
+        import yfinance as yf
+    except ImportError:
+        raise HTTPException(503, "yfinance not installed. Run: pip install yfinance")
+
+    # Try NSE format first, then direct
+    for ticker_sym in [f"{symbol}.NS", symbol]:
+        try:
+            ticker = yf.Ticker(ticker_sym)
+            df     = ticker.history(period=period, interval="1d")
+            if len(df) > 50:
+                df = df.reset_index()
+                df.columns = [c.upper() for c in df.columns]
+                df.rename(columns={"DATE":"DATE","OPEN":"OPEN","HIGH":"HIGH",
+                                   "LOW":"LOW","CLOSE":"CLOSE","VOLUME":"VOLUME"},
+                          inplace=True)
+                # Split adjustment is handled by yfinance
+                df = df[["DATE","OPEN","HIGH","LOW","CLOSE","VOLUME"]].copy()
+                if not pd.api.types.is_datetime64_any_dtype(df["DATE"]):
+                    df["DATE"] = pd.to_datetime(df["DATE"])
+                df["DATE"] = df["DATE"].dt.tz_localize(None)
+                df.sort_values("DATE", inplace=True)
+                df.dropna(subset=["CLOSE"], inplace=True)
+                df.reset_index(drop=True, inplace=True)
+                logger.info(f"Fetched {len(df)} rows for {ticker_sym}")
+                return df, ticker_sym
+        except Exception as e:
+            logger.warning(f"Yahoo fetch failed for {ticker_sym}: {e}")
+            continue
+
+    raise HTTPException(404, f"Could not fetch data for '{symbol}'. "
+                             "Check the symbol (e.g. ASHOKLEY, HPCL, MOTHERSON)")
+
+
+# ── Engineer indicators ───────────────────────────────────────────────────────
+def engineer(raw: pd.DataFrame) -> pd.DataFrame:
+    d  = raw.copy().reset_index(drop=True)
+    C_ = d["CLOSE"]; H_ = d["HIGH"]; L_ = d["LOW"]
+    O_ = d["OPEN"];  V_ = d["VOLUME"]
+    VW_= C_   # VWAP not available from Yahoo
+
+    e10=_ema(C_,10); e20=_ema(C_,20); e50=_ema(C_,50); e200=_ema(C_,200)
+    e50h=_ema(H_,50); e50l=_ema(L_,50)
+    sma200=_sma(C_,200)
+    _tr=pd.concat([H_-L_,(H_-C_.shift()).abs(),(L_-C_.shift()).abs()],axis=1).max(axis=1)
+    atr=_tr.rolling(14).mean()
+    _mf=_ema(C_,12); _ms=_ema(C_,26)
+    macd=_mf-_ms; macd_sig=_ema(macd,9); macd_hist=macd-macd_sig
+    rsi14=_rsi(C_,14); rsi9=_rsi(C_,9)
+    _bm=_sma(C_,20); _bs=C_.rolling(20).std()
+    bb_w=((_bm+2*_bs)-(_bm-2*_bs))/_bm
+    bb_b=(C_-(_bm-2*_bs))/(4*_bs)
+    _lo=L_.rolling(14).min(); _hi=H_.rolling(14).max()
+    stoch_k=100*(C_-_lo)/(_hi-_lo).replace(0,np.nan)
+    stoch_d=stoch_k.rolling(3).mean()
+    vol_sma20=_sma(V_,20)
+
+    d["EMA10_RATIO"]=C_/e10-1;    d["EMA20_RATIO"]=C_/e20-1
+    d["EMA50_RATIO"]=C_/e50-1;    d["SMA200_RATIO"]=C_/sma200-1
+    d["EMA50H_RATIO"]=C_/e50h-1;  d["EMA50L_RATIO"]=C_/e50l-1
+    d["EMA10_GT_20"]=(e10>e20).astype(int)
+    d["EMA20_GT_50"]=(e20>e50).astype(int)
+    d["EMA50_GT_200"]=(e50>e200).astype(int)
+    d["EMA10_GT_50H"]=(e10>e50h).astype(int)
+    d["GAP_ATR"]=(e10-e50h)/atr;  d["GAP_PCT"]=(e10-e50h)/e50h*100
+    d["CLOSE_GAP_ATR"]=(C_-e50h)/atr
+    d["RSI_14"]=rsi14; d["RSI_9"]=rsi9
+    d["MACD_HIST"]=macd_hist
+    d["MACD_CROSS"]=(macd>macd_sig).astype(int)
+    d["MACD_ABOVE_ZERO"]=(macd>0).astype(int)
+    d["STOCH_K"]=stoch_k; d["STOCH_D"]=stoch_d
+    d["BB_WIDTH"]=bb_w;    d["BB_PCT_B"]=bb_b
+    d["ATR_PCT"]=atr/C_*100
+    d["VOL_RATIO"]=V_/vol_sma20
+    d["VWAP_DEV"]=(C_-VW_)/VW_*100
+    for lg in [1,2,3,5,10,20]:
+        d[f"RET_{lg}D"]=C_.pct_change(lg)*100
+    _r=C_.pct_change()
+    d["VOL_5D"]=_r.rolling(5).std()*100
+    d["VOL_20D"]=_r.rolling(20).std()*100
+    d["TREND_5D"]=(C_>C_.shift(5)).astype(int)
+    d["TREND_10D"]=(C_>C_.shift(10)).astype(int)
+    d["TREND_20D"]=(C_>C_.shift(20)).astype(int)
+    d["ABOVE_EMA50H"]=(C_>e50h).astype(int)
+    d["ABOVE_EMA50L"]=(C_>e50l).astype(int)
+    d["SLOPE_10D"]=_slope(C_,10); d["SLOPE_20D"]=_slope(C_,20)
+    d["DOW"]=d["DATE"].dt.dayofweek; d["MONTH"]=d["DATE"].dt.month
+
+    d["EMA_10"]=e10; d["EMA_20"]=e20; d["EMA_50"]=e50; d["EMA_200"]=e200
+    d["EMA50_HIGH"]=e50h; d["EMA50_LOW"]=e50l
+    d["ATR_14"]=atr; d["MACD"]=macd; d["MACD_SIG"]=macd_sig
+    return d
+
+
+# ── Generate Signal ───────────────────────────────────────────────────────────
+def generate_signal(d_eng: pd.DataFrame, symbol: str) -> dict:
+    if MODEL_BUNDLE is None:
+        raise HTTPException(503, "Model not loaded. Place stock_model.pkl in /models/")
+    pipe  = MODEL_BUNDLE["model"]
+    feats = MODEL_BUNDLE["features"]
+    feats = [f for f in feats if f in d_eng.columns]
+
+    last  = d_eng.dropna(subset=feats).iloc[-1]
+    X     = last[feats].values.reshape(1, -1)
+    pred  = float(pipe.predict(X)[0])
+
+    gap_atr   = float(last.get("GAP_ATR",   0))
+    rsi       = float(last.get("RSI_14",    50))
+    macd_hist = float(last.get("MACD_HIST", 0))
+    macd_crs  = int(last.get("MACD_CROSS",  0))
+    vol_ratio = float(last.get("VOL_RATIO", 1))
+    close     = float(d_eng["CLOSE"].iloc[-1])
+    e50h      = float(d_eng["EMA50_HIGH"].iloc[-1])
+    e50l      = float(d_eng["EMA50_LOW"].iloc[-1])
+    e10       = float(d_eng["EMA_10"].iloc[-1])
+    atr       = float(d_eng["ATR_14"].iloc[-1])
+    slope     = float(d_eng["SLOPE_10D"].iloc[-1]) if "SLOPE_10D" in d_eng else 0
+
+    # Streak
+    above  = (d_eng["CLOSE"] > d_eng["EMA50_HIGH"]).astype(int)
+    streak = 0
+    for v in above.values[::-1]:
+        if v == 1: streak += 1
+        else: break
+
+    # 52W
+    high52 = d_eng["HIGH"].tail(252).max()
+    low52  = d_eng["LOW"].tail(252).min()
+    pos52  = round((close - low52) / (high52 - low52 + 1e-9) * 100, 1)
+
+    # 4-filter score (0–8)
+    gap_s  = 2 if gap_atr>=1.0  else (1 if gap_atr>=0.3 else 0)
+    rsi_s  = 2 if rsi<=60       else (1 if rsi<=70      else 0)
+    macd_s = 2 if (macd_hist>0 and macd_crs==1) else (1 if macd_hist>0 else 0)
+    vol_s  = 2 if vol_ratio>=1.2 else (1 if vol_ratio>=0.8 else 0)
+    total  = gap_s + rsi_s + macd_s + vol_s
+
+    if   total >= 7: sig="STRONG BUY"
+    elif total >= 5: sig="BUY"
+    elif total >= 3: sig="WATCH"
+    else:            sig="AVOID"
+
+    # ── Signal Strength 1–5 ────────────────────────────────────────────────────
+    # Uses 5 factors with partial scores for finer granularity than 0–8.
+    #   Gap size · RSI zone · MACD momentum · Volume · Slope
+    s = 0.0
+    if   gap_atr >= 1.5: s += 1.0   # large cushion
+    elif gap_atr >= 0.5: s += 0.5   # thin cushion
+    if   30 < rsi <= 60: s += 1.0   # ideal entry zone
+    elif 60 < rsi <= 72: s += 0.5   # acceptable
+    if   macd_hist > 0 and float(d_eng["MACD"].iloc[-1]) > 0: s += 1.0
+    elif macd_hist > 0:                                        s += 0.5
+    if   vol_ratio >= 1.5: s += 1.0  # strong institutional
+    elif vol_ratio >= 1.0: s += 0.5
+    if   slope > 0: s += 1.0         # trending up
+    if   s >= 4.5: strength = 5
+    elif s >= 3.5: strength = 4
+    elif s >= 2.5: strength = 3
+    elif s >= 1.5: strength = 2
+    else:          strength = 1
+
+    # Strength label
+    strength_label = {
+        5: "Exceptional — all 5 factors aligned",
+        4: "Strong — 4 factors confirmed",
+        3: "Moderate — 3 factors confirmed",
+        2: "Weak — only 2 factors",
+        1: "Very weak — avoid entry",
+    }[strength]
+
+    # Price history for sparkline (last 90 days)
+    hist90 = d_eng.tail(90)[["DATE","CLOSE","EMA50_HIGH","EMA50_LOW","EMA_10",
+                               "GAP_ATR","RSI_14","MACD_HIST"]].copy()
+    hist90["DATE"] = hist90["DATE"].astype(str)
+
+    return {
+        "symbol":           symbol.upper(),
+        "signal":           sig,
+        "score":            total,
+        "max_score":        8,
+        "strength":         strength,
+        "strength_label":   strength_label,
+        "pred_5d_pct":      round(pred, 2),
+        "date":             str(d_eng["DATE"].iloc[-1])[:10],
+        # Price levels
+        "close":        round(close, 2),
+        "ema10":        round(e10, 2),
+        "ema50_high":   round(e50h, 2),
+        "ema50_low":    round(e50l, 2),
+        "atr":          round(atr, 2),
+        # Gap
+        "gap_rs":       round(e10 - e50h, 2),
+        "gap_atr":      round(gap_atr, 2),
+        # Indicators
+        "rsi":          round(rsi, 1),
+        "macd_hist":    round(macd_hist, 3),
+        "vol_ratio":    round(vol_ratio, 2),
+        "slope_10d":    round(slope, 3),
+        "streak_days":  streak,
+        "pos_52w":      pos52,
+        # Filter signals
+        "gap_signal":   ["AVOID","WAIT","GO"][gap_s],
+        "rsi_signal":   ["AVOID","WAIT","GO"][rsi_s],
+        "macd_signal":  ["AVOID","WAIT","GO"][macd_s],
+        "vol_signal":   ["AVOID","WAIT","GO"][vol_s],
+        # Trade levels
+        "stop_loss":    round(e50l, 2),
+        "entry_price":  round(close, 2),
+        "target_1m":    round(close * (1 + max(pred, 2) / 100), 2),
+        # Chart data
+        "history":      hist90.to_dict("records"),
+        # Model info
+        "model_name":   MODEL_BUNDLE["metrics"]["model"] if MODEL_BUNDLE else "N/A",
+        "model_acc":    MODEL_BUNDLE["metrics"]["dir_acc"] if MODEL_BUNDLE else 0,
+    }
+
+
+# ── PDF Report ────────────────────────────────────────────────────────────────
+def build_pdf(result: dict, d_eng: pd.DataFrame) -> str:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.gridspec as gridspec
+    import matplotlib.ticker as mticker
+    import matplotlib.dates as mdates
+    from matplotlib.backends.backend_pdf import PdfPages
+    from sklearn.preprocessing import RobustScaler
+    from sklearn.pipeline import Pipeline
+
+    BG="#0a0f1a"; PAN="#0d1525"; GRD="#1a2535"
+    C=["#4a9fd4","#fbbf24","#34d399","#f87171","#a78bfa","#fb923c"]
+    plt.rcParams.update({
+        "figure.facecolor":BG,"axes.facecolor":PAN,"axes.edgecolor":GRD,
+        "axes.labelcolor":"#c8d6e8","xtick.color":"#c8d6e8","ytick.color":"#c8d6e8",
+        "text.color":"#c8d6e8","grid.color":GRD,"legend.facecolor":PAN,
+        "legend.edgecolor":GRD,"font.family":"monospace","figure.dpi":130,
+    })
+
+    symbol   = result["symbol"]
+    sig      = result["signal"]
+    sig_clr  = C[2] if "BUY" in sig else (C[1] if "WATCH" in sig else C[3])
+    pdf_path = str(PDF_DIR / f"{symbol}_analysis.pdf")
+
+    # 1 year of data
+    hist = d_eng.tail(252).reset_index(drop=True)
+    pdf  = PdfPages(pdf_path)
+
+    # ── PAGE 1: Price + Gap + RSI + MACD + Volume ─────────────────────────────
+    fig = plt.figure(figsize=(20, 24), facecolor=BG)
+    gs  = gridspec.GridSpec(4, 2, fig, hspace=0.42, wspace=0.28,
+                             height_ratios=[3.5, 1.1, 1.1, 1.0])
+
+    # ── Row 1: Price chart ────────────────────────────────────────────────────
+    ax = fig.add_subplot(gs[0, :])
+
+    # ── Colours ───────────────────────────────────────────────────────────────
+    CLR_EMA50H = "#26c6da"   # cyan
+    CLR_EMA50L = "#ef9a9a"   # soft rose
+    CLR_EMA10  = "#ffd740"   # amber
+    CLR_CLOSE  = "#aaaaaa"   # neutral grey — single colour for close
+
+    # EMA50 band fill
+    ax.fill_between(hist["DATE"], hist["EMA50_HIGH"], hist["EMA50_LOW"],
+                    alpha=0.08, color=CLR_EMA50H)
+
+    # EMA lines
+    ax.plot(hist["DATE"], hist["EMA50_HIGH"],
+            color=CLR_EMA50H, lw=1.5, alpha=0.85, label="EMA50 High")
+    ax.plot(hist["DATE"], hist["EMA50_LOW"],
+            color=CLR_EMA50L, lw=1.2, alpha=0.80, ls="--", label="EMA50 Low")
+    ax.plot(hist["DATE"], hist["EMA_10"],
+            color=CLR_EMA10,  lw=1.7, ls=(0,(5,2)), alpha=0.90, label="EMA10")
+
+    # Close — single grey line, no zone colouring
+    ax.plot(hist["DATE"], hist["CLOSE"],
+            color=CLR_CLOSE, lw=2.0, alpha=0.85, zorder=6, label="Close")
+
+    # ── SIGNAL STRENGTH 1–5 ───────────────────────────────────────────────────
+    def calc_strength(gap, rsi, macd_hist, macd_val, vol_ratio, slope):
+        score = 0.0
+        if   gap >= 1.5:         score += 1.0
+        elif gap >= 0.5:         score += 0.5
+        if   30 < rsi <= 60:     score += 1.0
+        elif 60 < rsi <= 72:     score += 0.5
+        if   macd_hist > 0 and macd_val > 0: score += 1.0
+        elif macd_hist > 0:      score += 0.5
+        if   vol_ratio >= 1.5:   score += 1.0
+        elif vol_ratio >= 1.0:   score += 0.5
+        if   slope > 0:          score += 1.0
+        if   score >= 4.5: return 5
+        elif score >= 3.5: return 4
+        elif score >= 2.5: return 3
+        elif score >= 1.5: return 2
+        else:              return 1
+
+    cross_up   = hist["EMA10_GT_50H"].diff() > 0
+    cross_down = hist["EMA10_GT_50H"].diff() < 0
+
+    entry_signals = []   # list of (date, price, strength)
+    exit_signals  = []
+
+    for i in hist.index[cross_up]:
+        gap  = float(hist["GAP_ATR"].iloc[i])  if "GAP_ATR"   in hist.columns else 0
+        rsi  = float(hist["RSI_14"].iloc[i])   if "RSI_14"    in hist.columns else 50
+        mh   = float(hist["MACD_HIST"].iloc[i])if "MACD_HIST" in hist.columns else 0
+        mv   = float(hist["MACD"].iloc[i])     if "MACD"      in hist.columns else 0
+        volr = float(hist["VOL_RATIO"].iloc[i])if "VOL_RATIO" in hist.columns else 1
+        slp  = float(hist["SLOPE_10D"].iloc[i])if "SLOPE_10D" in hist.columns else 0
+        if np.isnan(slp): slp = 0
+        r = calc_strength(gap, rsi, mh, mv, volr, slp)
+        entry_signals.append((hist["DATE"].iloc[i], float(hist["EMA_10"].iloc[i]), r))
+
+    for i in hist.index[cross_down]:
+        gap  = float(hist["GAP_ATR"].iloc[i])  if "GAP_ATR"   in hist.columns else 0
+        rsi  = float(hist["RSI_14"].iloc[i])   if "RSI_14"    in hist.columns else 50
+        mh   = float(hist["MACD_HIST"].iloc[i])if "MACD_HIST" in hist.columns else 0
+        mv   = float(hist["MACD"].iloc[i])     if "MACD"      in hist.columns else 0
+        volr = float(hist["VOL_RATIO"].iloc[i])if "VOL_RATIO" in hist.columns else 1
+        slp  = float(hist["SLOPE_10D"].iloc[i])if "SLOPE_10D" in hist.columns else 0
+        if np.isnan(slp): slp = 0
+        gap_exit = abs(gap) if gap < 0 else 0
+        ex = 0.0
+        if gap_exit >= 1.5: ex += 2.0
+        elif gap_exit >= 0.5: ex += 1.0
+        if rsi < 40: ex += 1.5
+        elif rsi < 50: ex += 0.5
+        if mh < 0: ex += 1.0
+        if slp < 0: ex += 0.5
+        if   ex >= 4.5: er = 5
+        elif ex >= 3.5: er = 4
+        elif ex >= 2.5: er = 3
+        elif ex >= 1.5: er = 2
+        else:           er = 1
+        exit_signals.append((hist["DATE"].iloc[i], float(hist["EMA_10"].iloc[i]), er))
+
+    # ── Plot: ALL entries = green triangle ▲, ALL exits = red triangle ▼
+    # Marker size scales with strength. Number printed inside each triangle.
+    # Size map: 5→300, 4→230, 3→170, 2→120, 1→80
+    SZ = {5:300, 4:230, 3:170, 2:120, 1:80}
+    CLR_ENTRY = "#00e676"   # vivid green
+    CLR_EXIT  = "#ff1744"   # vivid red
+
+    # Draw entries (weakest first so strongest renders on top)
+    entry_signals.sort(key=lambda x: x[2])
+    first_entry = True
+    for d, p, r in entry_signals:
+        ax.scatter(d, p, marker="^", color=CLR_ENTRY, s=SZ[r],
+                   zorder=9+r, edgecolors="white", linewidths=0.8,
+                   label="Entry" if first_entry else "_")
+        first_entry = False
+        # Strength number centred inside triangle
+        ax.annotate(str(r), xy=(d, p), xytext=(0, -1),
+                    textcoords="offset points",
+                    fontsize=7, color="black", ha="center", va="center",
+                    fontweight="bold", zorder=12)
+
+    # Draw exits
+    exit_signals.sort(key=lambda x: x[2])
+    first_exit = True
+    for d, p, r in exit_signals:
+        ax.scatter(d, p, marker="v", color=CLR_EXIT, s=SZ[r],
+                   zorder=9+r, edgecolors="white", linewidths=0.8,
+                   label="Exit" if first_exit else "_")
+        first_exit = False
+        ax.annotate(str(r), xy=(d, p), xytext=(0, 1),
+                    textcoords="offset points",
+                    fontsize=7, color="white", ha="center", va="center",
+                    fontweight="bold", zorder=12)
+
+    # ── Line labels directly on chart (right edge) ────────────────────────────
+    label_items = [
+        (hist["CLOSE"].iloc[-1],      f"Close  {hist['CLOSE'].iloc[-1]:.0f}",      sig_clr, True),
+        (hist["EMA_10"].iloc[-1],     f"EMA10  {hist['EMA_10'].iloc[-1]:.0f}",     C[1],    False),
+        (hist["EMA50_HIGH"].iloc[-1], f"50H    {hist['EMA50_HIGH'].iloc[-1]:.0f}", C[2],    False),
+        (hist["EMA50_LOW"].iloc[-1],  f"50L    {hist['EMA50_LOW'].iloc[-1]:.0f}",  C[3],    False),
+    ]
+    # Sort by price to avoid overlapping labels
+    label_items.sort(key=lambda x: x[0], reverse=True)
+    last_y = None
+    min_gap_px = (hist["CLOSE"].max() - hist["CLOSE"].min()) * 0.025
+    for val, lbl, clr, bold in label_items:
+        if last_y is not None and abs(val - last_y) < min_gap_px:
+            val = last_y - min_gap_px
+        ax.annotate(
+            lbl,
+            xy=(hist["DATE"].iloc[-1], val),
+            xytext=(8, 0), textcoords="offset points",
+            fontsize=8.5, color=clr, clip_on=False,
+            fontweight="bold" if bold else "normal",
+            bbox=dict(boxstyle="round,pad=0.2", facecolor=BG, alpha=0.7,
+                      edgecolor=clr, linewidth=0.5) if bold else None
+        )
+        last_y = val
+
+    ax.set_title(
+        f"{symbol}     {sig}  {result['score']}/8     "
+        f"Rs.{result['close']}   Gap {result['gap_atr']:+.2f}x ATR   "
+        f"RSI {result['rsi']:.0f}   {result['date']}",
+        fontsize=11, fontweight="bold", color=sig_clr, pad=10)
+    ax.xaxis.set_major_locator(mdates.MonthLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=0, ha="center", fontsize=8)
+    ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.0f"))
+    ax.legend(fontsize=8, loc="upper left", ncol=6,
+              framealpha=0.5, edgecolor=GRD,
+              handlelength=1.2, handletextpad=0.5, columnspacing=1.0)
+    ax.grid(True, alpha=0.18)
+
+    # ── Row 2: Gap ATR ────────────────────────────────────────────────────────
+    ax2 = fig.add_subplot(gs[1, :])
+    g = hist["GAP_ATR"]
+    ax2.fill_between(hist["DATE"], g, 0, where=g > 0,  alpha=0.45, color=C[2])
+    ax2.fill_between(hist["DATE"], g, 0, where=g <= 0, alpha=0.45, color=C[3])
+    ax2.plot(hist["DATE"], g, color=C[5], lw=1.2, alpha=0.8)
+    ax2.axhline(0,    color="white", lw=0.7, ls="--", alpha=0.5)
+    ax2.axhline(1.0,  color=C[2],   lw=0.7, ls=":",  alpha=0.6)
+    ax2.axhline(-1.0, color=C[3],   lw=0.7, ls=":",  alpha=0.4)
+    cur_g = float(g.iloc[-1])
+    ax2.annotate(f"{cur_g:+.2f}x",
+                 xy=(hist["DATE"].iloc[-1], cur_g),
+                 xytext=(6, 0), textcoords="offset points",
+                 fontsize=8.5, color=C[2] if cur_g > 0 else C[3],
+                 fontweight="bold", clip_on=False)
+    ax2.set_title("GAP  EMA10 vs EMA50_HIGH  (ATR units)  |  > +1.0 = GO zone",
+                  fontsize=9, color="#8899aa", pad=4)
+    ax2.xaxis.set_major_locator(mdates.MonthLocator())
+    ax2.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+    plt.setp(ax2.xaxis.get_majorticklabels(), rotation=0, ha="center", fontsize=7.5)
+    ax2.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.1f"))
+    ax2.grid(True, alpha=0.15)
+
+    # ── Row 3: RSI + MACD ─────────────────────────────────────────────────────
+    ax3 = fig.add_subplot(gs[2, 0])
+    ax3.plot(hist["DATE"], hist["RSI_14"], color=C[4], lw=1.4)
+    ax3.fill_between(hist["DATE"], hist["RSI_14"], 50,
+                     where=hist["RSI_14"] > 50,  alpha=0.12, color=C[2])
+    ax3.fill_between(hist["DATE"], hist["RSI_14"], 50,
+                     where=hist["RSI_14"] <= 50, alpha=0.08, color=C[3])
+    ax3.axhline(70, color=C[3], lw=0.6, ls="--", alpha=0.7)
+    ax3.axhline(30, color=C[2], lw=0.6, ls="--", alpha=0.7)
+    ax3.axhline(50, color="white", lw=0.4, alpha=0.3)
+    ax3.annotate(f"RSI {result['rsi']:.0f}",
+                 xy=(hist["DATE"].iloc[-1], result["rsi"]),
+                 xytext=(6, 0), textcoords="offset points",
+                 fontsize=9, color=C[4], fontweight="bold", clip_on=False)
+    ax3.set_ylim(0, 100)
+    ax3.set_title("RSI  14", fontsize=9, color="#8899aa", pad=4)
+    ax3.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1,4,7,10]))
+    ax3.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+    plt.setp(ax3.xaxis.get_majorticklabels(), fontsize=7.5)
+    ax3.grid(True, alpha=0.15)
+
+    ax4 = fig.add_subplot(gs[2, 1])
+    ax4.bar(hist["DATE"], hist["MACD_HIST"],
+            color=[C[2] if v >= 0 else C[3] for v in hist["MACD_HIST"]],
+            width=0.9, alpha=0.75)
+    ax4.axhline(0, color="white", lw=0.5, alpha=0.4)
+    ax4.annotate(f"Hist {result['macd_hist']:+.2f}",
+                 xy=(hist["DATE"].iloc[-1], result["macd_hist"]),
+                 xytext=(6, 0), textcoords="offset points",
+                 fontsize=9, color=C[2] if result["macd_hist"] >= 0 else C[3],
+                 fontweight="bold", clip_on=False)
+    ax4.set_title("MACD  Histogram", fontsize=9, color="#8899aa", pad=4)
+    ax4.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1,4,7,10]))
+    ax4.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+    plt.setp(ax4.xaxis.get_majorticklabels(), fontsize=7.5)
+    ax4.grid(True, alpha=0.15)
+
+    # ── Row 4: Volume ─────────────────────────────────────────────────────────
+    ax5 = fig.add_subplot(gs[3, :])
+    vol_r = hist["VOLUME"] / hist["VOLUME"].rolling(20).mean()
+    ax5.bar(hist["DATE"], vol_r,
+            color=[C[2] if v >= 1.2 else C[5] if v >= 0.8 else C[3]
+                   for v in vol_r.fillna(1)],
+            width=0.9, alpha=0.7)
+    ax5.axhline(1.2, color=C[2], lw=0.7, ls=":", alpha=0.7, label="1.2x GO")
+    ax5.axhline(1.0, color="white", lw=0.4, alpha=0.3)
+    ax5.annotate(f"{result['vol_ratio']:.2f}x",
+                 xy=(hist["DATE"].iloc[-1], result["vol_ratio"]),
+                 xytext=(6, 0), textcoords="offset points",
+                 fontsize=9, color=C[2] if result["vol_ratio"] >= 1.2 else C[5],
+                 fontweight="bold", clip_on=False)
+    ax5.set_title("Volume  ratio vs 20d avg  |  green >= 1.2x institutional",
+                  fontsize=9, color="#8899aa", pad=4)
+    ax5.xaxis.set_major_locator(mdates.MonthLocator())
+    ax5.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+    plt.setp(ax5.xaxis.get_majorticklabels(), rotation=0, ha="center", fontsize=8)
+    ax5.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.1f"))
+    ax5.legend(fontsize=8); ax5.grid(True, alpha=0.15)
+
+    # Summary footer
+    fig.text(
+        0.02, 0.002,
+        f"Entry Rs.{result['entry_price']}   Stop Rs.{result['stop_loss']}   "
+        f"Target Rs.{result['target_1m']}   |   "
+        f"Gap:{result['gap_signal']}  RSI:{result['rsi_signal']}  "
+        f"MACD:{result['macd_signal']}  Vol:{result['vol_signal']}   "
+        f"Score {result['score']}/8   DirAcc {result['model_acc']:.1f}% ({result['model_name']})",
+        fontsize=8, color="#6a7f99", fontfamily="monospace")
+
+    plt.tight_layout(rect=[0, 0.02, 1, 1])
+    pdf.savefig(fig, bbox_inches="tight", facecolor=BG)
+    plt.close(fig)
+
+    # ── PAGE 2: 3-Month Forecast ──────────────────────────────────────────────
+    try:
+        if MODEL_BUNDLE:
+            pipe  = MODEL_BUNDLE["model"]
+            feats = [f for f in MODEL_BUNDLE["features"] if f in d_eng.columns]
+            _d    = d_eng[feats + ["DATE", "CLOSE"]].dropna().copy().reset_index(drop=True)
+            if not pd.api.types.is_datetime64_any_dtype(_d["DATE"]):
+                _d["DATE"] = pd.to_datetime(_d["DATE"])
+
+            HORIZON = 5
+            _d["TARGET"] = _d["CLOSE"].pct_change(HORIZON).shift(-HORIZON) * 100
+            _d.dropna(subset=["TARGET"], inplace=True)
+            pipe_full = Pipeline([("sc", RobustScaler()),
+                                   ("m", type(pipe.named_steps["m"])(
+                                       **pipe.named_steps["m"].get_params()))])
+            pipe_full.fit(_d[feats].values, _d["TARGET"].values)
+
+            last_close = float(_d["CLOSE"].iloc[-1])
+            last_date  = _d["DATE"].iloc[-1]
+            cur_feats  = _d[feats].iloc[-1:].values.copy()
+            closes     = [last_close]
+            future     = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=63)
+            for _ in range(63):
+                pct   = float(np.clip(pipe_full.predict(cur_feats)[0] / HORIZON, -4.0, 4.0))
+                new_c = closes[-1] * (1 + pct / 100)
+                closes.append(new_c)
+                for fi, fn in enumerate(feats):
+                    if fn == "RET_1D":   cur_feats[0, fi] = pct
+                    if fn == "TREND_5D": cur_feats[0, fi] = 1 if pct > 0 else 0
+            closes = closes[1:]
+            atr    = float(d_eng["ATR_14"].iloc[-1])
+            fdf    = pd.DataFrame({"DATE": future[:len(closes)], "FORECAST_CLOSE": closes})
+            band   = atr * (1 + np.linspace(0, 2.0, len(fdf)))
+            fdf["UPPER"] = fdf["FORECAST_CLOSE"] + band
+            fdf["LOWER"] = fdf["FORECAST_CLOSE"] - band
+
+            e50h    = float(d_eng["EMA50_HIGH"].iloc[-1])
+            e50l    = float(d_eng["EMA50_LOW"].iloc[-1])
+            e10_now = float(d_eng["EMA_10"].iloc[-1])
+            hist90  = d_eng.tail(90).reset_index(drop=True)
+
+            fig2, axes = plt.subplots(3, 1, figsize=(20, 20), facecolor=BG,
+                                       gridspec_kw={"hspace": 0.40})
+
+            # Panel 1: historical + forecast
+            ax = axes[0]
+            ax.plot(hist90["DATE"], hist90["CLOSE"], color=C[0], lw=2.0,
+                    label="Historical (last 90d)")
+            ax.plot(fdf["DATE"], fdf["FORECAST_CLOSE"], color=C[4], lw=2.2,
+                    ls="--", label="3-Month Forecast")
+            ax.fill_between(fdf["DATE"], fdf["LOWER"], fdf["UPPER"],
+                            alpha=0.14, color=C[4], label="ATR band")
+            ax.fill_between(fdf["DATE"], e50h, e50l,
+                            alpha=0.08, color=C[2],
+                            label=f"EMA50 band [{e50l:.0f} - {e50h:.0f}]")
+            ax.axhline(e50h, color=C[2], lw=1.3, ls=":", alpha=0.9,
+                       label=f"EMA50H {e50h:.0f}")
+            ax.axhline(e50l, color=C[3], lw=1.0, ls=":", alpha=0.7,
+                       label=f"EMA50L {e50l:.0f}")
+            ax.axvline(d_eng["DATE"].iloc[-1], color="white", lw=0.9,
+                       ls=":", alpha=0.4)
+            ax.xaxis.set_major_locator(mdates.MonthLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=0, ha="center", fontsize=8)
+            ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.0f"))
+            ax.set_title(f"{symbol}  — 3-Month Price Forecast  |  EMA50H = Rs.{e50h:.0f}",
+                         fontsize=12, fontweight="bold", pad=8)
+            ax.legend(fontsize=8, ncol=3); ax.grid(True, alpha=0.18)
+
+            # Panel 2: forecast only — above/below EMA50H highlighted
+            ax = axes[1]
+            ax.plot(fdf["DATE"], fdf["FORECAST_CLOSE"], color=C[4], lw=2.2,
+                    label="Forecast")
+            ax.fill_between(fdf["DATE"], fdf["LOWER"], fdf["UPPER"],
+                            alpha=0.14, color=C[4])
+            ax.axhline(e50h, color=C[2], lw=1.5, ls="--",
+                       label=f"EMA50H {e50h:.0f}  (target)")
+            ax.axhline(e50l, color=C[3], lw=1.0, ls="--", alpha=0.7,
+                       label=f"EMA50L {e50l:.0f}")
+            ax.fill_between(fdf["DATE"], fdf["FORECAST_CLOSE"], e50h,
+                            where=fdf["FORECAST_CLOSE"] > e50h,
+                            alpha=0.22, color=C[2], label="Above EMA50H")
+            ax.fill_between(fdf["DATE"], fdf["FORECAST_CLOSE"], e50h,
+                            where=fdf["FORECAST_CLOSE"] <= e50h,
+                            alpha=0.18, color=C[3], label="Below EMA50H")
+            days_above = int((fdf["FORECAST_CLOSE"] > e50h).sum())
+            for md in pd.date_range(fdf["DATE"].iloc[0], fdf["DATE"].iloc[-1], freq="MS"):
+                ax.axvline(md, color="white", lw=0.4, ls="--", alpha=0.2)
+                ax.text(md, fdf["LOWER"].min(), md.strftime(" %b"),
+                        fontsize=8, color="#aaa", va="bottom")
+            ax.text(0.02, 0.95,
+                    f"Forecast days ABOVE EMA50H: {days_above}/63\n"
+                    f"Forecast days BELOW EMA50H: {63-days_above}/63",
+                    transform=ax.transAxes, va="top", fontsize=9,
+                    color="#c8d6e8",
+                    bbox=dict(boxstyle="round", facecolor=GRD, alpha=0.85))
+            ax.xaxis.set_major_locator(mdates.MonthLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=0, fontsize=8)
+            ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.0f"))
+            ax.set_title("Will price stay above EMA50_HIGH?  green=yes  red=no",
+                         fontsize=11, fontweight="bold", pad=8)
+            ax.legend(fontsize=8, ncol=2); ax.grid(True, alpha=0.18)
+
+            # Panel 3: Gap trajectory last 90 days
+            ax = axes[2]
+            gap90 = hist90["GAP_ATR"]
+            ax.plot(hist90["DATE"], gap90, color=C[5], lw=1.8,
+                    label="Gap EMA10 vs 50H (ATR)")
+            ax.fill_between(hist90["DATE"], gap90, 0,
+                            where=gap90 > 0, alpha=0.28, color=C[2])
+            ax.fill_between(hist90["DATE"], gap90, 0,
+                            where=gap90 <= 0, alpha=0.28, color=C[3])
+            gap_mom = gap90.diff(5) * 3
+            ax.plot(hist90["DATE"], gap_mom, color=C[1], lw=1.0,
+                    ls="--", alpha=0.6, label="Gap momentum x3")
+            ax.axhline(0, color="white", lw=0.9, ls="--", alpha=0.5)
+            ax.axhline(1, color=C[2], lw=0.7, ls=":", alpha=0.6,
+                       label="+1 ATR GO line")
+            ax.xaxis.set_major_locator(mdates.MonthLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=0, fontsize=8)
+            ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.1f"))
+            ax.set_title("Gap trajectory last 90d  |  narrowing = level at risk",
+                         fontsize=11, fontweight="bold", pad=8)
+            ax.legend(fontsize=8); ax.grid(True, alpha=0.18)
+
+            fig2.suptitle(f"{symbol}  —  3-Month Price Forecast  |  "
+                          f"Generated {datetime.now().strftime('%d %b %Y')}",
+                          fontsize=13, fontweight="bold", color=sig_clr)
+            plt.tight_layout()
+            pdf.savefig(fig2, bbox_inches="tight", facecolor=BG)
+            plt.close(fig2)
+    except Exception as fe:
+        logger.warning(f"Forecast page failed for {symbol}: {fe}")
+
+    pdf.close()
+    plt.rcParams.update(plt.rcParamsDefault)
+    return pdf_path
+
+# ══════════════════════════════════════════════════════════════════════════════
+# API ROUTES
+# ══════════════════════════════════════════════════════════════════════════════
+
+class AnalyzeRequest(BaseModel):
+    symbols: List[str]
+    period:  Optional[str] = "3y"
+
+
+@app.get("/api/health")
+def health():
+    return {
+        "status":      "ok",
+        "model_loaded": MODEL_BUNDLE is not None,
+        "model":       MODEL_BUNDLE["metrics"]["model"] if MODEL_BUNDLE else None,
+        "dir_acc":     MODEL_BUNDLE["metrics"]["dir_acc"] if MODEL_BUNDLE else None,
+    }
+
+
+@app.get("/api/history")
+def get_history():
+    return {"history": read_history()}
+
+
+@app.delete("/api/history/{symbol}")
+def delete_history(symbol: str):
+    history = [h for h in read_history() if h["symbol"] != symbol.upper()]
+    write_history(history)
+    return {"ok": True}
+
+
+@app.post("/api/analyze")
+async def analyze(req: AnalyzeRequest):
+    if not req.symbols:
+        raise HTTPException(422, "Provide at least one stock symbol")
+    # Strip empty strings
+    req.symbols = [s.strip() for s in req.symbols if s.strip()]
+    if not req.symbols:
+        raise HTTPException(422, "No valid symbols provided")
+    if len(req.symbols) > 10:
+        raise HTTPException(422, "Maximum 10 stocks per request")
+    logger.info(f"Analyze request: symbols={req.symbols} period={req.period}")
+
+    results = []
+    errors  = []
+
+    for raw_sym in req.symbols:
+        sym = raw_sym.strip().upper()
+        try:
+            logger.info(f"Analyzing {sym}...")
+            df, ticker = fetch_yahoo(sym, req.period)
+            d_eng      = engineer(df)
+            result     = generate_signal(d_eng, sym)
+
+            # Build PDF in background (non-blocking)
+            try:
+                pdf_path = build_pdf(result, d_eng)
+                result["pdf_ready"] = True
+            except Exception as pe:
+                logger.warning(f"PDF build failed for {sym}: {pe}")
+                result["pdf_ready"] = False
+
+            add_to_history(sym, sym, result["signal"])
+            results.append(result)
+
+        except HTTPException as he:
+            errors.append({"symbol": sym, "error": he.detail})
+        except Exception as e:
+            logger.error(f"Error analyzing {sym}: {e}")
+            errors.append({"symbol": sym, "error": str(e)})
+
+    return {"results": results, "errors": errors, "count": len(results)}
+
+
+@app.get("/api/download/{symbol}")
+def download_pdf(symbol: str):
+    pdf_path = PDF_DIR / f"{symbol.upper()}_analysis.pdf"
+    if not pdf_path.exists():
+        raise HTTPException(404, f"Report not found for {symbol}. Analyze first.")
+    return FileResponse(
+        path=str(pdf_path),
+        media_type="application/pdf",
+        filename=f"{symbol.upper()}_analysis_{datetime.now().strftime('%Y%m%d')}.pdf"
+    )
+
+
+@app.get("/", response_class=HTMLResponse)
+def serve_frontend():
+    html_path = STATIC_DIR / "index.html"
+    if html_path.exists():
+        return HTMLResponse(
+            content=html_path.read_text(encoding="utf-8"),
+            media_type="text/html; charset=utf-8"
+        )
+    return HTMLResponse("<h1>Stock Analysis API</h1><p>Place index.html in /static/</p>")

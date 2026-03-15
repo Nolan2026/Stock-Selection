@@ -1,0 +1,11 @@
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+yfinance>=0.2.37
+pandas>=2.0.0
+numpy>=1.26.0
+scikit-learn>=1.4.0
+lightgbm>=4.0.0
+xgboost>=2.0.0
+matplotlib>=3.8.0
+reportlab>=4.1.0
+python-multipart>=0.0.9
