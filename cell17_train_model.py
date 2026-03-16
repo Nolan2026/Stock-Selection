@@ -93,17 +93,45 @@ def load_csv():
 
 # All features the FastAPI model will need — exactly this list
 FEATURES = [
+    # EMA ratios
     "EMA10_RATIO","EMA20_RATIO","EMA50_RATIO","SMA200_RATIO",
     "EMA50H_RATIO","EMA50L_RATIO",
+    # EMA alignment
     "EMA10_GT_20","EMA20_GT_50","EMA50_GT_200","EMA10_GT_50H",
-    "GAP_ATR","GAP_PCT","CLOSE_GAP_ATR",
-    "RSI_14","RSI_9","MACD_HIST","MACD_CROSS","MACD_ABOVE_ZERO",
-    "STOCH_K","STOCH_D","BB_WIDTH","BB_PCT_B",
-    "ATR_PCT","VOL_5D","VOL_20D","VOL_RATIO","VWAP_DEV",
+    "EMA_STACK",
+    # Gap
+    "GAP_ATR","GAP_PCT","CLOSE_GAP_ATR","GAP_WIDENING",
+    # Oscillators
+    "RSI_14","RSI_9","MACD_HIST","MACD_CROSS","MACD_ABOVE_ZERO","MACD_ACCEL",
+    "STOCH_K","STOCH_D","STOCH_RISING","STOCH_CROSS",
+    "WILLIAMS_R","CCI",
+    # Volatility
+    "BB_WIDTH","BB_PCT_B",
+    "ATR_PCT","VOL_5D","VOL_20D",
+    "BETA_PROXY","BETA_20_60","BETA_REGIME",
+    # Volume
+    "VOL_RATIO","VWAP_DEV","VOL_MOMENTUM",
+    "OBV_ROC","OBV_TREND","VPT_ROC","VPT_TREND",
+    # Returns & momentum
     "RET_1D","RET_2D","RET_3D","RET_5D","RET_10D","RET_20D",
+    "ROC_5","ROC_10","ROC_20","MOM_SCORE",
+    # Trend
     "TREND_5D","TREND_10D","TREND_20D",
     "ABOVE_EMA50H","ABOVE_EMA50L",
     "SLOPE_10D","SLOPE_20D",
+    "HIGHER_HIGH_5","HIGHER_LOW_5","TREND_STRUCT",
+    "CONSEC_UP",
+    # Price position
+    "CHANNEL_POS_20","CHANNEL_POS_50",
+    "ZSCORE_20","ZSCORE_50","OVEREXTENDED",
+    # Candle patterns
+    "BODY_RATIO","UPPER_SHADOW","LOWER_SHADOW",
+    "BULL_CANDLE","BULL_ENGULF",
+    # Return distribution
+    "SKEW_20","KURT_20",
+    # RSI divergence
+    "RSI_DIVERGE",
+    # Calendar
     "DOW","MONTH",
 ]
 

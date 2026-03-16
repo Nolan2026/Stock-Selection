@@ -139,3 +139,7 @@ To retrain with new data or a different stock:
 - Search history is saved in `data/search_history.json` (last 20 searches)
 - PDF reports saved in `data/reports/` — one per symbol, overwritten on re-analyze
 - All indicator calculations match exactly what Cell 15/16 compute in Colab
+
+
+
+<!-- PREMIERPOL,MRPL,NEOGEN,SEAMECLTD,CHENNPETRO,ABSLAMC,EBGNG,AGIIL,JINDALSAW,TICL,ACUTAAS,GESHIP,AETHER,CGPOWER,LENSKART,ACMESOLAR,POWERGRID,LINDEINDIA,	PKTEA,TIMKEN,TATAPOWER,THERMAX,JBCHEPHARM, -->

@@ -1,32 +1,56 @@
 [
   {
-    "symbol": "ASHOKLEY",
-    "name": "ASHOKLEY",
+    "symbol": "GESHIP",
+    "name": "GESHIP",
+    "signal": "STRONG BUY",
+    "searched_at": "2026-03-16T16:59:30.340656"
+  },
+  {
+    "symbol": "SEAMECLTD",
+    "name": "SEAMECLTD",
     "signal": "WATCH",
-    "searched_at": "2026-03-15T16:13:17.255585"
+    "searched_at": "2026-03-16T16:59:21.766310"
+  },
+  {
+    "symbol": "BLS",
+    "name": "BLS",
+    "signal": "AVOID",
+    "searched_at": "2026-03-16T16:59:12.758363"
+  },
+  {
+    "symbol": "NTPCGREEN",
+    "name": "NTPCGREEN",
+    "signal": "BUY",
+    "searched_at": "2026-03-16T16:48:35.728489"
   },
   {
     "symbol": "WAAREERTL",
     "name": "WAAREERTL",
-    "signal": "WATCH",
-    "searched_at": "2026-03-15T16:13:03.502648"
+    "signal": "BUY",
+    "searched_at": "2026-03-16T16:18:05.647436"
+  },
+  {
+    "symbol": "POWERGRID",
+    "name": "POWERGRID",
+    "signal": "BUY",
+    "searched_at": "2026-03-16T16:17:37.460963"
+  },
+  {
+    "symbol": "WAAREEENER",
+    "name": "WAAREEENER",
+    "signal": "BUY",
+    "searched_at": "2026-03-16T16:07:57.272412"
+  },
+  {
+    "symbol": "NEOGEN",
+    "name": "NEOGEN",
+    "signal": "BUY",
+    "searched_at": "2026-03-16T16:06:50.263781"
   },
   {
     "symbol": "HBLENGINE",
     "name": "HBLENGINE",
     "signal": "BUY",
     "searched_at": "2026-03-15T16:10:03.498863"
-  },
-  {
-    "symbol": "WAAREEENER",
-    "name": "WAAREEENER",
-    "signal": "WATCH",
-    "searched_at": "2026-03-15T16:06:51.604859"
-  },
-  {
-    "symbol": "BLS",
-    "name": "BLS",
-    "signal": "AVOID",
-    "searched_at": "2026-03-15T15:22:33.783851"
   }
 ]

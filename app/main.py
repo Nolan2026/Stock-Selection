@@ -41,12 +41,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Return validation errors as JSON with detail instead of 422
+# Return validation errors as JSON with full detail for debugging
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    body = await request.body()
+    logger.error(f"422 Validation error — body: {body!r}  errors: {exc.errors()}")
     return JSONResponse(
         status_code=422,
-        content={"detail": str(exc.errors()), "body": str(exc.body)},
+        content={"detail": exc.errors(), "body": body.decode("utf-8", errors="replace")},
     )
 
 BASE_DIR    = Path(__file__).parent.parent
@@ -263,12 +265,139 @@ def engineer(raw: pd.DataFrame) -> pd.DataFrame:
     d["STOCH_RISING"] = (stoch_k > stoch_k.shift(3)).astype(int)
     d["STOCH_CROSS"]  = (stoch_k > stoch_d).astype(int)
 
-    # 8. Consecutive Up Days — how many days in a row has close been higher?
+    # 8. Consecutive Up Days
     up_days = (C_.diff() > 0).astype(int)
     consec = up_days.copy().astype(float)
     for i in range(1, len(consec)):
         consec.iloc[i] = consec.iloc[i] * (consec.iloc[i-1] + 1) if up_days.iloc[i] else 0
     d["CONSEC_UP"] = consec
+
+    # ── BETA vs NIFTY 50 ──────────────────────────────────────────────────────
+    # True beta = cov(stock_returns, nifty_returns) / var(nifty_returns)
+    # We fetch Nifty 50 (^NSEI) aligned to the same dates.
+    # Rolling 60-day beta captures how the stock moves relative to the market.
+    r_daily = C_.pct_change()
+    std20  = r_daily.rolling(20).std()
+    std60  = r_daily.rolling(60).std()
+    std252 = r_daily.rolling(252).std()
+
+    try:
+        import yfinance as yf
+        nifty_raw = yf.Ticker("^NSEI").history(
+            start=str(d["DATE"].iloc[0])[:10],
+            end=str(d["DATE"].iloc[-1])[:10],
+            interval="1d"
+        )["Close"]
+        nifty_raw.index = nifty_raw.index.tz_localize(None)
+        nifty_ret = nifty_raw.pct_change()
+
+        # Align to stock dates
+        date_idx = pd.to_datetime(d["DATE"])
+        stock_ret = pd.Series(r_daily.values, index=date_idx)
+        nifty_aligned = nifty_ret.reindex(date_idx, method="nearest")
+
+        # Rolling 60-day beta
+        def rolling_beta(s_ret, m_ret, window=60):
+            betas = np.full(len(s_ret), np.nan)
+            sv = s_ret.values; mv = m_ret.values
+            for i in range(window, len(sv)):
+                s_w = sv[i-window:i]; m_w = mv[i-window:i]
+                mask = ~(np.isnan(s_w) | np.isnan(m_w))
+                if mask.sum() > 20:
+                    cov = np.cov(s_w[mask], m_w[mask])
+                    betas[i] = cov[0,1] / cov[1,1] if cov[1,1] != 0 else np.nan
+            return pd.Series(betas, index=s_ret.index)
+
+        beta_series = rolling_beta(stock_ret, nifty_aligned, 60)
+        d["BETA_DISPLAY"] = np.round(beta_series.values, 3)
+        d["BETA_PROXY"]   = std60  / std252.replace(0, np.nan)
+        d["BETA_20_60"]   = std20  / std60.replace(0, np.nan)
+        d["BETA_REGIME"]  = (d["BETA_20_60"] > 1).astype(int)
+
+    except Exception as _be:
+        # Fallback: annualised vol ratio as beta proxy
+        d["BETA_DISPLAY"] = (std60 / std252.replace(0, np.nan)).round(3)
+        d["BETA_PROXY"]   = std60  / std252.replace(0, np.nan)
+        d["BETA_20_60"]   = std20  / std60.replace(0, np.nan)
+        d["BETA_REGIME"]  = (d["BETA_20_60"] > 1).astype(int)
+
+    # ── WILLIAMS %R ────────────────────────────────────────────────────────────
+    # Similar to stochastic but inverted — good overbought/oversold signal
+    # -20 to 0 = overbought, -80 to -100 = oversold
+    hi14 = H_.rolling(14).max()
+    lo14 = L_.rolling(14).min()
+    d["WILLIAMS_R"] = -100 * (hi14 - C_) / (hi14 - lo14).replace(0, np.nan)
+
+    # ── CCI — Commodity Channel Index ─────────────────────────────────────────
+    # Measures deviation from average price — good for identifying trend starts
+    typical = (H_ + L_ + C_) / 3
+    cci_sma = _sma(typical, 20)
+    cci_dev = typical.rolling(20).apply(lambda x: np.abs(x - x.mean()).mean(), raw=True)
+    d["CCI"] = (typical - cci_sma) / (0.015 * cci_dev.replace(0, np.nan))
+
+    # ── ON-BALANCE VOLUME (OBV) ────────────────────────────────────────────────
+    # Cumulative volume indicator — rising OBV = institutional accumulation
+    obv = (np.sign(C_.diff()) * V_).fillna(0).cumsum()
+    d["OBV_ROC"]   = obv.pct_change(10) * 100    # 10-day OBV rate of change
+    d["OBV_TREND"] = (obv > obv.rolling(20).mean()).astype(int)  # OBV above 20d avg
+
+    # ── PRICE CHANNEL POSITION ────────────────────────────────────────────────
+    # Where is price in its N-day range? (0=bottom, 1=top)
+    hi20 = H_.rolling(20).max(); lo20 = L_.rolling(20).min()
+    hi50 = H_.rolling(50).max(); lo50 = L_.rolling(50).min()
+    d["CHANNEL_POS_20"] = (C_ - lo20) / (hi20 - lo20).replace(0, np.nan)
+    d["CHANNEL_POS_50"] = (C_ - lo50) / (hi50 - lo50).replace(0, np.nan)
+
+    # ── CANDLESTICK PATTERNS ──────────────────────────────────────────────────
+    # Simple candle body/shadow ratios — capture intraday momentum
+    body      = (C_ - O_).abs()
+    candle_rng= (H_ - L_).replace(0, np.nan)
+    d["BODY_RATIO"]   = body / candle_rng            # 0=doji, 1=full body
+    d["UPPER_SHADOW"] = (H_ - np.maximum(C_, O_)) / candle_rng
+    d["LOWER_SHADOW"] = (np.minimum(C_, O_) - L_)  / candle_rng
+    d["BULL_CANDLE"]  = (C_ > O_).astype(int)        # 1 = bullish candle
+    # Engulfing pattern — today's body engulfs yesterday's
+    d["BULL_ENGULF"]  = ((C_ > O_) &
+                         (O_ < C_.shift(1)) &
+                         (C_ > O_.shift(1)) &
+                         (C_.shift(1) < O_.shift(1))).astype(int)
+
+    # ── MEAN REVERSION vs TREND FEATURES ─────────────────────────────────────
+    # Distance from moving averages (Z-score style)
+    # How "stretched" is the price above/below key levels?
+    d["ZSCORE_20"] = (C_ - _sma(C_, 20)) / C_.rolling(20).std().replace(0, np.nan)
+    d["ZSCORE_50"] = (C_ - _sma(C_, 50)) / C_.rolling(50).std().replace(0, np.nan)
+
+    # High Z-score = overextended (mean reversion likely)
+    # Moderate Z-score with rising momentum = trend continuation likely
+    d["OVEREXTENDED"] = (d["ZSCORE_20"].abs() > 2).astype(int)
+
+    # ── VOLUME PRICE TREND (VPT) ──────────────────────────────────────────────
+    vpt = (C_.pct_change() * V_).fillna(0).cumsum()
+    d["VPT_ROC"]   = vpt.pct_change(5) * 100
+    d["VPT_TREND"] = (vpt > vpt.rolling(20).mean()).astype(int)
+
+    # ── HIGHER HIGH / LOWER LOW PATTERN ──────────────────────────────────────
+    # Structural trend detection — is the stock making higher highs?
+    d["HIGHER_HIGH_5"]  = (H_ > H_.shift(5)).astype(int)
+    d["HIGHER_LOW_5"]   = (L_ > L_.shift(5)).astype(int)
+    d["TREND_STRUCT"]   = d["HIGHER_HIGH_5"] + d["HIGHER_LOW_5"]  # 0,1,2
+
+    # ── RETURN ASYMMETRY ──────────────────────────────────────────────────────
+    # Skewness of recent returns — positive skew = more upside surprises
+    d["SKEW_20"] = r_daily.rolling(20).skew()
+    # Kurtosis — heavy tails = big moves likely
+    d["KURT_20"] = r_daily.rolling(20).kurt()
+
+    # ── MOMENTUM QUALITY ──────────────────────────────────────────────────────
+    # RSI divergence proxy — price making new high but RSI not?
+    price_high_20 = (C_ == H_.rolling(20).max()).astype(int)
+    rsi_high_20   = (rsi14 == rsi14.rolling(20).max()).astype(int)
+    d["RSI_DIVERGE"] = (price_high_20 & ~rsi_high_20.astype(bool)).astype(int)
+
+    # ── BETA VALUE for display (60-day rolling beta proxy) ────────────────────
+    # Annualised volatility ratio as displayable beta
+    d["BETA_DISPLAY"] = (std60 * np.sqrt(252)).round(3)  # annualised vol = proxy for beta
 
     return d
 
@@ -477,6 +606,29 @@ def generate_signal(d_eng: pd.DataFrame, symbol: str) -> dict:
         "stop_loss":         round(e50l, 2),
         "entry_price":       round(close, 2),
         "target_1m":         round(close * (1 + max(pred, 2) / 100), 2),
+        # ── New indicators ────────────────────────────────────────────────────
+        "beta":              round(float(d_eng["BETA_DISPLAY"].iloc[-1]), 3)
+                             if "BETA_DISPLAY" in d_eng.columns and
+                             not np.isnan(d_eng["BETA_DISPLAY"].iloc[-1]) else None,
+        "beta_regime":       "HIGH" if float(d_eng["BETA_20_60"].iloc[-1]) > 1.2
+                             else "NORMAL" if float(d_eng["BETA_20_60"].iloc[-1]) > 0.8
+                             else "LOW"
+                             if "BETA_20_60" in d_eng.columns else "N/A",
+        "williams_r":        round(float(d_eng["WILLIAMS_R"].iloc[-1]), 1)
+                             if "WILLIAMS_R" in d_eng.columns else None,
+        "cci":               round(float(d_eng["CCI"].iloc[-1]), 1)
+                             if "CCI" in d_eng.columns else None,
+        "obv_trend":         int(d_eng["OBV_TREND"].iloc[-1])
+                             if "OBV_TREND" in d_eng.columns else None,
+        "channel_pos_20":    round(float(d_eng["CHANNEL_POS_20"].iloc[-1]), 3)
+                             if "CHANNEL_POS_20" in d_eng.columns else None,
+        "zscore_20":         round(float(d_eng["ZSCORE_20"].iloc[-1]), 2)
+                             if "ZSCORE_20" in d_eng.columns else None,
+        "trend_struct":      int(d_eng["TREND_STRUCT"].iloc[-1])
+                             if "TREND_STRUCT" in d_eng.columns else None,
+        "overextended":      bool(d_eng["OVEREXTENDED"].iloc[-1])
+                             if "OVEREXTENDED" in d_eng.columns else False,
+        # Chart data
         "history":           hist90.to_dict("records"),
         "model_name":        MODEL_BUNDLE["metrics"]["model"] if MODEL_BUNDLE else "N/A",
         "model_acc":         MODEL_BUNDLE["metrics"]["dir_acc"] if MODEL_BUNDLE else 0,
@@ -1121,8 +1273,13 @@ def build_pdf(result: dict, d_eng: pd.DataFrame) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class AnalyzeRequest(BaseModel):
-    symbols: List[str]
+    symbols: Optional[List[str]] = None
     period:  Optional[str] = "3y"
+
+    @property
+    def safe_period(self) -> str:
+        allowed = {"6mo","1y","2y","3y","5y","max"}
+        return self.period if self.period in allowed else "3y"
 
 
 @app.get("/api/health")
@@ -1149,24 +1306,30 @@ def delete_history(symbol: str):
 
 @app.post("/api/analyze")
 async def analyze(req: AnalyzeRequest):
-    if not req.symbols:
-        raise HTTPException(422, "Provide at least one stock symbol")
-    # Strip empty strings
-    req.symbols = [s.strip() for s in req.symbols if s.strip()]
-    if not req.symbols:
-        raise HTTPException(422, "No valid symbols provided")
-    if len(req.symbols) > 10:
+    # Normalize — handle None, empty list, or comma-separated strings
+    raw_syms = req.symbols or []
+    symbols  = []
+    for s in raw_syms:
+        for part in str(s).split(","):
+            part = part.strip().upper()
+            if part:
+                symbols.append(part)
+
+    if not symbols:
+        raise HTTPException(422, "Provide at least one valid stock symbol")
+    if len(symbols) > 10:
         raise HTTPException(422, "Maximum 10 stocks per request")
-    logger.info(f"Analyze request: symbols={req.symbols} period={req.period}")
+
+    logger.info(f"Analyze request: symbols={symbols} period={req.period} → {req.safe_period}")
 
     results = []
     errors  = []
 
-    for raw_sym in req.symbols:
+    for raw_sym in symbols:
         sym = raw_sym.strip().upper()
         try:
             logger.info(f"Analyzing {sym}...")
-            df, ticker = fetch_yahoo(sym, req.period)
+            df, ticker = fetch_yahoo(sym, req.safe_period)
             d_eng      = engineer(df)
             result     = generate_signal(d_eng, sym)
 

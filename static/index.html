@@ -76,12 +76,39 @@ body::before{content:"";position:fixed;inset:0;
   letter-spacing:1.5px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .search-label::before{content:">";color:var(--teal)}
 .search-wrap{display:flex;gap:12px;margin-bottom:12px}
-.search-input{flex:1;background:var(--panel);border:1px solid var(--border2);text-transform:uppercase;
-  border-radius:6px;padding:14px 18px;font-family:var(--font-mono);
+/* ── Search enhancements ──────────────────────────────────────────────── */
+.search-input-wrap{position:relative;flex:1;display:flex;align-items:center}
+.search-input{width:100%;background:var(--panel);border:1px solid var(--border2);
+  border-radius:6px;padding:14px 40px 14px 18px;font-family:var(--font-mono);
   font-size:14px;color:var(--text);outline:none;transition:.2s;
-  letter-spacing:.5px}
+  letter-spacing:.5px;text-transform:uppercase}
 .search-input::placeholder{color:var(--text-faint);text-transform:none}
 .search-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(74,159,212,.1)}
+.clear-btn{position:absolute;right:12px;background:none;border:none;
+  color:var(--text-faint);cursor:pointer;font-size:16px;padding:4px;
+  line-height:1;display:none;transition:.15s}
+.clear-btn:hover{color:var(--red)}
+.clear-btn.visible{display:block}
+
+/* ── Date range selector ─────────────────────────────────────────────── */
+.date-range-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;
+  flex-wrap:wrap}
+.date-range-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;
+  letter-spacing:1.2px;white-space:nowrap}
+.range-pills{display:flex;gap:6px}
+.range-pill{padding:5px 14px;border-radius:20px;border:1px solid var(--border);
+  background:transparent;font-family:var(--font-mono);font-size:11px;
+  color:var(--text-dim);cursor:pointer;transition:.15s;letter-spacing:.5px}
+.range-pill:hover{border-color:var(--teal);color:var(--teal)}
+.range-pill.active{background:var(--teal);border-color:var(--teal);
+  color:var(--bg);font-weight:700}
+.range-custom{display:flex;align-items:center;gap:6px}
+.range-custom-label{font-size:10px;color:var(--text-faint)}
+.range-date-input{background:var(--panel);border:1px solid var(--border2);
+  border-radius:4px;padding:5px 10px;font-family:var(--font-mono);font-size:11px;
+  color:var(--text);outline:none;width:130px;transition:.15s}
+.range-date-input:focus{border-color:var(--teal)}
+
 .search-btn{background:var(--teal);color:var(--bg);border:none;
   padding:14px 28px;border-radius:6px;font-family:var(--font-mono);
   font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;
@@ -343,6 +370,59 @@ canvas.sparkline{width:100%;height:100%}
 .roc-label{font-size:8px;color:var(--text-faint)}
 .roc-val{font-size:11px;font-weight:600}
 
+
+/* ── Custom date range ────────────────────────────────────────── */
+.custom-range-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);
+  background:transparent;font-family:var(--font-mono);font-size:11px;
+  color:var(--text-dim);cursor:pointer;transition:.15s;letter-spacing:.5px;
+  display:flex;align-items:center;gap:5px}
+.custom-range-btn:hover{border-color:var(--purple);color:var(--purple)}
+.custom-range-btn.active{background:var(--purple);border-color:var(--purple);
+  color:white;font-weight:700}
+
+/* Modal overlay */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+  z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--panel);border:1px solid var(--border2);
+  border-radius:12px;padding:28px 32px;width:380px;
+  box-shadow:0 24px 64px rgba(0,0,0,.6);position:relative}
+.modal-title{font-family:var(--font-display);font-size:16px;font-weight:700;
+  color:var(--text);margin-bottom:6px}
+.modal-sub{font-size:11px;color:var(--text-dim);margin-bottom:22px}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;
+  color:var(--text-faint);cursor:pointer;font-size:18px;line-height:1}
+.modal-close:hover{color:var(--red)}
+.date-field{margin-bottom:16px}
+.date-field label{display:block;font-size:10px;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--text-dim);margin-bottom:6px}
+.date-field input[type=date]{width:100%;background:var(--bg);
+  border:1px solid var(--border2);border-radius:6px;padding:10px 14px;
+  font-family:var(--font-mono);font-size:13px;color:var(--text);
+  outline:none;transition:.15s;color-scheme:dark}
+.date-field input[type=date]:focus{border-color:var(--teal)}
+.modal-actions{display:flex;gap:10px;margin-top:22px}
+.modal-apply{flex:1;background:var(--teal);color:var(--bg);border:none;
+  padding:11px;border-radius:6px;font-family:var(--font-mono);font-size:12px;
+  font-weight:700;letter-spacing:1px;cursor:pointer;transition:.15s}
+.modal-apply:hover{background:#6ab8e6}
+.modal-cancel{padding:11px 18px;background:transparent;border:1px solid var(--border);
+  color:var(--text-dim);border-radius:6px;font-family:var(--font-mono);
+  font-size:12px;cursor:pointer;transition:.15s}
+.modal-cancel:hover{border-color:var(--red);color:var(--red)}
+.active-range-display{font-size:10px;color:var(--purple);margin-left:8px;
+  font-style:italic;display:none}
+.active-range-display.visible{display:inline}
+
+/* ── Download CSV btn ─────────────────────────────────────────── */
+.download-csv-btn{padding:6px 14px;background:transparent;
+  border:1px solid var(--border);border-radius:4px;color:var(--text-dim);
+  font-family:var(--font-mono);font-size:10px;cursor:pointer;transition:.15s;
+  display:flex;align-items:center;gap:6px;letter-spacing:.5px}
+.download-csv-btn:hover{border-color:var(--green);color:var(--green)}
+.download-csv-btn svg{width:12px;height:12px}
+.ranking-actions{display:flex;gap:8px;align-items:center}
+
 </style>
 </head>
 <body>
@@ -373,13 +453,60 @@ canvas.sparkline{width:100%;height:100%}
   <div class="search-section">
     <div class="search-label">Enter Stock Symbols</div>
     <div class="search-wrap">
-      <input class="search-input" id="symbolInput" type="text"
-        placeholder="ASHOKLEY, HPCL, MOTHERSON, TCS ..."
-        autocomplete="off" spellcheck="false">
+      <div class="search-input-wrap">
+        <input class="search-input" id="symbolInput" type="text"
+          placeholder="ASHOKLEY, HPCL, MOTHERSON, TCS ..."
+          autocomplete="off" spellcheck="false"
+          oninput="toggleClear()">
+        <button class="clear-btn" id="clearBtn" onclick="clearSearch()" title="Clear">&#x2715;</button>
+      </div>
       <button class="search-btn" id="analyzeBtn" onclick="analyze()">
         Analyze →
       </button>
     </div>
+
+    <!-- Date range selector -->
+    <div class="date-range-row">
+      <span class="date-range-label">Data range</span>
+      <div class="range-pills">
+        <button class="range-pill" onclick="setRange('6mo')"  data-range="6mo">6 Mo</button>
+        <button class="range-pill" onclick="setRange('1y')"   data-range="1y">1 Yr</button>
+        <button class="range-pill" onclick="setRange('2y')"   data-range="2y">2 Yr</button>
+        <button class="range-pill active" onclick="setRange('3y')" data-range="3y">3 Yr</button>
+        <button class="range-pill" onclick="setRange('5y')"   data-range="5y">5 Yr</button>
+        <button class="custom-range-btn" id="customRangeBtn" onclick="openDateModal()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Custom
+        </button>
+      </div>
+      <span class="active-range-display" id="activeRangeDisplay"></span>
+    </div>
+
+  <!-- Custom date range modal -->
+  <div class="modal-overlay" id="dateModal" onclick="closeDateModal(event)">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeDateModal()">&#x2715;</button>
+      <div class="modal-title">Custom Date Range</div>
+      <div class="modal-sub">Fetch historical data between two dates</div>
+      <div class="date-field">
+        <label>Start Date</label>
+        <input type="date" id="startDate">
+      </div>
+      <div class="date-field">
+        <label>End Date</label>
+        <input type="date" id="endDate">
+      </div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeDateModal()">Cancel</button>
+        <button class="modal-apply" onclick="applyCustomRange()">Apply Range →</button>
+      </div>
+    </div>
+  </div>
+
     <div class="search-hint">Separate multiple symbols with commas · NSE symbols only</div>
 
     <!-- Recent searches -->
@@ -412,9 +539,27 @@ canvas.sparkline{width:100%;height:100%}
     <div class="ranking-header">
       <div>
         <div class="ranking-title">Stock Rankings</div>
-        <div class="ranking-sub">Sorted by ML predicted 5-day return &mdash; highest first</div>
+        <div class="ranking-sub">
+  <span style="color:var(--green)">STRONG BUY</span>
+  <span style="color:var(--text-faint)"> → </span>
+  <span style="color:var(--teal)">BUY</span>
+  <span style="color:var(--text-faint)"> → </span>
+  <span style="color:var(--gold)">WATCH</span>
+  <span style="color:var(--text-faint)"> → </span>
+  <span style="color:var(--red)">AVOID</span>
+  <span style="color:var(--text-faint)">  ·  then by Strength 5→1  ·  then Score  ·  then ML Pred</span>
+</div>
       </div>
-      <button class="ranking-clear" onclick="clearRanking()">Clear all</button>
+      <div class="ranking-actions">
+        <button class="download-csv-btn" onclick="downloadRankingCSV()" title="Download CSV">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          CSV
+        </button>
+        <button class="ranking-clear" onclick="clearRanking()">Clear all</button>
+      </div>
     </div>
     <table class="ranking-table">
       <thead>
@@ -430,6 +575,8 @@ canvas.sparkline{width:100%;height:100%}
           <th>Entry</th>
           <th>Stop</th>
           <th>Target</th>
+          <th>Beta</th>
+          <th>Z-Score</th>
           <th>DirAcc</th>
           <th>PDF</th>
         </tr>
@@ -457,6 +604,156 @@ canvas.sparkline{width:100%;height:100%}
 
 <script>
 const API = "";   // empty = same origin
+
+
+
+// ── Custom date range modal ───────────────────────────────────────────────
+function openDateModal() {
+  // Pre-fill with sensible defaults (3 years ago → today)
+  const today = new Date();
+  const threeYrsAgo = new Date(today);
+  threeYrsAgo.setFullYear(today.getFullYear() - 3);
+  const fmt = d => d.toISOString().split("T")[0];
+  const startEl = document.getElementById("startDate");
+  const endEl   = document.getElementById("endDate");
+  if (!startEl.value) startEl.value = fmt(threeYrsAgo);
+  if (!endEl.value)   endEl.value   = fmt(today);
+  document.getElementById("dateModal").classList.add("open");
+}
+
+function closeDateModal(e) {
+  if (!e || e.target === document.getElementById("dateModal")) {
+    document.getElementById("dateModal").classList.remove("open");
+  }
+}
+
+function applyCustomRange() {
+  const start = document.getElementById("startDate").value;
+  const end   = document.getElementById("endDate").value;
+  if (!start || !end) { alert("Please select both dates"); return; }
+  if (start >= end)   { alert("Start date must be before end date"); return; }
+
+  // Calculate approximate period string for Yahoo Finance
+  const ms   = new Date(end) - new Date(start);
+  const days = Math.round(ms / 86400000);
+  let period;
+  if      (days <= 200)  period = "6mo";
+  else if (days <= 400)  period = "1y";
+  else if (days <= 800)  period = "2y";
+  else if (days <= 1200) period = "3y";
+  else                   period = "5y";
+
+  selectedRange  = period;
+  customStartDate = start;
+  customEndDate   = end;
+
+  // Deactivate preset pills, activate custom btn
+  document.querySelectorAll(".range-pill").forEach(p => p.classList.remove("active"));
+  document.getElementById("customRangeBtn").classList.add("active");
+
+  // Show active range label
+  const disp = document.getElementById("activeRangeDisplay");
+  disp.textContent = `${start}  →  ${end}`;
+  disp.classList.add("visible");
+
+  closeDateModal();
+}
+
+let customStartDate = null;
+let customEndDate   = null;
+
+// ── Download ranking table as CSV ─────────────────────────────────────────
+function downloadRankingCSV() {
+  if (!allResults.length) {
+    alert("No stocks to download — analyze some stocks first");
+    return;
+  }
+
+  const sorted = [...allResults].sort((a, b) => {
+    const tier = s => s==="STRONG BUY"?4:s==="BUY"?3:s==="WATCH"?2:1;
+    const td = tier(b.signal) - tier(a.signal); if (td) return td;
+    const sd = (b.strength||1) - (a.strength||1); if (sd) return sd;
+    const mb = (b.momentum?.momentum_boost?1:0)-(a.momentum?.momentum_boost?1:0); if (mb) return mb;
+    const sc = (b.score||0)-(a.score||0); if (sc) return sc;
+    return b.pred_5d_pct - a.pred_5d_pct;
+  });
+
+  const headers = [
+    "Rank","Symbol","Date","Signal","Strength","Strength Label",
+    "Score /8","ML Pred 5d%","Gap ATR","Gap Rs","RSI",
+    "Beta","Beta Regime","Williams %R","CCI","Z-Score 20d","OBV Trend","Channel Pos",
+    "MACD Hist","Vol Ratio","EMA Stack","ROC 5d%","ROC 10d%","ROC 20d%",
+    "MACD Accel","Gap Widening","Vol Momentum","Momentum Boost",
+    "Entry Rs","Stop Loss Rs","Target 1M Rs",
+    "Streak Days","52W Position%","DirAcc%","Model"
+  ];
+
+  const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+
+  const rows = sorted.map((r, i) => {
+    const m = r.momentum || {};
+    return [
+      i + 1, r.symbol, r.date, r.signal,
+      r.strength ?? "", r.strength_label ?? "",
+      r.score, r.pred_5d_pct, r.gap_atr, r.gap_rs ?? "", r.rsi,
+      r.macd_hist, r.vol_ratio,
+      m.ema_stack ?? "", m.roc_5 ?? "", m.roc_10 ?? "", m.roc_20 ?? "",
+      m.macd_accel ?? "", m.gap_widening ?? "", m.vol_momentum ?? "",
+      m.momentum_boost ? "YES" : "NO",
+      r.entry_price, r.stop_loss, r.target_1m,
+      r.streak_days ?? "", r.pos_52w ?? "", r.model_acc ?? "", r.model_name ?? "",
+      r.beta ?? "", r.beta_regime ?? "", r.williams_r ?? "",
+      r.cci ?? "", r.zscore_20 ?? "", r.obv_trend ?? "", r.channel_pos_20 ?? "",
+    ].map(esc).join(",");
+  });
+
+  // BOM + CRLF for Excel compatibility
+  const BOM  = "\uFEFF";
+  const csv  = BOM + [headers.map(esc).join(","), ...rows].join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `NSE_Rankings_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── Search clear button ───────────────────────────────────────────────────
+function toggleClear() {
+  const inp = document.getElementById("symbolInput");
+  const btn = document.getElementById("clearBtn");
+  btn.classList.toggle("visible", inp.value.length > 0);
+}
+
+function clearSearch() {
+  const inp = document.getElementById("symbolInput");
+  inp.value = "";
+  document.getElementById("clearBtn").classList.remove("visible");
+  inp.focus();
+}
+
+// ── Date range selector ───────────────────────────────────────────────────
+let selectedRange = "3y";   // default 3 years
+
+function setRange(range) {
+  selectedRange   = range;
+  customStartDate = null;
+  customEndDate   = null;
+
+  // Toggle preset pills
+  document.querySelectorAll(".range-pill").forEach(p => {
+    p.classList.toggle("active", p.dataset.range === range);
+  });
+
+  // Deactivate custom btn + hide display
+  const customBtn = document.getElementById("customRangeBtn");
+  if (customBtn) customBtn.classList.remove("active");
+  const disp = document.getElementById("activeRangeDisplay");
+  if (disp) { disp.textContent = ""; disp.classList.remove("visible"); }
+}
 
 // ── Startup ──────────────────────────────────────────────────────────────────
 async function init() {
@@ -560,13 +857,29 @@ async function analyze() {
     }
   });
 
+  // Final safety check — ensure symbols is a non-empty array of strings
+  const cleanSymbols = symbols
+    .map(s => String(s).trim().toUpperCase())
+    .filter(s => s.length > 0 && s.length <= 20);
+
+  if (!cleanSymbols.length) {
+    setLoading(false);
+    showError("No valid symbols entered");
+    return;
+  }
+
+  console.log("Sending:", JSON.stringify({ symbols: cleanSymbols, period: selectedRange }));
+
   try {
     const r = await fetch(`${API}/api/analyze`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ symbols, period: "1y" }),
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify({ symbols: cleanSymbols, period: selectedRange }),
     });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (!r.ok) {
+      const errBody = await r.json().catch(() => ({}));
+      throw new Error(`HTTP ${r.status}: ${JSON.stringify(errBody.detail || errBody)}`);
+    }
     const data = await r.json();
 
     if (data.errors?.length) {
@@ -913,8 +1226,31 @@ function renderRanking() {
   if (!allResults.length) { section.style.display = "none"; return; }
   section.style.display = "block";
 
-  // Sort by pred_5d_pct descending (highest return first)
-  const sorted = [...allResults].sort((a, b) => b.pred_5d_pct - a.pred_5d_pct);
+  // ── Composite sort: Signal tier → Strength → Score → ML Pred ──────────────
+  // Signal tier: STRONG BUY=4, BUY=3, WATCH=2, AVOID=1
+  function sigTier(s) {
+    if (s === "STRONG BUY") return 4;
+    if (s === "BUY")        return 3;
+    if (s === "WATCH")      return 2;
+    return 1;
+  }
+  const sorted = [...allResults].sort((a, b) => {
+    // 1. Signal tier (STRONG BUY first)
+    const td = sigTier(b.signal) - sigTier(a.signal);
+    if (td !== 0) return td;
+    // 2. Strength rating (5 first)
+    const sd = (b.strength || 1) - (a.strength || 1);
+    if (sd !== 0) return sd;
+    // 3. Momentum boost (boosted stocks first)
+    const ma = a.momentum?.momentum_boost ? 1 : 0;
+    const mb = b.momentum?.momentum_boost ? 1 : 0;
+    if (mb !== ma) return mb - ma;
+    // 4. Score /8
+    const scd = (b.score || 0) - (a.score || 0);
+    if (scd !== 0) return scd;
+    // 5. ML Pred as tiebreaker
+    return b.pred_5d_pct - a.pred_5d_pct;
+  });
 
   const medals = ["🥇","🥈","🥉"];
   tbody.innerHTML = sorted.map((r, i) => {
@@ -927,8 +1263,13 @@ function renderRanking() {
     const scorePct = (r.score / r.max_score * 100).toFixed(0);
     const scoreClr = r.score >= 6 ? "var(--green)" :
                      r.score >= 4 ? "var(--gold)"  : "var(--red)";
-    const medal    = i < 3 ? `<span class="medal-${i+1}">${medals[i]}</span>` :
-                              `<span class="rank-num">${i+1}</span>`;
+    // Rank badge coloured by signal tier
+    const rankClr = r.signal==="STRONG BUY" ? "var(--green)" :
+                    r.signal==="BUY"         ? "var(--teal)"  :
+                    r.signal==="WATCH"       ? "var(--gold)"  : "var(--red)";
+    const medal = i < 3
+      ? `<span class="medal-${i+1}" style="color:${rankClr}">${medals[i]}</span>`
+      : `<span class="rank-num" style="color:${rankClr};font-weight:700">${i+1}</span>`;
     const pdfBtn   = r.pdf_ready
       ? `<button onclick="event.stopPropagation();downloadPDF('${r.symbol}')"
            style="background:transparent;border:1px solid var(--border);
@@ -964,6 +1305,19 @@ function renderRanking() {
       <td style="color:var(--teal)">Rs.${r.entry_price}</td>
       <td style="color:var(--red)">Rs.${r.stop_loss}</td>
       <td style="color:var(--green)">Rs.${r.target_1m}</td>
+      <td style="text-align:center">
+        ${r.beta != null ? `<span style="color:${
+          r.beta_regime==='HIGH' ? 'var(--red)' :
+          r.beta_regime==='LOW'  ? 'var(--teal)' : 'var(--text-dim)'
+        };font-size:11px">${r.beta?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
+        <br><span style="font-size:8px;color:var(--text-faint)">${r.beta_regime||''}</span>
+      </td>
+      <td style="text-align:center">
+        ${r.zscore_20 != null ? `<span style="color:${
+          Math.abs(r.zscore_20)>2 ? 'var(--red)' :
+          Math.abs(r.zscore_20)>1 ? 'var(--gold)' : 'var(--green)'
+        };font-size:11px">${r.zscore_20?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
+      </td>
       <td style="color:var(--gold)">${r.model_acc?.toFixed(1)}%</td>
       <td>${pdfBtn}</td>
     </tr>`;
