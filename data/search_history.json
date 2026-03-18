@@ -1,27 +1,111 @@
 [
   {
+    "symbol": "AGI",
+    "name": "AGI",
+    "signal": "BUY",
+    "searched_at": "2026-03-18T22:47:59.884034"
+  },
+  {
+    "symbol": "MOTHERSON",
+    "name": "MOTHERSON",
+    "signal": "BUY",
+    "searched_at": "2026-03-18T22:32:51.253987"
+  },
+  {
     "symbol": "GESHIP",
     "name": "GESHIP",
     "signal": "STRONG BUY",
-    "searched_at": "2026-03-16T16:59:30.340656"
+    "searched_at": "2026-03-18T22:17:45.205920"
   },
   {
-    "symbol": "SEAMECLTD",
-    "name": "SEAMECLTD",
+    "symbol": "ASHOKLEY",
+    "name": "ASHOKLEY",
+    "signal": "BUY",
+    "searched_at": "2026-03-18T21:35:36.641955"
+  },
+  {
+    "symbol": "HDFCBANK",
+    "name": "HDFCBANK",
     "signal": "WATCH",
-    "searched_at": "2026-03-16T16:59:21.766310"
+    "searched_at": "2026-03-18T20:46:23.863786"
+  },
+  {
+    "symbol": "BSE",
+    "name": "BSE",
+    "signal": "WATCH",
+    "searched_at": "2026-03-18T20:30:22.553541"
+  },
+  {
+    "symbol": "GVT&D",
+    "name": "GVT&D",
+    "signal": "WATCH",
+    "searched_at": "2026-03-18T20:21:05.873834"
+  },
+  {
+    "symbol": "NATIONALUM",
+    "name": "NATIONALUM",
+    "signal": "BUY",
+    "searched_at": "2026-03-18T20:20:58.516988"
+  },
+  {
+    "symbol": "TICL",
+    "name": "TICL",
+    "signal": "BUY",
+    "searched_at": "2026-03-17T21:59:06.624563"
+  },
+  {
+    "symbol": "MTARTECH",
+    "name": "MTARTECH",
+    "signal": "BUY",
+    "searched_at": "2026-03-17T21:58:51.231171"
+  },
+  {
+    "symbol": "SAKAR",
+    "name": "SAKAR",
+    "signal": "BUY",
+    "searched_at": "2026-03-17T21:58:42.845183"
+  },
+  {
+    "symbol": "DATAPATTNS",
+    "name": "DATAPATTNS",
+    "signal": "BUY",
+    "searched_at": "2026-03-17T21:58:26.473742"
+  },
+  {
+    "symbol": "HBLENGINE",
+    "name": "HBLENGINE",
+    "signal": "AVOID",
+    "searched_at": "2026-03-17T21:13:51.835698"
+  },
+  {
+    "symbol": "WAAREEENER",
+    "name": "WAAREEENER",
+    "signal": "AVOID",
+    "searched_at": "2026-03-17T21:13:42.989458"
+  },
+  {
+    "symbol": "POWERGRID",
+    "name": "POWERGRID",
+    "signal": "AVOID",
+    "searched_at": "2026-03-17T21:13:32.706757"
   },
   {
     "symbol": "BLS",
     "name": "BLS",
     "signal": "AVOID",
-    "searched_at": "2026-03-16T16:59:12.758363"
+    "searched_at": "2026-03-17T21:13:10.789345"
+  },
+  {
+    "symbol": "SEAMECLTD",
+    "name": "SEAMECLTD",
+    "signal": "BUY",
+    "searched_at": "2026-03-17T21:06:04.241319"
   },
   {
     "symbol": "NTPCGREEN",
     "name": "NTPCGREEN",
-    "signal": "BUY",
-    "searched_at": "2026-03-16T16:48:35.728489"
+    "signal": "WATCH",
+    "searched_at": "2026-03-17T20:42:19.075711"
   },
   {
     "symbol": "WAAREERTL",
@@ -30,27 +114,9 @@
     "searched_at": "2026-03-16T16:18:05.647436"
   },
   {
-    "symbol": "POWERGRID",
-    "name": "POWERGRID",
-    "signal": "BUY",
-    "searched_at": "2026-03-16T16:17:37.460963"
-  },
-  {
-    "symbol": "WAAREEENER",
-    "name": "WAAREEENER",
-    "signal": "BUY",
-    "searched_at": "2026-03-16T16:07:57.272412"
-  },
-  {
     "symbol": "NEOGEN",
     "name": "NEOGEN",
     "signal": "BUY",
     "searched_at": "2026-03-16T16:06:50.263781"
-  },
-  {
-    "symbol": "HBLENGINE",
-    "name": "HBLENGINE",
-    "signal": "BUY",
-    "searched_at": "2026-03-15T16:10:03.498863"
   }
 ]

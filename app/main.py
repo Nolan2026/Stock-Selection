@@ -66,20 +66,33 @@ if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # ── Load Model ────────────────────────────────────────────────────────────────
-MODEL_BUNDLE = None
+MODELS_CACHE = {}
 
-def load_model():
-    global MODEL_BUNDLE
-    if MODEL_PATH.exists():
-        with open(MODEL_PATH, "rb") as f:
-            MODEL_BUNDLE = pickle.load(f)
-        logger.info(f"Model loaded: {MODEL_BUNDLE['metrics']['model']} "
-                    f"DirAcc={MODEL_BUNDLE['metrics']['dir_acc']:.1f}%")
-    else:
-        logger.warning(f"Model not found at {MODEL_PATH}. "
-                       "Run Cell 17 in Colab first and place stock_model.pkl in /models/")
+def get_model(model_name: str = "stock_model.pkl"):
+    """Load model from file and cache it."""
+    global MODELS_CACHE
+    if model_name in MODELS_CACHE:
+        return MODELS_CACHE[model_name]
+    
+    path = BASE_DIR / "models" / model_name
+    if path.exists():
+        try:
+            with open(path, "rb") as f:
+                bundle = pickle.load(f)
+            # Ensure metrics exist safely
+            if "metrics" not in bundle:
+                bundle["metrics"] = {"model": "Unknown", "dir_acc": 0}
+            
+            MODELS_CACHE[model_name] = bundle
+            logger.info(f"Model loaded: {model_name} ({bundle['metrics'].get('model', 'Unknown')})")
+            return bundle
+        except Exception as e:
+            logger.error(f"Failed to load model {model_name}: {e}")
+            return None
+    return None
 
-load_model()
+# Load default model on startup
+get_model("stock_model.pkl")
 
 # ── History Store ─────────────────────────────────────────────────────────────
 def read_history() -> list:
@@ -105,12 +118,11 @@ def add_to_history(symbol: str, name: str, signal: str):
     write_history(history[:20])   # keep last 20
 
 
-# ── Indicator helpers ─────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 def _ema(s, n): return s.ewm(span=n, adjust=False).mean()
 def _sma(s, n): return s.rolling(n).mean()
 def _rsi(s, p=14):
-    d = s.diff()
-    g = d.clip(lower=0).rolling(p).mean()
+    d = s.diff(); g = d.clip(lower=0).rolling(p).mean()
     l = (-d.clip(upper=0)).rolling(p).mean()
     return 100 - 100 / (1 + g / l.replace(0, np.nan))
 def _slope(s, w=10):
@@ -123,56 +135,73 @@ def _slope(s, w=10):
 
 
 # ── Fetch from Yahoo Finance ──────────────────────────────────────────────────
-def fetch_yahoo(symbol: str, period: str = "3y") -> pd.DataFrame:
-    """Download OHLCV from Yahoo Finance. Appends .NS for NSE stocks."""
+def fetch_yahoo(symbol: str, period: str = "3y",
+                start_date: str = None, end_date: str = None):
+    """Download OHLCV. Uses date range if start/end provided, else period."""
     try:
         import yfinance as yf
     except ImportError:
-        raise HTTPException(503, "yfinance not installed. Run: pip install yfinance")
+        raise HTTPException(503, "yfinance not installed.")
 
-    # Try NSE format first, then direct
-    for ticker_sym in [f"{symbol}.NS", symbol]:
+    # Try symbols in order of commonness for Indian stocks
+    for ticker_sym in [f"{symbol}.NS", f"{symbol}.BO", symbol]:
         try:
+            logger.info(f"Attempting fetch for: {ticker_sym}")
             ticker = yf.Ticker(ticker_sym)
-            df     = ticker.history(period=period, interval="1d")
-            if len(df) > 50:
+            if start_date and end_date:
+                df = ticker.history(start=start_date, end=end_date, interval="1d")
+            else:
+                df = ticker.history(period=period, interval="1d")
+            
+            if df is not None and not df.empty and len(df) > 5:
                 df = df.reset_index()
+                # Find the date column regardless of name/case
+                date_col = next((c for c in df.columns if c.upper() in ["DATE", "DATETIME"]), None)
+                if date_col:
+                    df.rename(columns={date_col: "DATE"}, inplace=True)
+                
                 df.columns = [c.upper() for c in df.columns]
-                df.rename(columns={"DATE":"DATE","OPEN":"OPEN","HIGH":"HIGH",
-                                   "LOW":"LOW","CLOSE":"CLOSE","VOLUME":"VOLUME"},
-                          inplace=True)
-                # Split adjustment is handled by yfinance
-                df = df[["DATE","OPEN","HIGH","LOW","CLOSE","VOLUME"]].copy()
-                if not pd.api.types.is_datetime64_any_dtype(df["DATE"]):
-                    df["DATE"] = pd.to_datetime(df["DATE"])
-                df["DATE"] = df["DATE"].dt.tz_localize(None)
-                df.sort_values("DATE", inplace=True)
-                df.dropna(subset=["CLOSE"], inplace=True)
-                df.reset_index(drop=True, inplace=True)
-                logger.info(f"Fetched {len(df)} rows for {ticker_sym}")
-                return df, ticker_sym
+                
+                # Ensure all required columns exist
+                required = ["DATE", "OPEN", "HIGH", "LOW", "CLOSE", "VOLUME"]
+                if all(c in df.columns for c in required):
+                    df = df[required].copy()
+                    if not pd.api.types.is_datetime64_any_dtype(df["DATE"]):
+                        df["DATE"] = pd.to_datetime(df["DATE"])
+                    df["DATE"] = df["DATE"].dt.tz_localize(None)
+                    df.sort_values("DATE", inplace=True)
+                    df.dropna(subset=["CLOSE"], inplace=True)
+                    df.reset_index(drop=True, inplace=True)
+                    logger.info(f"Successfully fetched {len(df)} rows for {ticker_sym}")
+                    return df, ticker_sym
+                else:
+                    missing = [c for c in required if c not in df.columns]
+                    logger.warning(f"Ticker {ticker_sym} missing columns: {missing}")
+            else:
+                logger.warning(f"Ticker {ticker_sym} returned too few rows: {len(df) if df is not None else 'None'}")
         except Exception as e:
-            logger.warning(f"Yahoo fetch failed for {ticker_sym}: {e}")
+            logger.warning(f"Yahoo fetch failed for {ticker_sym}: {str(e)}")
             continue
+    raise HTTPException(404, f"Could not fetch data for '{symbol}'. Try adding '.NS' or check the symbol name.")
 
-    raise HTTPException(404, f"Could not fetch data for '{symbol}'. "
-                             "Check the symbol (e.g. ASHOKLEY, HPCL, MOTHERSON)")
-
-
-# ── Engineer indicators ───────────────────────────────────────────────────────
-def engineer(raw: pd.DataFrame) -> pd.DataFrame:
-    d  = raw.copy().reset_index(drop=True)
-    C_ = d["CLOSE"]; H_ = d["HIGH"]; L_ = d["LOW"]
-    O_ = d["OPEN"];  V_ = d["VOLUME"]
-    VW_= C_   # VWAP not available from Yahoo
+def engineer(raw):
+    d=raw.copy().reset_index(drop=True)
+    if not pd.api.types.is_datetime64_any_dtype(d["DATE"]):
+        d["DATE"]=pd.to_datetime(d["DATE"],infer_datetime_format=True)
+    C_=d["CLOSE"]; H_=d["HIGH"]; L_=d["LOW"]
+    O_=d["OPEN"]; V_=d["VOLUME"]
+    VW_=d["VWAP"] if "VWAP" in d.columns else C_
 
     e10=_ema(C_,10); e20=_ema(C_,20); e50=_ema(C_,50); e200=_ema(C_,200)
     e50h=_ema(H_,50); e50l=_ema(L_,50)
     sma200=_sma(C_,200)
+
     _tr=pd.concat([H_-L_,(H_-C_.shift()).abs(),(L_-C_.shift()).abs()],axis=1).max(axis=1)
     atr=_tr.rolling(14).mean()
+
     _mf=_ema(C_,12); _ms=_ema(C_,26)
     macd=_mf-_ms; macd_sig=_ema(macd,9); macd_hist=macd-macd_sig
+
     rsi14=_rsi(C_,14); rsi9=_rsi(C_,9)
     _bm=_sma(C_,20); _bs=C_.rolling(20).std()
     bb_w=((_bm+2*_bs)-(_bm-2*_bs))/_bm
@@ -182,232 +211,161 @@ def engineer(raw: pd.DataFrame) -> pd.DataFrame:
     stoch_d=stoch_k.rolling(3).mean()
     vol_sma20=_sma(V_,20)
 
+    # ── EMA ratios ────────────────────────────────────────────────────────────
     d["EMA10_RATIO"]=C_/e10-1;    d["EMA20_RATIO"]=C_/e20-1
     d["EMA50_RATIO"]=C_/e50-1;    d["SMA200_RATIO"]=C_/sma200-1
+    d["EMA50H_RATIO"]=C_/e50l-1 # Correction: training uses C_/e50h-1, but wait, let me look at cell17
+
+    # wait, I should re-check cell17 lines 170-173
+    # 170: d["EMA10_RATIO"]=C_/e10-1;    d["EMA20_RATIO"]=C_/e20-1
+    # 171: d["EMA50_RATIO"]=C_/e50-1;    d["SMA200_RATIO"]=C_/sma200-1
+    # 172: d["EMA50H_RATIO"]=C_/e50h-1;  d["EMA50L_RATIO"]=C_/e50l-1
+    
+    # Okay, I'll resume the replacement.
     d["EMA50H_RATIO"]=C_/e50h-1;  d["EMA50L_RATIO"]=C_/e50l-1
+
+    # ── EMA alignment ─────────────────────────────────────────────────────────
     d["EMA10_GT_20"]=(e10>e20).astype(int)
     d["EMA20_GT_50"]=(e20>e50).astype(int)
     d["EMA50_GT_200"]=(e50>e200).astype(int)
     d["EMA10_GT_50H"]=(e10>e50h).astype(int)
+    d["EMA_STACK"]=d["EMA10_GT_20"]+d["EMA20_GT_50"]+d["EMA50_GT_200"]
+
+    # ── Gap analysis ──────────────────────────────────────────────────────────
     d["GAP_ATR"]=(e10-e50h)/atr;  d["GAP_PCT"]=(e10-e50h)/e50h*100
     d["CLOSE_GAP_ATR"]=(C_-e50h)/atr
+    gap_raw=(e10-e50h)/atr
+    d["GAP_WIDENING"]=gap_raw.diff(5)
+
+    # ── Oscillators ───────────────────────────────────────────────────────────
     d["RSI_14"]=rsi14; d["RSI_9"]=rsi9
     d["MACD_HIST"]=macd_hist
     d["MACD_CROSS"]=(macd>macd_sig).astype(int)
     d["MACD_ABOVE_ZERO"]=(macd>0).astype(int)
+    d["MACD_ACCEL"]=macd_hist.diff()
     d["STOCH_K"]=stoch_k; d["STOCH_D"]=stoch_d
-    d["BB_WIDTH"]=bb_w;    d["BB_PCT_B"]=bb_b
+    d["STOCH_RISING"]=(stoch_k>stoch_k.shift(1)).astype(int)
+    d["STOCH_CROSS"]=(stoch_k>stoch_d).astype(int)
+    d["WILLIAMS_R"]=-100*((_hi-C_)/(_hi-_lo).replace(0,np.nan))
+    tp=(H_+L_+C_)/3; tp_sma=_sma(tp,20)
+    tp_md=tp.rolling(20).apply(lambda x: np.mean(np.abs(x-x.mean())),raw=True)
+    d["CCI"]=(tp-tp_sma)/(0.015*tp_md)
+
+    # ── Volatility ────────────────────────────────────────────────────────────
+    d["BB_WIDTH"]=bb_w; d["BB_PCT_B"]=bb_b
     d["ATR_PCT"]=atr/C_*100
-    d["VOL_RATIO"]=V_/vol_sma20
-    d["VWAP_DEV"]=(C_-VW_)/VW_*100
-    for lg in [1,2,3,5,10,20]:
-        d[f"RET_{lg}D"]=C_.pct_change(lg)*100
     _r=C_.pct_change()
     d["VOL_5D"]=_r.rolling(5).std()*100
     d["VOL_20D"]=_r.rolling(20).std()*100
+    vol20=_r.rolling(20).std(); vol60=_r.rolling(60).std()
+    d["BETA_PROXY"]=vol20/vol60.replace(0,np.nan)
+    d["BETA_20_60"]=vol20/vol60.replace(0,np.nan)
+    d["BETA_REGIME"]=(vol20>vol60).astype(int)
+
+    # ── Volume ────────────────────────────────────────────────────────────────
+    d["VOL_RATIO"]=V_/vol_sma20
+    d["VWAP_DEV"]=(C_-VW_)/VW_*100
+    vol_sma5=_sma(V_,5)
+    d["VOL_MOMENTUM"]=vol_sma5/vol_sma20
+    obv=(np.sign(C_.diff()).fillna(0)*V_).cumsum()
+    d["OBV_ROC"]=obv.pct_change(10)*100
+    d["OBV_TREND"]=(obv>_ema(obv,20)).astype(int)
+    vpt=(C_.pct_change().fillna(0)*V_).cumsum()
+    d["VPT_ROC"]=vpt.pct_change(10)*100
+    d["VPT_TREND"]=(vpt>_ema(vpt,20)).astype(int)
+
+    # ── Returns & momentum ────────────────────────────────────────────────────
+    for lg in [1,2,3,5,10,20]:
+        d[f"RET_{lg}D"]=C_.pct_change(lg)*100
+    d["ROC_5"]=C_.pct_change(5)*100
+    d["ROC_10"]=C_.pct_change(10)*100
+    d["ROC_20"]=C_.pct_change(20)*100
+    d["MOM_SCORE"]=(d["ROC_5"]+d["ROC_10"]+d["ROC_20"])/3
+
+    # ── Trend ─────────────────────────────────────────────────────────────────
     d["TREND_5D"]=(C_>C_.shift(5)).astype(int)
     d["TREND_10D"]=(C_>C_.shift(10)).astype(int)
     d["TREND_20D"]=(C_>C_.shift(20)).astype(int)
     d["ABOVE_EMA50H"]=(C_>e50h).astype(int)
     d["ABOVE_EMA50L"]=(C_>e50l).astype(int)
     d["SLOPE_10D"]=_slope(C_,10); d["SLOPE_20D"]=_slope(C_,20)
-    d["DOW"]=d["DATE"].dt.dayofweek; d["MONTH"]=d["DATE"].dt.month
+    d["HIGHER_HIGH_5"]=(H_>H_.rolling(5).max().shift(1)).astype(int)
+    d["HIGHER_LOW_5"]=(L_>L_.rolling(5).min().shift(1)).astype(int)
+    d["TREND_STRUCT"]=d["HIGHER_HIGH_5"]+d["HIGHER_LOW_5"]
+    up_day=(C_>C_.shift(1)).astype(int); consec=up_day.copy()
+    for i in range(1,len(consec)):
+        if consec.iloc[i]==1: consec.iloc[i]=consec.iloc[i-1]+1
+    d["CONSEC_UP"]=consec
 
+    # ── Price position ────────────────────────────────────────────────────────
+    hi20=H_.rolling(20).max(); lo20=L_.rolling(20).min()
+    hi50=H_.rolling(50).max(); lo50=L_.rolling(50).min()
+    d["CHANNEL_POS_20"]=(C_-lo20)/(hi20-lo20).replace(0,np.nan)
+    d["CHANNEL_POS_50"]=(C_-lo50)/(hi50-lo50).replace(0,np.nan)
+    sma20=_sma(C_,20); std20=C_.rolling(20).std()
+    sma50=_sma(C_,50); std50=C_.rolling(50).std()
+    d["ZSCORE_20"]=(C_-sma20)/std20.replace(0,np.nan)
+    d["ZSCORE_50"]=(C_-sma50)/std50.replace(0,np.nan)
+    d["OVEREXTENDED"]=((d["ZSCORE_20"].abs()>2)|(d["ZSCORE_50"].abs()>2)).astype(int)
+
+    # ── Candle patterns ───────────────────────────────────────────────────────
+    body=(C_-O_).abs(); full_range=(H_-L_).replace(0,np.nan)
+    d["BODY_RATIO"]=body/full_range
+    d["UPPER_SHADOW"]=(H_-pd.concat([C_,O_],axis=1).max(axis=1))/full_range
+    d["LOWER_SHADOW"]=(pd.concat([C_,O_],axis=1).min(axis=1)-L_)/full_range
+    d["BULL_CANDLE"]=(C_>O_).astype(int)
+    prev_body=(C_.shift(1)-O_.shift(1)).abs()
+    d["BULL_ENGULF"]=((C_>O_) & (O_<C_.shift(1)) & (C_>O_.shift(1)) & (body>prev_body)).astype(int)
+
+    # ── Return distribution ───────────────────────────────────────────────────
+    d["SKEW_20"]=_r.rolling(20).skew()
+    d["KURT_20"]=_r.rolling(20).kurt()
+
+    # ── RSI divergence ────────────────────────────────────────────────────────
+    price_rising=(C_>C_.shift(5)).astype(int); rsi_falling=(rsi14<rsi14.shift(5)).astype(int)
+    d["RSI_DIVERGE"]=((price_rising==1)&(rsi_falling==1)).astype(int)*-1
+
+    # ── Calendar ──────────────────────────────────────────────────────────────
+    d["DOW"]=d["DATE"].dt.dayofweek; d["MONTH"]=d["DATE"].dt.month
+    
+    # [Internal display helper columns - not used by model]
     d["EMA_10"]=e10; d["EMA_20"]=e20; d["EMA_50"]=e50; d["EMA_200"]=e200
     d["EMA50_HIGH"]=e50h; d["EMA50_LOW"]=e50l
     d["ATR_14"]=atr; d["MACD"]=macd; d["MACD_SIG"]=macd_sig
 
-    # ── MOMENTUM INDICATORS ────────────────────────────────────────────────────
-
-    # 1. Rate of Change (ROC) — pure price momentum %
-    #    ROC_5  = how much price moved in last 5 days (%)
-    #    ROC_10 = how much price moved in last 10 days (%)
-    #    ROC_20 = how much price moved in last 20 days (%)
-    d["ROC_5"]  = C_.pct_change(5)  * 100
-    d["ROC_10"] = C_.pct_change(10) * 100
-    d["ROC_20"] = C_.pct_change(20) * 100
-
-    # 2. MACD Acceleration — is histogram growing (momentum building)?
-    #    Positive = histogram growing (momentum accelerating up)
-    #    Negative = histogram shrinking (momentum decelerating)
-    d["MACD_ACCEL"] = macd_hist.diff(3)   # 3-day change in MACD histogram
-
-    # 3. EMA Stack — perfect bull alignment score (0–4)
-    #    +1 for each: EMA10>EMA20, EMA20>EMA50, EMA50>EMA200, EMA10>EMA50_HIGH
-    d["EMA_STACK"] = (
-        (e10  > e20).astype(int) +
-        (e20  > e50).astype(int) +
-        (e50  > e200).astype(int) +
-        (e10  > e50h).astype(int)
-    )
-
-    # 4. Volume Momentum — is volume trend accelerating?
-    #    vol_5d_avg > vol_20d_avg = rising volume trend
-    vol_5d_avg  = _sma(V_, 5)
-    vol_20d_avg = _sma(V_, 20)
-    d["VOL_MOMENTUM"] = vol_5d_avg / vol_20d_avg.replace(0, np.nan)
-
-    # 5. Gap Widening — is gap getting wider (momentum building above EMA50H)?
-    #    Positive = gap widening day over day (good for long)
-    #    Negative = gap narrowing (level at risk)
-    gap_series = (e10 - e50h) / atr
-    d["GAP_WIDENING"] = gap_series.diff(3)   # 3-day change in gap (ATR)
-
-    # 6. Price Momentum Score — composite of ROC across timeframes
-    #    All three positive = strong multi-timeframe momentum
-    d["MOM_SCORE"] = (
-        (d["ROC_5"]  > 0).astype(int) +
-        (d["ROC_10"] > 0).astype(int) +
-        (d["ROC_20"] > 0).astype(int)
-    )
-
-    # 7. Stochastic Momentum — Stoch K rising and above Stoch D
-    d["STOCH_RISING"] = (stoch_k > stoch_k.shift(3)).astype(int)
-    d["STOCH_CROSS"]  = (stoch_k > stoch_d).astype(int)
-
-    # 8. Consecutive Up Days
-    up_days = (C_.diff() > 0).astype(int)
-    consec = up_days.copy().astype(float)
-    for i in range(1, len(consec)):
-        consec.iloc[i] = consec.iloc[i] * (consec.iloc[i-1] + 1) if up_days.iloc[i] else 0
-    d["CONSEC_UP"] = consec
-
-    # ── BETA vs NIFTY 50 ──────────────────────────────────────────────────────
-    # True beta = cov(stock_returns, nifty_returns) / var(nifty_returns)
-    # We fetch Nifty 50 (^NSEI) aligned to the same dates.
-    # Rolling 60-day beta captures how the stock moves relative to the market.
-    r_daily = C_.pct_change()
-    std20  = r_daily.rolling(20).std()
-    std60  = r_daily.rolling(60).std()
-    std252 = r_daily.rolling(252).std()
-
+    # ── BETA vs NIFTY 50 (Display only) ──────────────────────────────────────
     try:
         import yfinance as yf
-        nifty_raw = yf.Ticker("^NSEI").history(
-            start=str(d["DATE"].iloc[0])[:10],
-            end=str(d["DATE"].iloc[-1])[:10],
-            interval="1d"
-        )["Close"]
+        nifty_raw = yf.Ticker("^NSEI").history(start=str(d["DATE"].iloc[0])[:10], end=str(d["DATE"].iloc[-1])[:10], interval="1d")["Close"]
         nifty_raw.index = nifty_raw.index.tz_localize(None)
         nifty_ret = nifty_raw.pct_change()
-
-        # Align to stock dates
         date_idx = pd.to_datetime(d["DATE"])
-        stock_ret = pd.Series(r_daily.values, index=date_idx)
+        stock_ret = pd.Series(_r.values, index=date_idx)
         nifty_aligned = nifty_ret.reindex(date_idx, method="nearest")
-
-        # Rolling 60-day beta
         def rolling_beta(s_ret, m_ret, window=60):
-            betas = np.full(len(s_ret), np.nan)
-            sv = s_ret.values; mv = m_ret.values
+            betas = np.full(len(s_ret), np.nan); sv = s_ret.values; mv = m_ret.values
             for i in range(window, len(sv)):
                 s_w = sv[i-window:i]; m_w = mv[i-window:i]
                 mask = ~(np.isnan(s_w) | np.isnan(m_w))
-                if mask.sum() > 20:
+                if mask.sum() > 20: 
                     cov = np.cov(s_w[mask], m_w[mask])
                     betas[i] = cov[0,1] / cov[1,1] if cov[1,1] != 0 else np.nan
             return pd.Series(betas, index=s_ret.index)
-
         beta_series = rolling_beta(stock_ret, nifty_aligned, 60)
         d["BETA_DISPLAY"] = np.round(beta_series.values, 3)
-        d["BETA_PROXY"]   = std60  / std252.replace(0, np.nan)
-        d["BETA_20_60"]   = std20  / std60.replace(0, np.nan)
-        d["BETA_REGIME"]  = (d["BETA_20_60"] > 1).astype(int)
-
-    except Exception as _be:
-        # Fallback: annualised vol ratio as beta proxy
-        d["BETA_DISPLAY"] = (std60 / std252.replace(0, np.nan)).round(3)
-        d["BETA_PROXY"]   = std60  / std252.replace(0, np.nan)
-        d["BETA_20_60"]   = std20  / std60.replace(0, np.nan)
-        d["BETA_REGIME"]  = (d["BETA_20_60"] > 1).astype(int)
-
-    # ── WILLIAMS %R ────────────────────────────────────────────────────────────
-    # Similar to stochastic but inverted — good overbought/oversold signal
-    # -20 to 0 = overbought, -80 to -100 = oversold
-    hi14 = H_.rolling(14).max()
-    lo14 = L_.rolling(14).min()
-    d["WILLIAMS_R"] = -100 * (hi14 - C_) / (hi14 - lo14).replace(0, np.nan)
-
-    # ── CCI — Commodity Channel Index ─────────────────────────────────────────
-    # Measures deviation from average price — good for identifying trend starts
-    typical = (H_ + L_ + C_) / 3
-    cci_sma = _sma(typical, 20)
-    cci_dev = typical.rolling(20).apply(lambda x: np.abs(x - x.mean()).mean(), raw=True)
-    d["CCI"] = (typical - cci_sma) / (0.015 * cci_dev.replace(0, np.nan))
-
-    # ── ON-BALANCE VOLUME (OBV) ────────────────────────────────────────────────
-    # Cumulative volume indicator — rising OBV = institutional accumulation
-    obv = (np.sign(C_.diff()) * V_).fillna(0).cumsum()
-    d["OBV_ROC"]   = obv.pct_change(10) * 100    # 10-day OBV rate of change
-    d["OBV_TREND"] = (obv > obv.rolling(20).mean()).astype(int)  # OBV above 20d avg
-
-    # ── PRICE CHANNEL POSITION ────────────────────────────────────────────────
-    # Where is price in its N-day range? (0=bottom, 1=top)
-    hi20 = H_.rolling(20).max(); lo20 = L_.rolling(20).min()
-    hi50 = H_.rolling(50).max(); lo50 = L_.rolling(50).min()
-    d["CHANNEL_POS_20"] = (C_ - lo20) / (hi20 - lo20).replace(0, np.nan)
-    d["CHANNEL_POS_50"] = (C_ - lo50) / (hi50 - lo50).replace(0, np.nan)
-
-    # ── CANDLESTICK PATTERNS ──────────────────────────────────────────────────
-    # Simple candle body/shadow ratios — capture intraday momentum
-    body      = (C_ - O_).abs()
-    candle_rng= (H_ - L_).replace(0, np.nan)
-    d["BODY_RATIO"]   = body / candle_rng            # 0=doji, 1=full body
-    d["UPPER_SHADOW"] = (H_ - np.maximum(C_, O_)) / candle_rng
-    d["LOWER_SHADOW"] = (np.minimum(C_, O_) - L_)  / candle_rng
-    d["BULL_CANDLE"]  = (C_ > O_).astype(int)        # 1 = bullish candle
-    # Engulfing pattern — today's body engulfs yesterday's
-    d["BULL_ENGULF"]  = ((C_ > O_) &
-                         (O_ < C_.shift(1)) &
-                         (C_ > O_.shift(1)) &
-                         (C_.shift(1) < O_.shift(1))).astype(int)
-
-    # ── MEAN REVERSION vs TREND FEATURES ─────────────────────────────────────
-    # Distance from moving averages (Z-score style)
-    # How "stretched" is the price above/below key levels?
-    d["ZSCORE_20"] = (C_ - _sma(C_, 20)) / C_.rolling(20).std().replace(0, np.nan)
-    d["ZSCORE_50"] = (C_ - _sma(C_, 50)) / C_.rolling(50).std().replace(0, np.nan)
-
-    # High Z-score = overextended (mean reversion likely)
-    # Moderate Z-score with rising momentum = trend continuation likely
-    d["OVEREXTENDED"] = (d["ZSCORE_20"].abs() > 2).astype(int)
-
-    # ── VOLUME PRICE TREND (VPT) ──────────────────────────────────────────────
-    vpt = (C_.pct_change() * V_).fillna(0).cumsum()
-    d["VPT_ROC"]   = vpt.pct_change(5) * 100
-    d["VPT_TREND"] = (vpt > vpt.rolling(20).mean()).astype(int)
-
-    # ── HIGHER HIGH / LOWER LOW PATTERN ──────────────────────────────────────
-    # Structural trend detection — is the stock making higher highs?
-    d["HIGHER_HIGH_5"]  = (H_ > H_.shift(5)).astype(int)
-    d["HIGHER_LOW_5"]   = (L_ > L_.shift(5)).astype(int)
-    d["TREND_STRUCT"]   = d["HIGHER_HIGH_5"] + d["HIGHER_LOW_5"]  # 0,1,2
-
-    # ── RETURN ASYMMETRY ──────────────────────────────────────────────────────
-    # Skewness of recent returns — positive skew = more upside surprises
-    d["SKEW_20"] = r_daily.rolling(20).skew()
-    # Kurtosis — heavy tails = big moves likely
-    d["KURT_20"] = r_daily.rolling(20).kurt()
-
-    # ── MOMENTUM QUALITY ──────────────────────────────────────────────────────
-    # RSI divergence proxy — price making new high but RSI not?
-    price_high_20 = (C_ == H_.rolling(20).max()).astype(int)
-    rsi_high_20   = (rsi14 == rsi14.rolling(20).max()).astype(int)
-    d["RSI_DIVERGE"] = (price_high_20 & ~rsi_high_20.astype(bool)).astype(int)
-
-    # ── BETA VALUE for display (60-day rolling beta proxy) ────────────────────
-    # Annualised volatility ratio as displayable beta
-    d["BETA_DISPLAY"] = (std60 * np.sqrt(252)).round(3)  # annualised vol = proxy for beta
+    except:
+        std252 = _r.rolling(252).std()
+        d["BETA_DISPLAY"] = (vol60 / std252.replace(0, np.nan)).round(3)
 
     return d
 
-
 # ── Generate Signal ───────────────────────────────────────────────────────────
-def generate_signal(d_eng: pd.DataFrame, symbol: str) -> dict:
-    if MODEL_BUNDLE is None:
-        raise HTTPException(503, "Model not loaded. Place stock_model.pkl in /models/")
-    pipe  = MODEL_BUNDLE["model"]
-    feats = MODEL_BUNDLE["features"]
+def generate_signal(d_eng: pd.DataFrame, symbol: str, model_name: str = "stock_model.pkl") -> dict:
+    bundle = get_model(model_name)
+    if bundle is None:
+        raise HTTPException(503, f"Model '{model_name}' not loaded.")
+    pipe  = bundle["model"]
+    feats = bundle["features"]
     feats = [f for f in feats if f in d_eng.columns]
 
     last  = d_eng.dropna(subset=feats).iloc[-1]
@@ -630,8 +588,11 @@ def generate_signal(d_eng: pd.DataFrame, symbol: str) -> dict:
                              if "OVEREXTENDED" in d_eng.columns else False,
         # Chart data
         "history":           hist90.to_dict("records"),
-        "model_name":        MODEL_BUNDLE["metrics"]["model"] if MODEL_BUNDLE else "N/A",
-        "model_acc":         MODEL_BUNDLE["metrics"]["dir_acc"] if MODEL_BUNDLE else 0,
+        # Chart data
+        "history":           hist90.to_dict("records"),
+        "model_name":        bundle["metrics"]["model"] if bundle else "N/A",
+        "model_acc":         bundle["metrics"]["dir_acc"] if bundle else 0,
+        "model_file":        model_name,
     }
 
 
@@ -1130,9 +1091,10 @@ def build_pdf(result: dict, d_eng: pd.DataFrame) -> str:
 
     # ── PAGE 3: 3-Month Forecast ──────────────────────────────────────────────
     try:
-        if MODEL_BUNDLE:
-            pipe  = MODEL_BUNDLE["model"]
-            feats = [f for f in MODEL_BUNDLE["features"] if f in d_eng.columns]
+        bundle = get_model(result.get("model_file", "stock_model.pkl"))
+        if bundle:
+            pipe  = bundle["model"]
+            feats = [f for f in bundle["features"] if f in d_eng.columns]
             _d    = d_eng[feats + ["DATE", "CLOSE"]].dropna().copy().reset_index(drop=True)
             if not pd.api.types.is_datetime64_any_dtype(_d["DATE"]):
                 _d["DATE"] = pd.to_datetime(_d["DATE"])
@@ -1273,8 +1235,11 @@ def build_pdf(result: dict, d_eng: pd.DataFrame) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class AnalyzeRequest(BaseModel):
-    symbols: Optional[List[str]] = None
-    period:  Optional[str] = "3y"
+    symbols:    Optional[List[str]] = None
+    period:     Optional[str]       = "3y"
+    start_date: Optional[str]       = None
+    end_date:   Optional[str]       = None
+    model:      Optional[str]       = "stock_model.pkl"
 
     @property
     def safe_period(self) -> str:
@@ -1282,13 +1247,33 @@ class AnalyzeRequest(BaseModel):
         return self.period if self.period in allowed else "3y"
 
 
+@app.get("/api/models")
+def list_models():
+    """List all available .pkl models in the /models directory."""
+    models_dir = BASE_DIR / "models"
+    models = []
+    if models_dir.exists():
+        for f in models_dir.glob("*.pkl"):
+            # Try to get metadata without full load if possible, 
+            # but get_model caches it anyway so it's efficient.
+            bundle = get_model(f.name)
+            if bundle:
+                models.append({
+                    "id": f.name,
+                    "name": bundle["metrics"].get("model", f.name),
+                    "acc": bundle["metrics"].get("dir_acc", 0),
+                    "is_current": False # updated by frontend
+                })
+    return {"models": sorted(models, key=lambda x: x["acc"], reverse=True)}
+
+
 @app.get("/api/health")
 def health():
+    default_model = get_model("stock_model.pkl")
     return {
         "status":      "ok",
-        "model_loaded": MODEL_BUNDLE is not None,
-        "model":       MODEL_BUNDLE["metrics"]["model"] if MODEL_BUNDLE else None,
-        "dir_acc":     MODEL_BUNDLE["metrics"]["dir_acc"] if MODEL_BUNDLE else None,
+        "model_count": len(MODELS_CACHE),
+        "default_model": default_model["metrics"]["model"] if default_model else None,
     }
 
 
@@ -1320,7 +1305,8 @@ async def analyze(req: AnalyzeRequest):
     if len(symbols) > 10:
         raise HTTPException(422, "Maximum 10 stocks per request")
 
-    logger.info(f"Analyze request: symbols={symbols} period={req.period} → {req.safe_period}")
+    logger.info(f"Analyze request: symbols={symbols} period={req.period} "
+                f"start={req.start_date} end={req.end_date}")
 
     results = []
     errors  = []
@@ -1329,9 +1315,11 @@ async def analyze(req: AnalyzeRequest):
         sym = raw_sym.strip().upper()
         try:
             logger.info(f"Analyzing {sym}...")
-            df, ticker = fetch_yahoo(sym, req.safe_period)
+            df, ticker = fetch_yahoo(sym, req.safe_period,
+                                     start_date=req.start_date,
+                                     end_date=req.end_date)
             d_eng      = engineer(df)
-            result     = generate_signal(d_eng, sym)
+            result     = generate_signal(d_eng, sym, model_name=req.model)
 
             # Build PDF in background (non-blocking)
             try:

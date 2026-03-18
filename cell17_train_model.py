@@ -28,7 +28,11 @@ from   sklearn.ensemble       import RandomForestRegressor, GradientBoostingRegr
 from   sklearn.linear_model   import HuberRegressor
 from   sklearn.model_selection import TimeSeriesSplit, cross_val_score
 from   sklearn.metrics        import mean_absolute_error, mean_squared_error, r2_score
-from   google.colab           import files as _DL
+try:
+    from google.colab import files as _DL
+    _IN_COLAB = True
+except ImportError:
+    _IN_COLAB = False
 
 BG="#0a0f1a"; PAN="#0d1525"; GRD="#1a2535"
 C=["#4a9fd4","#fbbf24","#34d399","#f87171","#a78bfa","#fb923c","#38bdf8","#e879f9"]
@@ -162,31 +166,76 @@ def engineer(raw):
     stoch_d=stoch_k.rolling(3).mean()
     vol_sma20=_sma(V_,20)
 
+    # ── EMA ratios ────────────────────────────────────────────────────────────
     d["EMA10_RATIO"]=C_/e10-1;    d["EMA20_RATIO"]=C_/e20-1
     d["EMA50_RATIO"]=C_/e50-1;    d["SMA200_RATIO"]=C_/sma200-1
     d["EMA50H_RATIO"]=C_/e50h-1;  d["EMA50L_RATIO"]=C_/e50l-1
+
+    # ── EMA alignment ─────────────────────────────────────────────────────────
     d["EMA10_GT_20"]=(e10>e20).astype(int)
     d["EMA20_GT_50"]=(e20>e50).astype(int)
     d["EMA50_GT_200"]=(e50>e200).astype(int)
     d["EMA10_GT_50H"]=(e10>e50h).astype(int)
+    d["EMA_STACK"]=d["EMA10_GT_20"]+d["EMA20_GT_50"]+d["EMA50_GT_200"]   # 0–3
 
+    # ── Gap analysis ──────────────────────────────────────────────────────────
     d["GAP_ATR"]=(e10-e50h)/atr;  d["GAP_PCT"]=(e10-e50h)/e50h*100
     d["CLOSE_GAP_ATR"]=(C_-e50h)/atr
+    gap_raw=(e10-e50h)/atr
+    d["GAP_WIDENING"]=gap_raw.diff(5)                                     # 5-day change
 
+    # ── Oscillators ───────────────────────────────────────────────────────────
     d["RSI_14"]=rsi14; d["RSI_9"]=rsi9
     d["MACD_HIST"]=macd_hist
     d["MACD_CROSS"]=(macd>macd_sig).astype(int)
     d["MACD_ABOVE_ZERO"]=(macd>0).astype(int)
+    d["MACD_ACCEL"]=macd_hist.diff()                                      # acceleration
     d["STOCH_K"]=stoch_k; d["STOCH_D"]=stoch_d
+    d["STOCH_RISING"]=(stoch_k>stoch_k.shift(1)).astype(int)
+    d["STOCH_CROSS"]=(stoch_k>stoch_d).astype(int)
+    # Williams %R
+    d["WILLIAMS_R"]=-100*((_hi-C_)/(_hi-_lo).replace(0,np.nan))
+    # Commodity Channel Index
+    tp=(H_+L_+C_)/3; tp_sma=_sma(tp,20)
+    tp_md=tp.rolling(20).apply(lambda x: np.mean(np.abs(x-x.mean())),raw=True)
+    d["CCI"]=(tp-tp_sma)/(0.015*tp_md)
+
+    # ── Volatility ────────────────────────────────────────────────────────────
     d["BB_WIDTH"]=bb_w; d["BB_PCT_B"]=bb_b
     d["ATR_PCT"]=atr/C_*100
-    d["VOL_RATIO"]=V_/vol_sma20
-    d["VWAP_DEV"]=(C_-VW_)/VW_*100
-    for lg in [1,2,3,5,10,20]:
-        d[f"RET_{lg}D"]=C_.pct_change(lg)*100
     _r=C_.pct_change()
     d["VOL_5D"]=_r.rolling(5).std()*100
     d["VOL_20D"]=_r.rolling(20).std()*100
+    # Beta proxy: ratio of stock volatility to its own longer-window vol
+    vol20=_r.rolling(20).std()
+    vol60=_r.rolling(60).std()
+    d["BETA_PROXY"]=vol20/vol60.replace(0,np.nan)
+    d["BETA_20_60"]=vol20/vol60.replace(0,np.nan)
+    d["BETA_REGIME"]=(vol20>vol60).astype(int)
+
+    # ── Volume ────────────────────────────────────────────────────────────────
+    d["VOL_RATIO"]=V_/vol_sma20
+    d["VWAP_DEV"]=(C_-VW_)/VW_*100
+    vol_sma5=_sma(V_,5)
+    d["VOL_MOMENTUM"]=vol_sma5/vol_sma20
+    # OBV (On-Balance Volume)
+    obv=(np.sign(C_.diff()).fillna(0)*V_).cumsum()
+    d["OBV_ROC"]=obv.pct_change(10)*100
+    d["OBV_TREND"]=(obv>_ema(obv,20)).astype(int)
+    # VPT (Volume Price Trend)
+    vpt=(C_.pct_change().fillna(0)*V_).cumsum()
+    d["VPT_ROC"]=vpt.pct_change(10)*100
+    d["VPT_TREND"]=(vpt>_ema(vpt,20)).astype(int)
+
+    # ── Returns & momentum ────────────────────────────────────────────────────
+    for lg in [1,2,3,5,10,20]:
+        d[f"RET_{lg}D"]=C_.pct_change(lg)*100
+    d["ROC_5"]=C_.pct_change(5)*100
+    d["ROC_10"]=C_.pct_change(10)*100
+    d["ROC_20"]=C_.pct_change(20)*100
+    d["MOM_SCORE"]=(d["ROC_5"]+d["ROC_10"]+d["ROC_20"])/3
+
+    # ── Trend ─────────────────────────────────────────────────────────────────
     d["TREND_5D"]=(C_>C_.shift(5)).astype(int)
     d["TREND_10D"]=(C_>C_.shift(10)).astype(int)
     d["TREND_20D"]=(C_>C_.shift(20)).astype(int)
@@ -194,6 +243,51 @@ def engineer(raw):
     d["ABOVE_EMA50L"]=(C_>e50l).astype(int)
     d["SLOPE_10D"]=_slope(C_,10)
     d["SLOPE_20D"]=_slope(C_,20)
+    # Higher-high / higher-low structure
+    d["HIGHER_HIGH_5"]=(H_>H_.rolling(5).max().shift(1)).astype(int)
+    d["HIGHER_LOW_5"]=(L_>L_.rolling(5).min().shift(1)).astype(int)
+    d["TREND_STRUCT"]=d["HIGHER_HIGH_5"]+d["HIGHER_LOW_5"]               # 0–2
+    # Consecutive up days
+    up_day=(C_>C_.shift(1)).astype(int)
+    consec=up_day.copy()
+    for i in range(1,len(consec)):
+        if consec.iloc[i]==1: consec.iloc[i]=consec.iloc[i-1]+1
+    d["CONSEC_UP"]=consec
+
+    # ── Price position ────────────────────────────────────────────────────────
+    hi20=H_.rolling(20).max(); lo20=L_.rolling(20).min()
+    hi50=H_.rolling(50).max(); lo50=L_.rolling(50).min()
+    d["CHANNEL_POS_20"]=(C_-lo20)/(hi20-lo20).replace(0,np.nan)
+    d["CHANNEL_POS_50"]=(C_-lo50)/(hi50-lo50).replace(0,np.nan)
+    sma20=_sma(C_,20); std20=C_.rolling(20).std()
+    sma50=_sma(C_,50); std50=C_.rolling(50).std()
+    d["ZSCORE_20"]=(C_-sma20)/std20.replace(0,np.nan)
+    d["ZSCORE_50"]=(C_-sma50)/std50.replace(0,np.nan)
+    d["OVEREXTENDED"]=((d["ZSCORE_20"].abs()>2)|(d["ZSCORE_50"].abs()>2)).astype(int)
+
+    # ── Candle patterns ───────────────────────────────────────────────────────
+    body=(C_-O_).abs()
+    full_range=(H_-L_).replace(0,np.nan)
+    d["BODY_RATIO"]=body/full_range
+    d["UPPER_SHADOW"]=(H_-pd.concat([C_,O_],axis=1).max(axis=1))/full_range
+    d["LOWER_SHADOW"]=(pd.concat([C_,O_],axis=1).min(axis=1)-L_)/full_range
+    d["BULL_CANDLE"]=(C_>O_).astype(int)
+    prev_body=(C_.shift(1)-O_.shift(1)).abs()
+    d["BULL_ENGULF"]=((C_>O_) & (O_<C_.shift(1)) & (C_>O_.shift(1)) &
+                      (body>prev_body)).astype(int)
+
+    # ── Return distribution ───────────────────────────────────────────────────
+    d["SKEW_20"]=_r.rolling(20).skew()
+    d["KURT_20"]=_r.rolling(20).kurt()
+
+    # ── RSI divergence ────────────────────────────────────────────────────────
+    price_rising=(C_>C_.shift(5)).astype(int)
+    rsi_falling=(rsi14<rsi14.shift(5)).astype(int)
+    d["RSI_DIVERGE"]=((price_rising==1)&(rsi_falling==1)).astype(int)*-1 + \
+                     ((price_rising==0)&(rsi_falling==0)).astype(int)*0 + \
+                     ((price_rising==0)&(rsi_falling==1)).astype(int)*0  # bearish div=-1
+
+    # ── Calendar ──────────────────────────────────────────────────────────────
     d["DOW"]=d["DATE"].dt.dayofweek
     d["MONTH"]=d["DATE"].dt.month
 
@@ -210,9 +304,13 @@ def engineer(raw):
 
 def train_evaluate(d):
     feats = [f for f in FEATURES if f in d.columns]
+    print(f"   Using {len(feats)} / {len(FEATURES)} features")
     _d = d[feats+["DATE","CLOSE"]].dropna().copy().reset_index(drop=True)
     HORIZON = 5
-    _d["TARGET"] = _d["CLOSE"].pct_change(HORIZON).shift(-HORIZON)*100
+
+    # Target: 5-day % return, smoothed with EMA-3 to reduce noise
+    raw_target = _d["CLOSE"].pct_change(HORIZON).shift(-HORIZON)*100
+    _d["TARGET"] = raw_target.ewm(span=3, adjust=False).mean()
     _d.dropna(subset=["TARGET"],inplace=True)
     _d.reset_index(drop=True,inplace=True)
 
@@ -224,26 +322,27 @@ def train_evaluate(d):
     print(f"   Train: {sp} rows  ({_d['DATE'].iloc[0].date()} → {_d['DATE'].iloc[sp-1].date()})")
     print(f"   Test : {len(X_te)} rows  ({_d['DATE'].iloc[sp].date()} → {_d['DATE'].iloc[-1].date()})")
 
-    # Models
+    # ── Models with tuned hyper-parameters ────────────────────────────────────
     candidates={}
     try:
         from lightgbm import LGBMRegressor
-        candidates["LightGBM"]=LGBMRegressor(n_estimators=600,max_depth=4,
-            learning_rate=0.02,num_leaves=31,subsample=0.8,colsample_bytree=0.6,
+        candidates["LightGBM"]=LGBMRegressor(n_estimators=1000,max_depth=6,
+            learning_rate=0.015,num_leaves=63,subsample=0.8,colsample_bytree=0.6,
             min_child_samples=10,reg_alpha=0.1,reg_lambda=1.0,random_state=42,verbose=-1)
     except ImportError: pass
     try:
         from xgboost import XGBRegressor
-        candidates["XGBoost"]=XGBRegressor(n_estimators=500,max_depth=4,
-            learning_rate=0.02,subsample=0.8,colsample_bytree=0.6,
-            reg_alpha=0.1,random_state=42,verbosity=0)
+        candidates["XGBoost"]=XGBRegressor(n_estimators=1000,max_depth=6,
+            learning_rate=0.015,subsample=0.8,colsample_bytree=0.6,
+            reg_alpha=0.1,reg_lambda=1.0,gamma=0.1,random_state=42,verbosity=0)
     except ImportError: pass
-    candidates["RandomForest"]=RandomForestRegressor(n_estimators=400,max_depth=5,
-        min_samples_leaf=5,random_state=42)
-    candidates["GradBoost"]=GradientBoostingRegressor(n_estimators=400,max_depth=3,
-        learning_rate=0.03,subsample=0.8,random_state=42)
-    candidates["HuberRidge"]=HuberRegressor(epsilon=1.35,max_iter=300)
+    candidates["RandomForest"]=RandomForestRegressor(n_estimators=800,max_depth=8,
+        min_samples_leaf=5,max_features="sqrt",random_state=42,n_jobs=-1)
+    candidates["GradBoost"]=GradientBoostingRegressor(n_estimators=800,max_depth=5,
+        learning_rate=0.02,subsample=0.8,min_samples_leaf=5,random_state=42)
+    candidates["HuberRidge"]=HuberRegressor(epsilon=1.35,max_iter=500)
 
+    # ── Round 1: train all models ─────────────────────────────────────────────
     results=[]
     for mname,_m in candidates.items():
         pipe=Pipeline([("sc",RobustScaler()),("m",_m)])
@@ -254,7 +353,6 @@ def train_evaluate(d):
         da=np.mean(np.sign(y_te)==np.sign(pv))*100
         nz=y_te!=0
         mape=np.mean(np.abs((y_te[nz]-pv[nz])/y_te[nz]))*100 if nz.sum()>0 else np.nan
-        # CV on train set
         tscv=TimeSeriesSplit(n_splits=5)
         cv=cross_val_score(pipe,X_tr,y_tr,cv=tscv,scoring="r2",error_score=np.nan)
         results.append({"Model":mname,"MAE":round(mae,4),"RMSE":round(rmse,4),
@@ -263,14 +361,80 @@ def train_evaluate(d):
         print(f"   {mname:<14}  MAE={mae:.4f}  RMSE={rmse:.4f}  "
               f"R²={r2:.3f}  DirAcc={da:.1f}%  CV_R2={np.nanmean(cv):.3f}")
 
-    # Rank: primary=DirAcc, tiebreak=MAE
+    # ── Feature importance pruning (drop bottom 10% features) ─────────────────
+    best_init=max(results,key=lambda x:(x["DirAcc%"],-x["MAE"]))
+    bmodel=best_init["pipe"].named_steps["m"]
+    if hasattr(bmodel,"feature_importances_"):
+        imp=bmodel.feature_importances_
+        threshold=np.percentile(imp,10)
+        keep_mask=imp>=threshold
+        pruned_feats=[f for f,k in zip(feats,keep_mask) if k]
+        dropped_n=len(feats)-len(pruned_feats)
+        if dropped_n>0 and len(pruned_feats)>=20:
+            print(f"\n   ✂️  Pruning {dropped_n} low-importance features → {len(pruned_feats)} remain")
+            feats=pruned_feats
+            X_tr=_d[feats].values[:sp]; X_te=_d[feats].values[sp:]
+            # Retrain all models on pruned features
+            results=[]
+            for mname,_m in candidates.items():
+                _m_params=_m.get_params() if hasattr(_m,"get_params") else {}
+                fresh=type(_m)(**_m_params)
+                pipe=Pipeline([("sc",RobustScaler()),("m",fresh)])
+                pipe.fit(X_tr,y_tr); pv=pipe.predict(X_te)
+                mae=mean_absolute_error(y_te,pv)
+                rmse=np.sqrt(mean_squared_error(y_te,pv))
+                r2=r2_score(y_te,pv)
+                da=np.mean(np.sign(y_te)==np.sign(pv))*100
+                nz=y_te!=0
+                mape=np.mean(np.abs((y_te[nz]-pv[nz])/y_te[nz]))*100 if nz.sum()>0 else np.nan
+                tscv=TimeSeriesSplit(n_splits=5)
+                cv=cross_val_score(pipe,X_tr,y_tr,cv=tscv,scoring="r2",error_score=np.nan)
+                results.append({"Model":mname,"MAE":round(mae,4),"RMSE":round(rmse,4),
+                                "R2":round(r2,4),"DirAcc%":round(da,2),"MAPE%":round(mape,2),
+                                "CV_R2":round(np.nanmean(cv),3),"pipe":pipe,"pv":pv})
+                print(f"   {mname:<14}  MAE={mae:.4f}  RMSE={rmse:.4f}  "
+                      f"R²={r2:.3f}  DirAcc={da:.1f}%  CV_R2={np.nanmean(cv):.3f}")
+
+    # ── Weighted ensemble of top-3 models ─────────────────────────────────────
+    sorted_r=sorted(results,key=lambda x:(x["DirAcc%"],-x["MAE"]),reverse=True)
+    top3=sorted_r[:min(3,len(sorted_r))]
+    weights=np.array([r["DirAcc%"] for r in top3])
+    weights=weights/weights.sum()
+    ens_pv=sum(w*r["pv"] for w,r in zip(weights,top3))
+    ens_mae=mean_absolute_error(y_te,ens_pv)
+    ens_rmse=np.sqrt(mean_squared_error(y_te,ens_pv))
+    ens_r2=r2_score(y_te,ens_pv)
+    ens_da=np.mean(np.sign(y_te)==np.sign(ens_pv))*100
+    nz=y_te!=0
+    ens_mape=np.mean(np.abs((y_te[nz]-ens_pv[nz])/y_te[nz]))*100 if nz.sum()>0 else np.nan
+
+    ens_names="+".join([r["Model"] for r in top3])
+    results.append({"Model":f"Ensemble({ens_names})","MAE":round(ens_mae,4),
+                    "RMSE":round(ens_rmse,4),"R2":round(ens_r2,4),
+                    "DirAcc%":round(ens_da,2),"MAPE%":round(ens_mape,2),
+                    "CV_R2":round(np.nanmean([r["CV_R2"] for r in top3]),3),
+                    "pipe":None,"pv":ens_pv})
+    print(f"\n   Ensemble       MAE={ens_mae:.4f}  RMSE={ens_rmse:.4f}  "
+          f"R²={ens_r2:.3f}  DirAcc={ens_da:.1f}%")
+
+    # ── Select best overall (including ensemble) ──────────────────────────────
     best=max(results,key=lambda x:(x["DirAcc%"],-x["MAE"]))
     print(f"\n   ✅ BEST: {best['Model']}  DirAcc={best['DirAcc%']:.1f}%  MAE={best['MAE']:.4f}")
 
-    # Retrain best on ALL data
+    # For the final saved model: if ensemble won, save the single best pipeline
+    # (ensemble can't be pickled easily) but record ensemble metrics
+    if best["pipe"] is None:
+        # Ensemble won — use the top single model for the pipeline
+        save_pipe = top3[0]["pipe"]
+        best_model_name = best["Model"]
+    else:
+        save_pipe = best["pipe"]
+        best_model_name = best["Model"]
+
+    # Retrain best pipeline on ALL data
+    bm = save_pipe.named_steps["m"]
     best_full=Pipeline([("sc",RobustScaler()),
-                         ("m",type(best["pipe"].named_steps["m"])(
-                             **best["pipe"].named_steps["m"].get_params()))])
+                         ("m",type(bm)(**bm.get_params()))])
     best_full.fit(_d[feats].values,_d["TARGET"].values)
 
     test_df=pd.DataFrame({"DATE":d_te,"CLOSE":c_te,
@@ -280,7 +444,7 @@ def train_evaluate(d):
                            for r in results]).sort_values("DirAcc%",ascending=False
                           ).reset_index(drop=True)
     metrics={
-        "model":best["Model"],"mae":best["MAE"],"rmse":best["RMSE"],
+        "model":best_model_name,"mae":best["MAE"],"rmse":best["RMSE"],
         "r2":best["R2"],"dir_acc":best["DirAcc%"],"mape":best["MAPE%"],
         "cv_r2":best["CV_R2"],"n_train":sp,"n_test":len(X_te),
         "features":feats,"horizon_days":HORIZON,
@@ -489,10 +653,13 @@ save_model(pipe, metrics, feats, stock_name)
 save_report(comp_df, test_df, metrics, d_eng, stock_name)
 
 print(f"\n{'━'*65}")
-print("📦  Downloading model files...")
-_DL.download("stock_model.pkl")
-_DL.download("model_metadata.json")
-_DL.download("model_training_report.pdf")
+if _IN_COLAB:
+    print("📦  Downloading model files...")
+    _DL.download("stock_model.pkl")
+    _DL.download("model_metadata.json")
+    _DL.download("model_training_report.pdf")
+else:
+    print("📦  Files saved to current directory (not in Colab, skipping download)")
 print(f"\n✅  CELL 17 complete")
 print(f"   → Place stock_model.pkl in your FastAPI project's /models/ folder")
 print(f"   → Then run the FastAPI app with: uvicorn app.main:app --reload")

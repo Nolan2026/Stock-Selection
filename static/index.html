@@ -1,946 +1,2117 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NSE Signal — Stock Analysis</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg:       #080c14;
-  --panel:    #0c1220;
-  --border:   #1a2535;
-  --border2:  #243040;
-  --teal:     #4a9fd4;
-  --teal-dim: #2a5f84;
-  --gold:     #fbbf24;
-  --green:    #34d399;
-  --green-dim:#1a6644;
-  --red:      #f87171;
-  --red-dim:  #6b1a1a;
-  --purple:   #a78bfa;
-  --orange:   #fb923c;
-  --text:     #c8d6e8;
-  --text-dim: #6a7f99;
-  --text-faint:#3a4f66;
-  --font-mono:"JetBrains Mono", monospace;
-  --font-display:"Syne", sans-serif;
-}
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:var(--font-mono);
-     min-height:100vh;overflow-x:hidden}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NSE Signal — Stock Analysis</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080c14;
+      --panel: #0c1220;
+      --border: #1a2535;
+      --border2: #243040;
+      --teal: #4a9fd4;
+      --teal-dim: #2a5f84;
+      --gold: #fbbf24;
+      --green: #34d399;
+      --green-dim: #1a6644;
+      --red: #f87171;
+      --red-dim: #6b1a1a;
+      --purple: #a78bfa;
+      --orange: #fb923c;
+      --place-holder: #65696e;
+      --text: #f7f9fc;
+      --text-dim: #fbfdff;
+      --text-faint: #fffefc;
+      --font-mono: "JetBrains Mono", monospace;
+      --font-display: "Syne", sans-serif;
+    }
 
-/* ── Scanline overlay ─────────────────────────────────────────────────── */
-body::before{content:"";position:fixed;inset:0;
-  background:repeating-linear-gradient(0deg,transparent,transparent 2px,
-    rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);
-  pointer-events:none;z-index:0}
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
 
-/* ── Top bar ──────────────────────────────────────────────────────────── */
-.topbar{display:flex;align-items:center;justify-content:space-between;
-  padding:14px 32px;border-bottom:1px solid var(--border);
-  background:var(--panel);position:sticky;top:0;z-index:100;
-  backdrop-filter:blur(12px)}
-.logo{display:flex;align-items:center;gap:12px}
-.logo-mark{width:32px;height:32px;border:2px solid var(--teal);
-  border-radius:4px;display:flex;align-items:center;justify-content:center;
-  font-size:14px;font-weight:700;color:var(--teal)}
-.logo-text{font-family:var(--font-display);font-size:18px;font-weight:800;
-  color:var(--text);letter-spacing:-.5px}
-.logo-text span{color:var(--teal)}
-.topbar-right{display:flex;align-items:center;gap:20px}
-.model-badge{display:flex;align-items:center;gap:8px;
-  padding:6px 14px;border:1px solid var(--border2);border-radius:4px;
-  font-size:11px;color:var(--text-dim)}
-.status-dot{width:7px;height:7px;border-radius:50%;
-  background:var(--green);box-shadow:0 0 8px var(--green);
-  animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      overflow-x: hidden;
+      color-scheme: dark
+    }
 
-/* ── Main container ───────────────────────────────────────────────────── */
-.container{max-width:1200px;margin:0 auto;padding:40px 32px;position:relative;z-index:1}
+    /* ── Scanline overlay ─────────────────────────────────────────────────── */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px,
+          rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px);
+      pointer-events: none;
+      z-index: 0
+    }
 
-/* ── Hero ─────────────────────────────────────────────────────────────── */
-.hero{text-align:center;margin-bottom:48px}
-.hero-title{font-family:var(--font-display);font-size:48px;font-weight:800;
-  line-height:1.1;letter-spacing:-2px;color:var(--text);margin-bottom:12px}
-.hero-title .accent{color:var(--teal);position:relative}
-.hero-title .accent::after{content:"";position:absolute;bottom:-4px;left:0;right:0;
-  height:2px;background:var(--teal);opacity:.4}
-.hero-sub{font-size:13px;color:var(--text-dim);letter-spacing:.5px;
-  text-transform:uppercase}
+    /* ── Top bar ──────────────────────────────────────────────────────────── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px)
+    }
 
-/* ── Search section ───────────────────────────────────────────────────── */
-.search-section{margin-bottom:40px}
-.search-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;
-  letter-spacing:1.5px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.search-label::before{content:">";color:var(--teal)}
-.search-wrap{display:flex;gap:12px;margin-bottom:12px}
-/* ── Search enhancements ──────────────────────────────────────────────── */
-.search-input-wrap{position:relative;flex:1;display:flex;align-items:center}
-.search-input{width:100%;background:var(--panel);border:1px solid var(--border2);
-  border-radius:6px;padding:14px 40px 14px 18px;font-family:var(--font-mono);
-  font-size:14px;color:var(--text);outline:none;transition:.2s;
-  letter-spacing:.5px;text-transform:uppercase}
-.search-input::placeholder{color:var(--text-faint);text-transform:none}
-.search-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(74,159,212,.1)}
-.clear-btn{position:absolute;right:12px;background:none;border:none;
-  color:var(--text-faint);cursor:pointer;font-size:16px;padding:4px;
-  line-height:1;display:none;transition:.15s}
-.clear-btn:hover{color:var(--red)}
-.clear-btn.visible{display:block}
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px
+    }
 
-/* ── Date range selector ─────────────────────────────────────────────── */
-.date-range-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;
-  flex-wrap:wrap}
-.date-range-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;
-  letter-spacing:1.2px;white-space:nowrap}
-.range-pills{display:flex;gap:6px}
-.range-pill{padding:5px 14px;border-radius:20px;border:1px solid var(--border);
-  background:transparent;font-family:var(--font-mono);font-size:11px;
-  color:var(--text-dim);cursor:pointer;transition:.15s;letter-spacing:.5px}
-.range-pill:hover{border-color:var(--teal);color:var(--teal)}
-.range-pill.active{background:var(--teal);border-color:var(--teal);
-  color:var(--bg);font-weight:700}
-.range-custom{display:flex;align-items:center;gap:6px}
-.range-custom-label{font-size:10px;color:var(--text-faint)}
-.range-date-input{background:var(--panel);border:1px solid var(--border2);
-  border-radius:4px;padding:5px 10px;font-family:var(--font-mono);font-size:11px;
-  color:var(--text);outline:none;width:130px;transition:.15s}
-.range-date-input:focus{border-color:var(--teal)}
+    .logo-mark {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--teal);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--teal)
+    }
 
-.search-btn{background:var(--teal);color:var(--bg);border:none;
-  padding:14px 28px;border-radius:6px;font-family:var(--font-mono);
-  font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;
-  text-transform:uppercase;transition:.2s;white-space:nowrap}
-.search-btn:hover{background:#6ab8e6;transform:translateY(-1px)}
-.search-btn:active{transform:translateY(0)}
-.search-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.search-hint{font-size:11px;color:var(--text-faint)}
+    .logo-text {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -.5px
+    }
 
-/* ── Recent searches ──────────────────────────────────────────────────── */
-.recent-section{margin-bottom:8px}
-.recent-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;
-  letter-spacing:1.5px;margin-bottom:8px}
-.recent-pills{display:flex;flex-wrap:wrap;gap:8px}
-.recent-pill{display:flex;align-items:center;gap:6px;
-  background:var(--panel);border:1px solid var(--border);
-  border-radius:20px;padding:5px 12px;cursor:pointer;
-  font-size:11px;transition:.15s;user-select:none}
-.recent-pill:hover{border-color:var(--teal);color:var(--teal)}
-.pill-signal{width:7px;height:7px;border-radius:50%}
-.pill-del{color:var(--text-faint);font-size:10px;margin-left:2px;
-  padding:0 2px;border-radius:2px}
-.pill-del:hover{color:var(--red)}
+    .logo-text span {
+      color: var(--teal)
+    }
 
-/* ── Loading ──────────────────────────────────────────────────────────── */
-.loading{display:none;text-align:center;padding:48px;color:var(--text-dim)}
-.loading.active{display:block}
-.spinner{display:inline-block;width:32px;height:32px;
-  border:2px solid var(--border2);border-top-color:var(--teal);
-  border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading-text{font-size:12px;letter-spacing:2px;text-transform:uppercase}
-.loading-steps{margin-top:12px;font-size:11px;color:var(--text-faint)}
-.loading-step{
-  opacity:0;
-  max-height:0;
-  overflow:hidden;
-  transition:opacity .25s, max-height .25s, margin .25s;
-  margin:0;
-}
-.loading-step.active{
-  opacity:1;
-  max-height:40px;
-  color:var(--teal);
-  margin-top:4px;
-}
-.loading-step.done{
-  opacity:0;
-  max-height:0;
-  margin:0;
-  transition:opacity .3s ease, max-height .4s ease .1s, margin .4s ease .1s;
-}
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 15px
+    }
 
-/* ── Error ────────────────────────────────────────────────────────────── */
-.error-block{background:rgba(248,113,113,.08);border:1px solid var(--red-dim);
-  border-radius:6px;padding:14px 18px;margin:12px 0;
-  font-size:12px;color:var(--red)}
+    .header-model-selector {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all .2s ease
+    }
 
-/* ── Results grid ─────────────────────────────────────────────────────── */
-.results{display:grid;grid-template-columns:repeat(auto-fill,minmax(560px,1fr));gap:24px}
+    .header-model-selector:hover {
+      border-color: var(--teal)
+    }
 
-/* ── Stock card ───────────────────────────────────────────────────────── */
-.stock-card{background:var(--panel);border:1px solid var(--border);
-  border-radius:10px;overflow:hidden;transition:.2s;
-  position:relative}
-.stock-card::before{content:"";position:absolute;top:0;left:0;right:0;
-  height:2px;background:var(--card-accent,var(--teal))}
-.stock-card:hover{border-color:var(--border2);
-  box-shadow:0 8px 32px rgba(0,0,0,.4)}
+    .header-model-selector select {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 11px;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+      padding-right: 4px
+    }
 
-.card-header{padding:20px 24px 16px;border-bottom:1px solid var(--border)}
-.card-top{display:flex;align-items:flex-start;justify-content:space-between}
-.card-symbol{font-family:var(--font-display);font-size:22px;font-weight:800;
-  letter-spacing:-1px}
-.card-date{font-size:10px;color:var(--text-faint);margin-top:2px}
-.signal-badge{padding:6px 16px;border-radius:4px;font-size:11px;
-  font-weight:700;letter-spacing:2px;text-transform:uppercase}
-.signal-STRONG-BUY{background:rgba(52,211,153,.15);color:var(--green);
-  border:1px solid var(--green-dim)}
-.signal-BUY{background:rgba(52,211,153,.1);color:var(--green);
-  border:1px solid rgba(52,211,153,.3)}
-.signal-WATCH{background:rgba(251,191,36,.1);color:var(--gold);
-  border:1px solid rgba(251,191,36,.3)}
-.signal-AVOID{background:rgba(248,113,113,.1);color:var(--red);
-  border:1px solid var(--red-dim)}
+    .header-model-selector select option {
+      background: var(--panel);
+      color: var(--text)
+    }
 
-.score-bar{display:flex;align-items:center;gap:10px;margin-top:12px}
-.score-track{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.score-fill{height:100%;border-radius:2px;transition:.5s}
-.score-text{font-size:11px;color:var(--text-dim);white-space:nowrap}
+    .model-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 4px 10px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      white-space: nowrap
+    }
 
-/* ── Card body ────────────────────────────────────────────────────────── */
-.card-body{padding:20px 24px}
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite
+    }
 
-/* Levels grid */
-.levels-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
-.level-item{background:var(--bg);border:1px solid var(--border);
-  border-radius:6px;padding:10px 12px}
-.level-label{font-size:9px;color:var(--text-faint);text-transform:uppercase;
-  letter-spacing:1px;margin-bottom:4px}
-.level-value{font-size:15px;font-weight:600;font-family:var(--font-display)}
+    @keyframes pulse {
 
-/* Filter signals */
-.filters-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
-.filter-row{display:flex;align-items:center;justify-content:space-between;
-  background:var(--bg);border:1px solid var(--border);
-  border-radius:6px;padding:9px 12px}
-.filter-name{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
-.filter-val{font-size:10px;color:var(--text-dim);margin-top:2px}
-.filter-sig{font-size:10px;font-weight:700;letter-spacing:1px;text-align:right}
-.sig-GO   {color:var(--green)}
-.sig-WAIT {color:var(--gold)}
-.sig-AVOID{color:var(--red)}
+      0%,
+      100% {
+        opacity: 1
+      }
 
-/* Sparkline */
-.chart-section{margin-bottom:16px}
-.chart-label{font-size:9px;color:var(--text-faint);text-transform:uppercase;
-  letter-spacing:1px;margin-bottom:6px}
-.sparkline-wrap{position:relative;height:72px;background:var(--bg);
-  border:1px solid var(--border);border-radius:6px;overflow:hidden}
-canvas.sparkline{width:100%;height:100%}
+      50% {
+        opacity: .4
+      }
+    }
 
-/* Trade info */
-.trade-info{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
-.trade-item{background:var(--bg);border:1px solid var(--border);
-  border-radius:6px;padding:10px 12px;text-align:center}
-.trade-label{font-size:9px;color:var(--text-faint);text-transform:uppercase;
-  letter-spacing:.5px;margin-bottom:4px}
-.trade-value{font-size:13px;font-weight:600}
-.trade-entry{color:var(--teal)}
-.trade-stop {color:var(--red)}
-.trade-target{color:var(--green)}
+    /* ── Main container ───────────────────────────────────────────────────── */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 32px;
+      position: relative;
+      z-index: 1
+    }
 
-/* Model info */
-.model-info{display:flex;align-items:center;justify-content:space-between;
-  background:var(--bg);border:1px solid var(--border);
-  border-radius:6px;padding:10px 14px;font-size:10px;color:var(--text-dim)}
-.model-acc{color:var(--gold);font-weight:600}
+    /* ── Hero ─────────────────────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      margin-bottom: 48px
+    }
 
-/* Download btn */
-.download-btn{width:100%;margin-top:16px;background:transparent;
-  border:1px solid var(--border2);color:var(--text-dim);
-  padding:10px;border-radius:6px;font-family:var(--font-mono);
-  font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
-  cursor:pointer;transition:.2s;display:flex;align-items:center;
-  justify-content:center;gap:8px}
-.download-btn:hover{border-color:var(--teal);color:var(--teal);
-  background:rgba(74,159,212,.06)}
-.download-btn svg{width:14px;height:14px}
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -2px;
+      color: var(--text);
+      margin-bottom: 12px
+    }
 
-/* ── Empty state ─────────────────────────────────────────────────────── */
-.empty-state{text-align:center;padding:80px 40px;color:var(--text-faint)}
-.empty-icon{font-size:48px;margin-bottom:20px;opacity:.3}
-.empty-title{font-family:var(--font-display);font-size:20px;
-  color:var(--text-dim);margin-bottom:8px}
-.empty-sub{font-size:12px;line-height:1.7}
+    .hero-title .accent {
+      color: var(--teal);
+      position: relative
+    }
 
-/* ── Footer ───────────────────────────────────────────────────────────── */
-.footer{text-align:center;padding:40px 32px 24px;
-  font-size:10px;color:var(--text-faint);border-top:1px solid var(--border);
-  margin-top:60px}
+    .hero-title .accent::after {
+      content: "";
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--teal);
+      opacity: .4
+    }
 
-/* ── Animations ───────────────────────────────────────────────────────── */
-.card-enter{animation:cardIn .4s ease forwards}
-@keyframes cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+    .hero-sub {
+      font-size: 13px;
+      color: var(--text-dim);
+      letter-spacing: .5px;
+      text-transform: uppercase
+    }
 
-@media(max-width:640px){
-  .hero-title{font-size:32px}
-  .results{grid-template-columns:1fr}
-  .container{padding:24px 16px}
-  .levels-grid{grid-template-columns:repeat(2,1fr)}
-}
+    /* ── Search section ───────────────────────────────────────────────────── */
+    .search-section {
+      margin-bottom: 40px
+    }
 
-/* ── Ranking section ──────────────────────────────────────────────────── */
-.ranking-section{margin-top:48px;margin-bottom:16px}
-.ranking-header{display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:16px}
-.ranking-title{font-family:var(--font-display);font-size:14px;font-weight:700;
-  color:var(--text);letter-spacing:-.3px;display:flex;align-items:center;gap:10px}
-.ranking-title::before{content:"";display:block;width:3px;height:18px;
-  background:var(--gold);border-radius:2px}
-.ranking-sub{font-size:10px;color:var(--text-dim)}
-.ranking-clear{font-size:10px;color:var(--text-faint);cursor:pointer;
-  padding:4px 10px;border:1px solid var(--border);border-radius:4px;
-  background:transparent;font-family:var(--font-mono)}
-.ranking-clear:hover{color:var(--red);border-color:var(--red)}
-.ranking-table{width:100%;border-collapse:collapse;
-  border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.ranking-table thead th{background:var(--panel);padding:10px 14px;
-  font-size:9px;text-transform:uppercase;letter-spacing:1.5px;
-  color:var(--text-dim);font-weight:600;text-align:left;
-  border-bottom:1px solid var(--border2)}
-.ranking-table thead th:not(:first-child){text-align:right}
-.ranking-table tbody tr{border-bottom:1px solid var(--border);
-  transition:.15s;cursor:pointer}
-.ranking-table tbody tr:last-child{border-bottom:none}
-.ranking-table tbody tr:hover{background:rgba(255,255,255,.03)}
-.ranking-table td{padding:10px 14px;font-size:12px;vertical-align:middle}
-.ranking-table td:not(:first-child){text-align:right;font-size:11px}
-.rank-num{font-size:10px;color:var(--text-faint);font-weight:600;
-  width:24px;display:inline-block}
-.rank-sym{font-family:var(--font-display);font-size:13px;font-weight:700}
-.rank-signal{padding:3px 10px;border-radius:3px;font-size:9px;
-  font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
-.rank-score-bar{display:flex;align-items:center;gap:6px;justify-content:flex-end}
-.rank-mini-bar{width:50px;height:4px;background:var(--border);
-  border-radius:2px;overflow:hidden}
-.rank-mini-fill{height:100%;border-radius:2px}
-.rank-return{font-weight:600}
-.rank-positive{color:var(--green)}
-.rank-negative{color:var(--red)}
-.rank-neutral{color:var(--text-dim)}
-.rank-gold{color:var(--gold)}
+    .search-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
 
-/* Medal badges */
-.medal-1{color:#FFD700;font-size:14px}
-.medal-2{color:#C0C0C0;font-size:14px}
-.medal-3{color:#CD7F32;font-size:14px}
+    .search-label::before {
+      content: ">";
+      color: var(--teal)
+    }
+
+    .search-wrap {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px
+    }
+
+    /* ── Search enhancements ──────────────────────────────────────────────── */
+    .search-input-wrap {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      padding: 14px 40px 14px 18px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text-faint);
+      outline: none;
+      transition: .2s;
+      letter-spacing: .5px;
+      text-transform: uppercase
+    }
+
+    .search-input::placeholder {
+      color: var(--place-holder);
+      text-transform: none
+    }
+
+    .search-input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(74, 159, 212, .1)
+    }
 
 
-/* ── Strength meter ───────────────────────────────────────────────────── */
-.strength-meter{display:flex;align-items:center;gap:8px;margin:10px 0}
-.strength-label{font-size:9px;color:var(--text-dim);text-transform:uppercase;
-  letter-spacing:1px;white-space:nowrap}
-.strength-dots{display:flex;gap:4px}
-.strength-dot{width:22px;height:22px;border-radius:4px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:9px;font-weight:700;transition:.2s}
-.strength-dot.filled-5{background:#ffea00;color:#000}
-.strength-dot.filled-4{background:#69ff47;color:#000}
-.strength-dot.filled-3{background:#40c4ff;color:#000}
-.strength-dot.filled-2{background:#888;color:#fff}
-.strength-dot.filled-1{background:#444;color:#666}
-.strength-dot.empty{background:var(--border);color:var(--text-faint)}
-.strength-value{font-family:var(--font-display);font-size:20px;font-weight:800;
-  min-width:28px;text-align:center}
-.strength-desc{font-size:9px;color:var(--text-dim);flex:1}
+    .model-select-wrap::after {
+      content: "▼";
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 8px;
+      color: var(--text-faint);
+      pointer-events: none;
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-faint);
+      cursor: pointer;
+      font-size: 15px;
+      padding: 4px 6px;
+      line-height: 1;
+      display: none;
+      transition: .15s;
+      z-index: 10
+    }
+
+    .clear-btn:hover {
+      color: var(--red)
+    }
+
+    .clear-btn.visible {
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    /* ── Date range selector ─────────────────────────────────────────────── */
+    .date-range-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap
+    }
+
+    .date-range-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      white-space: nowrap
+    }
+
+    .range-pills {
+      display: flex;
+      gap: 6px
+    }
+
+    .range-pill {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: .15s;
+      letter-spacing: .5px
+    }
+
+    .range-pill:hover {
+      border-color: var(--teal);
+      color: var(--teal)
+    }
+
+    .range-pill.active {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: var(--bg);
+      font-weight: 700
+    }
+
+    .range-custom {
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .range-custom-label {
+      font-size: 10px;
+      color: var(--text-faint)
+    }
+
+    .range-date-input {
+      background: var(--panel);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 5px 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text);
+      outline: none;
+      width: 130px;
+      transition: .15s
+    }
+
+    .range-date-input:focus {
+      border-color: var(--teal)
+    }
+
+    .search-btn {
+      background: var(--teal);
+      color: var(--bg);
+      border: none;
+      padding: 14px 28px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: .2s;
+      white-space: nowrap
+    }
+
+    .search-btn:hover {
+      background: #6ab8e6;
+      transform: translateY(-1px)
+    }
+
+    .search-btn:active {
+      transform: translateY(0)
+    }
+
+    .search-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none
+    }
+
+    .search-hint {
+      font-size: 11px;
+      color: var(--text-faint)
+    }
+
+    /* ── Recent searches ──────────────────────────────────────────────────── */
+    .recent-section {
+      margin-bottom: 8px
+    }
+
+    .recent-label {
+      font-size: 10px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px
+    }
+
+    .recent-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px
+    }
+
+    .recent-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: .15s;
+      user-select: none
+    }
+
+    .recent-pill:hover {
+      border-color: var(--teal);
+      color: var(--teal)
+    }
+
+    .pill-signal {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%
+    }
+
+    .pill-del {
+      color: var(--text-faint);
+      font-size: 10px;
+      margin-left: 2px;
+      padding: 0 2px;
+      border-radius: 2px
+    }
+
+    .pill-del:hover {
+      color: var(--red)
+    }
+
+    /* ── Loading ──────────────────────────────────────────────────────────── */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 48px;
+      color: var(--text-dim)
+    }
+
+    .loading.active {
+      display: block
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin-bottom: 16px
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .loading-text {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase
+    }
+
+    .loading-steps {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--text-faint)
+    }
+
+    .loading-step {
+      opacity: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: opacity .25s, max-height .25s, margin .25s;
+      margin: 0;
+    }
+
+    .loading-step.active {
+      opacity: 1;
+      max-height: 40px;
+      color: var(--teal);
+      margin-top: 4px;
+    }
+
+    .loading-step.done {
+      opacity: 0;
+      max-height: 0;
+      margin: 0;
+      transition: opacity .3s ease, max-height .4s ease .1s, margin .4s ease .1s;
+    }
+
+    /* ── Error ────────────────────────────────────────────────────────────── */
+    .error-block {
+      background: rgba(248, 113, 113, .08);
+      border: 1px solid var(--red-dim);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 12px 0;
+      font-size: 12px;
+      color: var(--red)
+    }
+
+    /* ── Results grid ─────────────────────────────────────────────────────── */
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
+      gap: 24px
+    }
+
+    /* ── Stock card ───────────────────────────────────────────────────────── */
+    .stock-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: .2s;
+      position: relative
+    }
+
+    .stock-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--card-accent, var(--teal))
+    }
+
+    .stock-card:hover {
+      border-color: var(--border2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .4)
+    }
+
+    .card-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px
+    }
+
+    .card-symbol {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #8899aa;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 70%
+    }
+
+    .card-date {
+      font-size: 10px;
+      color: var(--text-faint);
+      margin-top: 2px
+    }
+
+    .signal-badge {
+      padding: 6px 16px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0
+    }
+
+    .signal-STRONG-BUY {
+      background: rgba(52, 211, 153, .15);
+      color: var(--green);
+      border: 1px solid var(--green-dim)
+    }
+
+    .signal-BUY {
+      background: rgba(52, 211, 153, .1);
+      color: var(--green);
+      border: 1px solid rgba(52, 211, 153, .3)
+    }
+
+    .signal-WATCH {
+      background: rgba(251, 191, 36, .1);
+      color: var(--gold);
+      border: 1px solid rgba(251, 191, 36, .3)
+    }
+
+    .signal-AVOID {
+      background: rgba(248, 113, 113, .1);
+      color: var(--red);
+      border: 1px solid var(--red-dim)
+    }
+
+    .score-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px
+    }
+
+    .score-track {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: .5s
+    }
+
+    .score-text {
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap
+    }
+
+    /* ── Card body ────────────────────────────────────────────────────────── */
+    .card-body {
+      padding: 20px 24px
+    }
+
+    /* Levels grid */
+    .levels-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px
+    }
+
+    .level-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px
+    }
+
+    .level-label {
+      font-size: 9px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px
+    }
+
+    .level-value {
+      font-size: 15px;
+      font-weight: 600;
+      font-family: var(--font-display)
+    }
+
+    /* Filter signals */
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 16px
+    }
+
+    .filter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 12px
+    }
+
+    .filter-name {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: .5px
+    }
+
+    .filter-val {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 2px
+    }
+
+    .filter-sig {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-align: right
+    }
+
+    .sig-GO {
+      color: var(--green)
+    }
+
+    .sig-WAIT {
+      color: var(--gold)
+    }
+
+    .sig-AVOID {
+      color: var(--red)
+    }
+
+    /* Sparkline */
+    .chart-section {
+      margin-bottom: 16px
+    }
+
+    .chart-label {
+      font-size: 9px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px
+    }
+
+    .sparkline-wrap {
+      position: relative;
+      height: 72px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden
+    }
+
+    canvas.sparkline {
+      width: 100%;
+      height: 100%
+    }
+
+    /* Trade info */
+    .trade-info {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px
+    }
+
+    .trade-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      text-align: center
+    }
+
+    .trade-label {
+      font-size: 9px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 4px
+    }
+
+    .trade-value {
+      font-size: 13px;
+      font-weight: 600
+    }
+
+    .trade-entry {
+      color: var(--teal)
+    }
+
+    .trade-stop {
+      color: var(--red)
+    }
+
+    .trade-target {
+      color: var(--green)
+    }
+
+    /* Model info */
+    .model-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 10px;
+      color: var(--text-dim)
+    }
+
+    .model-acc {
+      color: var(--gold);
+      font-weight: 600
+    }
+
+    /* Download btn */
+    .download-btn {
+      width: 100%;
+      margin-top: 16px;
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--text-dim);
+      padding: 10px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px
+    }
+
+    .download-btn:hover {
+      border-color: var(--teal);
+      color: var(--teal);
+      background: rgba(74, 159, 212, .06)
+    }
+
+    .download-btn svg {
+      width: 14px;
+      height: 14px
+    }
+
+    /* ── Empty state ─────────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 80px 40px;
+      color: var(--text-faint)
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+      opacity: .3
+    }
+
+    .empty-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      color: var(--text-dim);
+      margin-bottom: 8px
+    }
+
+    .empty-sub {
+      font-size: 12px;
+      line-height: 1.7
+    }
+
+    /* ── Footer ───────────────────────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      padding: 40px 32px 24px;
+      font-size: 10px;
+      color: var(--text-faint);
+      border-top: 1px solid var(--border);
+      margin-top: 60px
+    }
+
+    /* ── Animations ───────────────────────────────────────────────────────── */
+    .card-enter {
+      animation: cardIn .4s ease forwards
+    }
+
+    @keyframes cardIn {
+      from {
+        opacity: 0;
+        transform: translateY(16px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    @media(max-width:640px) {
+      .hero-title {
+        font-size: 32px
+      }
+
+      .results {
+        grid-template-columns: 1fr
+      }
+
+      .container {
+        padding: 24px 16px
+      }
+
+      .levels-grid {
+        grid-template-columns: repeat(2, 1fr)
+      }
+    }
+
+    /* ── Ranking section ──────────────────────────────────────────────────── */
+    .ranking-section {
+      margin-top: 48px;
+      margin-bottom: 16px
+    }
+
+    .ranking-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px
+    }
+
+    .ranking-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -.3px;
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .ranking-title::before {
+      content: "";
+      display: block;
+      width: 3px;
+      height: 18px;
+      background: var(--gold);
+      border-radius: 2px
+    }
+
+    .ranking-sub {
+      font-size: 10px;
+      color: var(--text-dim)
+    }
+
+    .ranking-clear {
+      font-size: 10px;
+      color: var(--text-faint);
+      cursor: pointer;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: transparent;
+      font-family: var(--font-mono)
+    }
+
+    .ranking-clear:hover {
+      color: var(--red);
+      border-color: var(--red)
+    }
+
+    .ranking-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      -webkit-overflow-scrolling: touch
+    }
+
+    .ranking-table {
+      width: 100%;
+      min-width: 1100px;
+      border-collapse: collapse
+    }
+
+    .ranking-table thead th {
+      background: var(--panel);
+      padding: 10px 12px;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      font-weight: 600;
+      text-align: left;
+      border-bottom: 1px solid var(--border2);
+      white-space: nowrap
+    }
+
+    .ranking-table thead th:not(:first-child) {
+      text-align: right
+    }
+
+    .ranking-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: .15s;
+      cursor: pointer
+    }
+
+    .ranking-table tbody tr:last-child {
+      border-bottom: none
+    }
+
+    .ranking-table tbody tr:hover {
+      background: rgba(255, 255, 255, .03)
+    }
+
+    .ranking-table td {
+      padding: 8px 12px;
+      font-size: 12px;
+      vertical-align: middle;
+      white-space: nowrap
+    }
+
+    .ranking-table td:not(:first-child) {
+      text-align: right;
+      font-size: 11px
+    }
+
+    .rank-num {
+      font-size: 10px;
+      color: var(--text-faint);
+      font-weight: 600;
+      width: 24px;
+      display: inline-block
+    }
+
+    .rank-sym {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700
+    }
+
+    .rank-signal {
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      white-space: nowrap
+    }
+
+    .rank-score-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: flex-end
+    }
+
+    .rank-mini-bar {
+      width: 50px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden
+    }
+
+    .rank-mini-fill {
+      height: 100%;
+      border-radius: 2px
+    }
+
+    .rank-return {
+      font-weight: 600
+    }
+
+    .rank-positive {
+      color: var(--green)
+    }
+
+    .rank-negative {
+      color: var(--red)
+    }
+
+    .rank-neutral {
+      color: var(--text-dim)
+    }
+
+    .rank-gold {
+      color: var(--gold)
+    }
+
+    /* Medal badges */
+    /* rank numbers only — no medals */
+    .rank-badge {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid currentColor
+    }
 
 
-/* ── Momentum panel ───────────────────────────────────────────────────── */
-.momentum-panel{background:var(--bg);border:1px solid var(--border);
-  border-radius:6px;padding:12px 14px;margin-bottom:12px}
-.momentum-title{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;
-  color:var(--text-dim);margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.momentum-boost{background:rgba(255,234,0,.15);color:#ffea00;border:1px solid rgba(255,234,0,.3);
-  padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:1px}
-.mom-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.mom-item{background:var(--panel);border-radius:4px;padding:7px 8px;border:1px solid var(--border)}
-.mom-label{font-size:8px;color:var(--text-faint);text-transform:uppercase;
-  letter-spacing:.8px;margin-bottom:3px}
-.mom-val{font-size:11px;font-weight:600}
-.mom-status{font-size:8px;margin-top:2px}
-.mom-up   {color:#69ff47}
-.mom-mid  {color:#ffd740}
-.mom-down {color:#ff3d57}
-.roc-row{display:flex;gap:6px;margin-top:6px}
-.roc-item{flex:1;background:var(--panel);border-radius:4px;
-  padding:5px 8px;text-align:center;border:1px solid var(--border)}
-.roc-label{font-size:8px;color:var(--text-faint)}
-.roc-val{font-size:11px;font-weight:600}
+    /* ── Strength meter ───────────────────────────────────────────────────── */
+    .strength-meter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0
+    }
+
+    .strength-label {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      white-space: nowrap
+    }
+
+    .strength-dots {
+      display: flex;
+      gap: 4px
+    }
+
+    .strength-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      transition: .2s
+    }
+
+    .strength-dot.filled-5 {
+      background: #ffea00;
+      color: #000
+    }
+
+    .strength-dot.filled-4 {
+      background: #69ff47;
+      color: #000
+    }
+
+    .strength-dot.filled-3 {
+      background: #40c4ff;
+      color: #000
+    }
+
+    .strength-dot.filled-2 {
+      background: #888;
+      color: #fff
+    }
+
+    .strength-dot.filled-1 {
+      background: #444;
+      color: #666
+    }
+
+    .strength-dot.empty {
+      background: var(--border);
+      color: var(--text-faint)
+    }
+
+    .strength-value {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 800;
+      min-width: 28px;
+      text-align: center
+    }
+
+    .strength-desc {
+      font-size: 9px;
+      color: var(--text-dim);
+      flex: 1
+    }
 
 
-/* ── Custom date range ────────────────────────────────────────── */
-.custom-range-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);
-  background:transparent;font-family:var(--font-mono);font-size:11px;
-  color:var(--text-dim);cursor:pointer;transition:.15s;letter-spacing:.5px;
-  display:flex;align-items:center;gap:5px}
-.custom-range-btn:hover{border-color:var(--purple);color:var(--purple)}
-.custom-range-btn.active{background:var(--purple);border-color:var(--purple);
-  color:white;font-weight:700}
+    /* ── Momentum panel ───────────────────────────────────────────────────── */
+    .momentum-panel {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 12px
+    }
 
-/* Modal overlay */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
-  z-index:1000;align-items:center;justify-content:center}
-.modal-overlay.open{display:flex}
-.modal-box{background:var(--panel);border:1px solid var(--border2);
-  border-radius:12px;padding:28px 32px;width:380px;
-  box-shadow:0 24px 64px rgba(0,0,0,.6);position:relative}
-.modal-title{font-family:var(--font-display);font-size:16px;font-weight:700;
-  color:var(--text);margin-bottom:6px}
-.modal-sub{font-size:11px;color:var(--text-dim);margin-bottom:22px}
-.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;
-  color:var(--text-faint);cursor:pointer;font-size:18px;line-height:1}
-.modal-close:hover{color:var(--red)}
-.date-field{margin-bottom:16px}
-.date-field label{display:block;font-size:10px;text-transform:uppercase;
-  letter-spacing:1.2px;color:var(--text-dim);margin-bottom:6px}
-.date-field input[type=date]{width:100%;background:var(--bg);
-  border:1px solid var(--border2);border-radius:6px;padding:10px 14px;
-  font-family:var(--font-mono);font-size:13px;color:var(--text);
-  outline:none;transition:.15s;color-scheme:dark}
-.date-field input[type=date]:focus{border-color:var(--teal)}
-.modal-actions{display:flex;gap:10px;margin-top:22px}
-.modal-apply{flex:1;background:var(--teal);color:var(--bg);border:none;
-  padding:11px;border-radius:6px;font-family:var(--font-mono);font-size:12px;
-  font-weight:700;letter-spacing:1px;cursor:pointer;transition:.15s}
-.modal-apply:hover{background:#6ab8e6}
-.modal-cancel{padding:11px 18px;background:transparent;border:1px solid var(--border);
-  color:var(--text-dim);border-radius:6px;font-family:var(--font-mono);
-  font-size:12px;cursor:pointer;transition:.15s}
-.modal-cancel:hover{border-color:var(--red);color:var(--red)}
-.active-range-display{font-size:10px;color:var(--purple);margin-left:8px;
-  font-style:italic;display:none}
-.active-range-display.visible{display:inline}
+    .momentum-title {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
 
-/* ── Download CSV btn ─────────────────────────────────────────── */
-.download-csv-btn{padding:6px 14px;background:transparent;
-  border:1px solid var(--border);border-radius:4px;color:var(--text-dim);
-  font-family:var(--font-mono);font-size:10px;cursor:pointer;transition:.15s;
-  display:flex;align-items:center;gap:6px;letter-spacing:.5px}
-.download-csv-btn:hover{border-color:var(--green);color:var(--green)}
-.download-csv-btn svg{width:12px;height:12px}
-.ranking-actions{display:flex;gap:8px;align-items:center}
+    .momentum-boost {
+      background: rgba(255, 234, 0, .15);
+      color: #ffea00;
+      border: 1px solid rgba(255, 234, 0, .3);
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px
+    }
 
-</style>
+    .mom-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px
+    }
+
+    .mom-item {
+      background: var(--panel);
+      border-radius: 4px;
+      padding: 7px 8px;
+      border: 1px solid var(--border)
+    }
+
+    .mom-label {
+      font-size: 8px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 3px
+    }
+
+    .mom-val {
+      font-size: 11px;
+      font-weight: 600
+    }
+
+    .mom-status {
+      font-size: 8px;
+      margin-top: 2px
+    }
+
+    .mom-up {
+      color: #69ff47
+    }
+
+    .mom-mid {
+      color: #ffd740
+    }
+
+    .mom-down {
+      color: #ff3d57
+    }
+
+    .roc-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px
+    }
+
+    .roc-item {
+      flex: 1;
+      background: var(--panel);
+      border-radius: 4px;
+      padding: 5px 8px;
+      text-align: center;
+      border: 1px solid var(--border)
+    }
+
+    .roc-label {
+      font-size: 8px;
+      color: var(--text-faint)
+    }
+
+    .roc-val {
+      font-size: 11px;
+      font-weight: 600
+    }
+
+
+    /* ── Custom date range ────────────────────────────────────────── */
+    .custom-range-btn {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: .15s;
+      letter-spacing: .5px;
+      display: flex;
+      align-items: center;
+      gap: 5px
+    }
+
+    .custom-range-btn:hover {
+      border-color: var(--purple);
+      color: var(--purple)
+    }
+
+    .custom-range-btn.active {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: white;
+      font-weight: 700
+    }
+
+    /* Modal overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center
+    }
+
+    .modal-overlay.open {
+      display: flex
+    }
+
+    .modal-box {
+      background: var(--panel);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 28px 32px;
+      width: 380px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, .6);
+      position: relative
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px
+    }
+
+    .modal-sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 22px
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--text-faint);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1
+    }
+
+    .modal-close:hover {
+      color: var(--red)
+    }
+
+    .date-field {
+      margin-bottom: 16px
+    }
+
+    .date-field label {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-dim);
+      margin-bottom: 6px
+    }
+
+    .date-field input[type=date] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: .15s;
+      color-scheme: dark
+    }
+
+    .date-field input[type=date]:focus {
+      border-color: var(--teal)
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 22px
+    }
+
+    .modal-apply {
+      flex: 1;
+      background: var(--teal);
+      color: var(--bg);
+      border: none;
+      padding: 11px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: .15s
+    }
+
+    .modal-apply:hover {
+      background: #6ab8e6
+    }
+
+    .modal-cancel {
+      padding: 11px 18px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: .15s
+    }
+
+    .modal-cancel:hover {
+      border-color: var(--red);
+      color: var(--red)
+    }
+
+    .active-range-display {
+      font-size: 10px;
+      color: var(--purple);
+      margin-left: 8px;
+      font-style: italic;
+      display: none
+    }
+
+    .active-range-display.visible {
+      display: inline
+    }
+
+    /* ── Download CSV btn ─────────────────────────────────────────── */
+    .download-csv-btn {
+      padding: 6px 14px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      cursor: pointer;
+      transition: .15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: .5px
+    }
+
+    .download-csv-btn:hover {
+      border-color: var(--green);
+      color: var(--green)
+    }
+
+    .download-csv-btn svg {
+      width: 12px;
+      height: 12px
+    }
+
+    .ranking-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+  </style>
 </head>
+
 <body>
 
-<!-- Top bar -->
-<div class="topbar">
-  <div class="logo">
-    <div class="logo-mark">N</div>
-    <div class="logo-text">NSE<span>Signal</span></div>
-  </div>
-  <div class="topbar-right">
-    <div class="model-badge">
-      <div class="status-dot"></div>
-      <span id="modelStatus">Checking model...</span>
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-mark">N</div>
+      <div class="logo-text">NSE<span>Signal</span></div>
     </div>
-  </div>
-</div>
-
-<div class="container">
-
-  <!-- Hero -->
-  <div class="hero">
-    <h1 class="hero-title">Stock <span class="accent">Analysis</span><br>& Entry Signals</h1>
-    <p class="hero-sub">EMA Gap · RSI · MACD · Volume · ML Prediction</p>
-  </div>
-
-  <!-- Search -->
-  <div class="search-section">
-    <div class="search-label">Enter Stock Symbols</div>
-    <div class="search-wrap">
-      <div class="search-input-wrap">
-        <input class="search-input" id="symbolInput" type="text"
-          placeholder="ASHOKLEY, HPCL, MOTHERSON, TCS ..."
-          autocomplete="off" spellcheck="false"
-          oninput="toggleClear()">
-        <button class="clear-btn" id="clearBtn" onclick="clearSearch()" title="Clear">&#x2715;</button>
+    <div class="topbar-right">
+      <div class="header-model-selector">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+          <line x1="12" y1="22.08" x2="12" y2="12" />
+        </svg>
+        <select id="modelSelect" onchange="updateModelBadge()">
+          <option value="">Loading...</option>
+        </select>
       </div>
-      <button class="search-btn" id="analyzeBtn" onclick="analyze()">
-        Analyze →
-      </button>
+      <div class="model-badge">
+        <div class="status-dot"></div>
+        <span id="modelStatus">Connecting...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Hero -->
+    <div class="hero">
+      <h1 class="hero-title">Stock <span class="accent">Analysis</span><br>& Entry Signals</h1>
+      <p class="hero-sub">EMA Gap · RSI · MACD · Volume · ML Prediction</p>
     </div>
 
-    <!-- Date range selector -->
-    <div class="date-range-row">
-      <span class="date-range-label">Data range</span>
-      <div class="range-pills">
-        <button class="range-pill" onclick="setRange('6mo')"  data-range="6mo">6 Mo</button>
-        <button class="range-pill" onclick="setRange('1y')"   data-range="1y">1 Yr</button>
-        <button class="range-pill" onclick="setRange('2y')"   data-range="2y">2 Yr</button>
-        <button class="range-pill active" onclick="setRange('3y')" data-range="3y">3 Yr</button>
-        <button class="range-pill" onclick="setRange('5y')"   data-range="5y">5 Yr</button>
-        <button class="custom-range-btn" id="customRangeBtn" onclick="openDateModal()">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-          Custom
+    <!-- Search -->
+    <div class="search-section">
+      <div class="search-label">Enter Stock Symbols</div>
+      <div class="search-wrap">
+        <div class="search-input-wrap">
+          <input class="search-input" id="symbolInput" type="text" placeholder="ASHOKLEY, HPCL, MOTHERSON, TCS ..."
+            autocomplete="off" spellcheck="false" oninput="toggleClear()">
+          <button class="clear-btn" id="clearBtn" onclick="clearSearch()" title="Clear">&#x2715;</button>
+        </div>
+        <button class="search-btn" id="analyzeBtn" onclick="analyze()">
+          Analyze →
         </button>
       </div>
-      <span class="active-range-display" id="activeRangeDisplay"></span>
-    </div>
 
-  <!-- Custom date range modal -->
-  <div class="modal-overlay" id="dateModal" onclick="closeDateModal(event)">
-    <div class="modal-box">
-      <button class="modal-close" onclick="closeDateModal()">&#x2715;</button>
-      <div class="modal-title">Custom Date Range</div>
-      <div class="modal-sub">Fetch historical data between two dates</div>
-      <div class="date-field">
-        <label>Start Date</label>
-        <input type="date" id="startDate">
+      <!-- Date range selector -->
+      <div class="date-range-row">
+        <span class="date-range-label">Data range</span>
+        <div class="range-pills">
+          <button class="range-pill" onclick="setRange('6mo')" data-range="6mo">6 Mo</button>
+          <button class="range-pill" onclick="setRange('1y')" data-range="1y">1 Yr</button>
+          <button class="range-pill" onclick="setRange('2y')" data-range="2y">2 Yr</button>
+          <button class="range-pill active" onclick="setRange('3y')" data-range="3y">3 Yr</button>
+          <button class="range-pill" onclick="setRange('5y')" data-range="5y">5 Yr</button>
+          <button class="custom-range-btn" id="customRangeBtn" onclick="openDateModal()">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            Custom
+          </button>
+        </div>
+        <span class="active-range-display" id="activeRangeDisplay"></span>
       </div>
-      <div class="date-field">
-        <label>End Date</label>
-        <input type="date" id="endDate">
+
+      <!-- Custom date range modal -->
+      <div class="modal-overlay" id="dateModal" onclick="closeDateModal(event)">
+        <div class="modal-box">
+          <button class="modal-close" onclick="closeDateModal()">&#x2715;</button>
+          <div class="modal-title">Custom Date Range</div>
+          <div class="modal-sub">Fetch historical data between two dates</div>
+          <div class="date-field">
+            <label>Start Date</label>
+            <input type="date" id="startDate">
+          </div>
+          <div class="date-field">
+            <label>End Date</label>
+            <input type="date" id="endDate">
+          </div>
+          <div class="modal-actions">
+            <button class="modal-cancel" onclick="closeDateModal()">Cancel</button>
+            <button class="modal-apply" onclick="applyCustomRange()">Apply Range →</button>
+          </div>
+        </div>
       </div>
-      <div class="modal-actions">
-        <button class="modal-cancel" onclick="closeDateModal()">Cancel</button>
-        <button class="modal-apply" onclick="applyCustomRange()">Apply Range →</button>
-      </div>
-    </div>
-  </div>
 
-    <div class="search-hint">Separate multiple symbols with commas · NSE symbols only</div>
+      <div class="search-hint">Separate multiple symbols with commas · NSE symbols only</div>
 
-    <!-- Recent searches -->
-    <div class="recent-section" id="recentSection" style="display:none">
-      <div class="recent-label">Recent Searches</div>
-      <div class="recent-pills" id="recentPills"></div>
-    </div>
-  </div>
-
-  <!-- Loading -->
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <div class="loading-text">Fetching &amp; Analyzing</div>
-    <div class="loading-steps">
-      <div class="loading-step" id="step1">→ Connecting to Yahoo Finance...</div>
-      <div class="loading-step" id="step2">→ Engineering 40+ indicators...</div>
-      <div class="loading-step" id="step3">→ Running ML model...</div>
-      <div class="loading-step" id="step4">→ Generating PDF report...</div>
-    </div>
-  </div>
-
-  <!-- Error -->
-  <div id="errorBlock"></div>
-
-  <!-- Results -->
-  <div class="results" id="results"></div>
-
-  <!-- ── Ranking Table ─────────────────────────────────────────────────── -->
-  <div class="ranking-section" id="rankingSection" style="display:none">
-    <div class="ranking-header">
-      <div>
-        <div class="ranking-title">Stock Rankings</div>
-        <div class="ranking-sub">
-  <span style="color:var(--green)">STRONG BUY</span>
-  <span style="color:var(--text-faint)"> → </span>
-  <span style="color:var(--teal)">BUY</span>
-  <span style="color:var(--text-faint)"> → </span>
-  <span style="color:var(--gold)">WATCH</span>
-  <span style="color:var(--text-faint)"> → </span>
-  <span style="color:var(--red)">AVOID</span>
-  <span style="color:var(--text-faint)">  ·  then by Strength 5→1  ·  then Score  ·  then ML Pred</span>
-</div>
-      </div>
-      <div class="ranking-actions">
-        <button class="download-csv-btn" onclick="downloadRankingCSV()" title="Download CSV">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          CSV
-        </button>
-        <button class="ranking-clear" onclick="clearRanking()">Clear all</button>
+      <!-- Recent searches -->
+      <div class="recent-section" id="recentSection" style="display:none">
+        <div class="recent-label">Recent Searches</div>
+        <div class="recent-pills" id="recentPills"></div>
       </div>
     </div>
-    <table class="ranking-table">
-      <thead>
-        <tr>
-          <th style="text-align:left">Rank</th>
-          <th style="text-align:left">Symbol</th>
-          <th style="text-align:left">Signal</th>
-          <th>Strength</th>
-          <th>Score</th>
-          <th>ML Pred 5d</th>
-          <th>Gap ATR</th>
-          <th>RSI</th>
-          <th>Entry</th>
-          <th>Stop</th>
-          <th>Target</th>
-          <th>Beta</th>
-          <th>Z-Score</th>
-          <th>DirAcc</th>
-          <th>PDF</th>
-        </tr>
-      </thead>
-      <tbody id="rankingBody"></tbody>
-    </table>
-  </div>
 
-  <!-- Empty state -->
-  <div class="empty-state" id="emptyState">
-    <div class="empty-icon">⬡</div>
-    <div class="empty-title">Ready to Analyze</div>
-    <div class="empty-sub">
-      Enter NSE stock symbols above.<br>
-      Get EMA gap signals, entry/exit levels,<br>
-      and downloadable PDF reports.
+    <!-- Loading -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">Fetching &amp; Analyzing</div>
+      <div class="loading-steps">
+        <div class="loading-step" id="step1">→ Connecting to Yahoo Finance...</div>
+        <div class="loading-step" id="step2">→ Engineering 40+ indicators...</div>
+        <div class="loading-step" id="step3">→ Running ML model...</div>
+        <div class="loading-step" id="step4">→ Generating PDF report...</div>
+      </div>
     </div>
+
+    <!-- Error -->
+    <div id="errorBlock"></div>
+
+    <!-- Results -->
+    <div class="results" id="results"></div>
+
+    <!-- ── Ranking Table ─────────────────────────────────────────────────── -->
+    <div class="ranking-section" id="rankingSection" style="display:none">
+      <div class="ranking-header">
+        <div>
+          <div class="ranking-title">Stock Rankings</div>
+          <div class="ranking-sub">
+            <span style="color:var(--green)">STRONG BUY</span>
+            <span style="color:var(--text-faint)"> → </span>
+            <span style="color:var(--teal)">BUY</span>
+            <span style="color:var(--text-faint)"> → </span>
+            <span style="color:var(--gold)">WATCH</span>
+            <span style="color:var(--text-faint)"> → </span>
+            <span style="color:var(--red)">AVOID</span>
+            <span style="color:var(--text-faint)"> · then by Strength 5→1 · then Score · then ML Pred</span>
+          </div>
+        </div>
+        <div class="ranking-actions">
+          <button class="download-csv-btn" onclick="downloadRankingCSV()" title="Download CSV">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            CSV
+          </button>
+          <button class="ranking-clear" onclick="clearRanking()">Clear all</button>
+        </div>
+      </div>
+      <div class="ranking-table-wrap">
+        <table class="ranking-table">
+          <thead>
+            <tr>
+              <th style="text-align:left">Rank</th>
+              <th style="text-align:left">Symbol</th>
+              <th style="text-align:left">Signal</th>
+              <th>Strength</th>
+              <th>Score</th>
+              <th>ML Pred 5d</th>
+              <th>Gap ATR</th>
+              <th>RSI</th>
+              <th>Entry</th>
+              <th>Stop</th>
+              <th>Target</th>
+              <th>Beta</th>
+              <th>Z-Score</th>
+              <th>DirAcc</th>
+              <th>PDF</th>
+            </tr>
+          </thead>
+          <tbody id="rankingBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">⬡</div>
+      <div class="empty-title">Ready to Analyze</div>
+      <div class="empty-sub">
+        Enter NSE stock symbols above.<br>
+        Get EMA gap signals, entry/exit levels,<br>
+        and downloadable PDF reports.
+      </div>
+    </div>
+
   </div>
 
-</div>
+  <div class="footer">
+    NSE Signal — EMA Gap Analysis System · For educational use only · Not financial advice
+  </div>
 
-<div class="footer">
-  NSE Signal — EMA Gap Analysis System · For educational use only · Not financial advice
-</div>
-
-<script>
-const API = "";   // empty = same origin
+  <script>
+    const API = "";   // empty = same origin
 
 
 
-// ── Custom date range modal ───────────────────────────────────────────────
-function openDateModal() {
-  // Pre-fill with sensible defaults (3 years ago → today)
-  const today = new Date();
-  const threeYrsAgo = new Date(today);
-  threeYrsAgo.setFullYear(today.getFullYear() - 3);
-  const fmt = d => d.toISOString().split("T")[0];
-  const startEl = document.getElementById("startDate");
-  const endEl   = document.getElementById("endDate");
-  if (!startEl.value) startEl.value = fmt(threeYrsAgo);
-  if (!endEl.value)   endEl.value   = fmt(today);
-  document.getElementById("dateModal").classList.add("open");
-}
-
-function closeDateModal(e) {
-  if (!e || e.target === document.getElementById("dateModal")) {
-    document.getElementById("dateModal").classList.remove("open");
-  }
-}
-
-function applyCustomRange() {
-  const start = document.getElementById("startDate").value;
-  const end   = document.getElementById("endDate").value;
-  if (!start || !end) { alert("Please select both dates"); return; }
-  if (start >= end)   { alert("Start date must be before end date"); return; }
-
-  // Calculate approximate period string for Yahoo Finance
-  const ms   = new Date(end) - new Date(start);
-  const days = Math.round(ms / 86400000);
-  let period;
-  if      (days <= 200)  period = "6mo";
-  else if (days <= 400)  period = "1y";
-  else if (days <= 800)  period = "2y";
-  else if (days <= 1200) period = "3y";
-  else                   period = "5y";
-
-  selectedRange  = period;
-  customStartDate = start;
-  customEndDate   = end;
-
-  // Deactivate preset pills, activate custom btn
-  document.querySelectorAll(".range-pill").forEach(p => p.classList.remove("active"));
-  document.getElementById("customRangeBtn").classList.add("active");
-
-  // Show active range label
-  const disp = document.getElementById("activeRangeDisplay");
-  disp.textContent = `${start}  →  ${end}`;
-  disp.classList.add("visible");
-
-  closeDateModal();
-}
-
-let customStartDate = null;
-let customEndDate   = null;
-
-// ── Download ranking table as CSV ─────────────────────────────────────────
-function downloadRankingCSV() {
-  if (!allResults.length) {
-    alert("No stocks to download — analyze some stocks first");
-    return;
-  }
-
-  const sorted = [...allResults].sort((a, b) => {
-    const tier = s => s==="STRONG BUY"?4:s==="BUY"?3:s==="WATCH"?2:1;
-    const td = tier(b.signal) - tier(a.signal); if (td) return td;
-    const sd = (b.strength||1) - (a.strength||1); if (sd) return sd;
-    const mb = (b.momentum?.momentum_boost?1:0)-(a.momentum?.momentum_boost?1:0); if (mb) return mb;
-    const sc = (b.score||0)-(a.score||0); if (sc) return sc;
-    return b.pred_5d_pct - a.pred_5d_pct;
-  });
-
-  const headers = [
-    "Rank","Symbol","Date","Signal","Strength","Strength Label",
-    "Score /8","ML Pred 5d%","Gap ATR","Gap Rs","RSI",
-    "Beta","Beta Regime","Williams %R","CCI","Z-Score 20d","OBV Trend","Channel Pos",
-    "MACD Hist","Vol Ratio","EMA Stack","ROC 5d%","ROC 10d%","ROC 20d%",
-    "MACD Accel","Gap Widening","Vol Momentum","Momentum Boost",
-    "Entry Rs","Stop Loss Rs","Target 1M Rs",
-    "Streak Days","52W Position%","DirAcc%","Model"
-  ];
-
-  const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
-
-  const rows = sorted.map((r, i) => {
-    const m = r.momentum || {};
-    return [
-      i + 1, r.symbol, r.date, r.signal,
-      r.strength ?? "", r.strength_label ?? "",
-      r.score, r.pred_5d_pct, r.gap_atr, r.gap_rs ?? "", r.rsi,
-      r.macd_hist, r.vol_ratio,
-      m.ema_stack ?? "", m.roc_5 ?? "", m.roc_10 ?? "", m.roc_20 ?? "",
-      m.macd_accel ?? "", m.gap_widening ?? "", m.vol_momentum ?? "",
-      m.momentum_boost ? "YES" : "NO",
-      r.entry_price, r.stop_loss, r.target_1m,
-      r.streak_days ?? "", r.pos_52w ?? "", r.model_acc ?? "", r.model_name ?? "",
-      r.beta ?? "", r.beta_regime ?? "", r.williams_r ?? "",
-      r.cci ?? "", r.zscore_20 ?? "", r.obv_trend ?? "", r.channel_pos_20 ?? "",
-    ].map(esc).join(",");
-  });
-
-  // BOM + CRLF for Excel compatibility
-  const BOM  = "\uFEFF";
-  const csv  = BOM + [headers.map(esc).join(","), ...rows].join("\r\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href     = url;
-  a.download = `NSE_Rankings_${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-// ── Search clear button ───────────────────────────────────────────────────
-function toggleClear() {
-  const inp = document.getElementById("symbolInput");
-  const btn = document.getElementById("clearBtn");
-  btn.classList.toggle("visible", inp.value.length > 0);
-}
-
-function clearSearch() {
-  const inp = document.getElementById("symbolInput");
-  inp.value = "";
-  document.getElementById("clearBtn").classList.remove("visible");
-  inp.focus();
-}
-
-// ── Date range selector ───────────────────────────────────────────────────
-let selectedRange = "3y";   // default 3 years
-
-function setRange(range) {
-  selectedRange   = range;
-  customStartDate = null;
-  customEndDate   = null;
-
-  // Toggle preset pills
-  document.querySelectorAll(".range-pill").forEach(p => {
-    p.classList.toggle("active", p.dataset.range === range);
-  });
-
-  // Deactivate custom btn + hide display
-  const customBtn = document.getElementById("customRangeBtn");
-  if (customBtn) customBtn.classList.remove("active");
-  const disp = document.getElementById("activeRangeDisplay");
-  if (disp) { disp.textContent = ""; disp.classList.remove("visible"); }
-}
-
-// ── Startup ──────────────────────────────────────────────────────────────────
-async function init() {
-  await checkHealth();
-  await loadHistory();
-  document.getElementById("symbolInput").addEventListener("keydown", e => {
-    if (e.key === "Enter") analyze();
-  });
-}
-
-async function checkHealth() {
-  try {
-    const r = await fetch(`${API}/api/health`);
-    const d = await r.json();
-    const el = document.getElementById("modelStatus");
-    if (d.model_loaded) {
-      el.innerHTML = `${d.model} &nbsp;·&nbsp; DirAcc <span style="color:var(--gold)">${d.dir_acc?.toFixed(1)}%</span>`;
-    } else {
-      el.textContent = "No model loaded";
-      el.style.color = "var(--red)";
+    // ── Custom date range modal ───────────────────────────────────────────────
+    function openDateModal() {
+      // Pre-fill with sensible defaults (3 years ago → today)
+      const today = new Date();
+      const threeYrsAgo = new Date(today);
+      threeYrsAgo.setFullYear(today.getFullYear() - 3);
+      const fmt = d => d.toISOString().split("T")[0];
+      const startEl = document.getElementById("startDate");
+      const endEl = document.getElementById("endDate");
+      if (!startEl.value) startEl.value = fmt(threeYrsAgo);
+      if (!endEl.value) endEl.value = fmt(today);
+      document.getElementById("dateModal").classList.add("open");
     }
-  } catch(e) {
-    document.getElementById("modelStatus").textContent = "API offline";
-  }
-}
 
-// ── History ───────────────────────────────────────────────────────────────────
-async function loadHistory() {
-  try {
-    const r = await fetch(`${API}/api/history`);
-    const d = await r.json();
-    renderHistory(d.history || []);
-  } catch(e) {}
-}
+    function closeDateModal(e) {
+      if (!e || e.target === document.getElementById("dateModal")) {
+        document.getElementById("dateModal").classList.remove("open");
+      }
+    }
 
-function renderHistory(history) {
-  const section = document.getElementById("recentSection");
-  const pills   = document.getElementById("recentPills");
-  if (!history.length) { section.style.display = "none"; return; }
-  section.style.display = "block";
-  pills.innerHTML = history.map(h => {
-    const dotColor = signalColor(h.signal);
-    return `
+    function applyCustomRange() {
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+      if (!start || !end) { alert("Please select both dates"); return; }
+      if (start >= end) { alert("Start date must be before end date"); return; }
+
+      // Calculate approximate period string for Yahoo Finance
+      const ms = new Date(end) - new Date(start);
+      const days = Math.round(ms / 86400000);
+      let period;
+      if (days <= 200) period = "6mo";
+      else if (days <= 400) period = "1y";
+      else if (days <= 800) period = "2y";
+      else if (days <= 1200) period = "3y";
+      else period = "5y";
+
+      selectedRange = period;
+      customStartDate = start;
+      customEndDate = end;
+
+      // Deactivate preset pills, activate custom btn
+      document.querySelectorAll(".range-pill").forEach(p => p.classList.remove("active"));
+      document.getElementById("customRangeBtn").classList.add("active");
+
+      // Show active range label
+      const disp = document.getElementById("activeRangeDisplay");
+      disp.textContent = `${start}  →  ${end}`;
+      disp.classList.add("visible");
+
+      closeDateModal();
+    }
+
+    let customStartDate = null;
+    let customEndDate = null;
+
+    // ── Download ranking table as CSV ─────────────────────────────────────────
+    function downloadRankingCSV() {
+      if (!allResults.length) {
+        alert("No stocks to download — analyze some stocks first");
+        return;
+      }
+
+      const sorted = [...allResults].sort((a, b) => {
+        const tier = s => s === "STRONG BUY" ? 4 : s === "BUY" ? 3 : s === "WATCH" ? 2 : 1;
+        const td = tier(b.signal) - tier(a.signal); if (td) return td;
+        const sd = (b.strength || 1) - (a.strength || 1); if (sd) return sd;
+        const mb = (b.momentum?.momentum_boost ? 1 : 0) - (a.momentum?.momentum_boost ? 1 : 0); if (mb) return mb;
+        const sc = (b.score || 0) - (a.score || 0); if (sc) return sc;
+        return b.pred_5d_pct - a.pred_5d_pct;
+      });
+
+      const headers = [
+        "Rank", "Symbol", "Date", "Signal", "Strength", "Strength Label",
+        "Score /8", "ML Pred 5d%", "Gap ATR", "Gap Rs", "RSI",
+        "Beta", "Beta Regime", "Williams %R", "CCI", "Z-Score 20d", "OBV Trend", "Channel Pos",
+        "MACD Hist", "Vol Ratio", "EMA Stack", "ROC 5d%", "ROC 10d%", "ROC 20d%",
+        "MACD Accel", "Gap Widening", "Vol Momentum", "Momentum Boost",
+        "Entry Rs", "Stop Loss Rs", "Target 1M Rs",
+        "Streak Days", "52W Position%", "DirAcc%", "Model"
+      ];
+
+      const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+
+      const rows = sorted.map((r, i) => {
+        const m = r.momentum || {};
+        return [
+          i + 1, r.symbol, r.date, r.signal,
+          r.strength ?? "", r.strength_label ?? "",
+          r.score, r.pred_5d_pct, r.gap_atr, r.gap_rs ?? "", r.rsi,
+          r.macd_hist, r.vol_ratio,
+          m.ema_stack ?? "", m.roc_5 ?? "", m.roc_10 ?? "", m.roc_20 ?? "",
+          m.macd_accel ?? "", m.gap_widening ?? "", m.vol_momentum ?? "",
+          m.momentum_boost ? "YES" : "NO",
+          r.entry_price, r.stop_loss, r.target_1m,
+          r.streak_days ?? "", r.pos_52w ?? "", r.model_acc ?? "", r.model_name ?? "",
+          r.beta ?? "", r.beta_regime ?? "", r.williams_r ?? "",
+          r.cci ?? "", r.zscore_20 ?? "", r.obv_trend ?? "", r.channel_pos_20 ?? "",
+        ].map(esc).join(",");
+      });
+
+      // BOM + CRLF for Excel compatibility
+      const BOM = "\uFEFF";
+      const csv = BOM + [headers.map(esc).join(","), ...rows].join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `NSE_Rankings_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // ── Search clear button ───────────────────────────────────────────────────
+    function toggleClear() {
+      const inp = document.getElementById("symbolInput");
+      const btn = document.getElementById("clearBtn");
+      btn.classList.toggle("visible", inp.value.length > 0);
+    }
+
+    function clearSearch() {
+      const inp = document.getElementById("symbolInput");
+      inp.value = "";
+      document.getElementById("clearBtn").classList.remove("visible");
+      inp.focus();
+    }
+
+    // ── Date range selector ───────────────────────────────────────────────────
+    let selectedRange = "3y";   // default 3 years
+
+    function setRange(range) {
+      selectedRange = range;
+      customStartDate = null;
+      customEndDate = null;
+
+      // Toggle preset pills
+      document.querySelectorAll(".range-pill").forEach(p => {
+        p.classList.toggle("active", p.dataset.range === range);
+      });
+
+      // Deactivate custom btn + hide display
+      const customBtn = document.getElementById("customRangeBtn");
+      if (customBtn) customBtn.classList.remove("active");
+      const disp = document.getElementById("activeRangeDisplay");
+      if (disp) { disp.textContent = ""; disp.classList.remove("visible"); }
+    }
+
+    // ── Startup ──────────────────────────────────────────────────────────────────
+    async function init() {
+      await checkHealth();
+      await loadModels();
+      await loadHistory();
+      document.getElementById("symbolInput").addEventListener("keydown", e => {
+        if (e.key === "Enter") analyze();
+      });
+    }
+
+    async function loadModels() {
+      try {
+        const r = await fetch(`${API}/api/models`);
+        const d = await r.json();
+        const sel = document.getElementById("modelSelect");
+        if (d.models?.length) {
+          // Sort by accuracy descending to find the "best" model
+          const sorted = [...d.models].sort((a, b) => b.acc - a.acc);
+          const bestModelId = sorted[0].id;
+
+          sel.innerHTML = d.models.map(m => 
+            `<option value="${m.id}" ${m.id === bestModelId ? 'selected' : ''}>
+              ${m.name}
+            </option>`
+          ).join("");
+          
+          window.MODELS_INFO = d.models; // Store for badge updates
+          updateModelBadge();
+        }
+      } catch (e) {
+        console.error("Failed to load models:", e);
+      }
+    }
+
+    function updateModelBadge() {
+      const sel = document.getElementById("modelSelect");
+      const modelId = sel.value;
+      const status = document.getElementById("modelStatus");
+      
+      if (!window.MODELS_INFO) return;
+      
+      const m = window.MODELS_INFO.find(x => x.id === modelId);
+      if (m) {
+        status.innerHTML = `Model: ${m.name} &nbsp;·&nbsp; <span style="color:var(--gold)">${m.acc.toFixed(1)}% Acc</span>`;
+      }
+    }
+
+    async function checkHealth() {
+      try {
+        const r = await fetch(`${API}/api/health`);
+        const d = await r.json();
+        const el = document.getElementById("modelStatus");
+        if (d.model_loaded) {
+          el.innerHTML = `${d.model} &nbsp;·&nbsp; DirAcc <span style="color:var(--gold)">${d.dir_acc?.toFixed(1)}%</span>`;
+        } else {
+          el.textContent = "No model loaded";
+          el.style.color = "var(--red)";
+        }
+      } catch (e) {
+        document.getElementById("modelStatus").textContent = "API offline";
+      }
+    }
+
+    // ── History ───────────────────────────────────────────────────────────────────
+    async function loadHistory() {
+      try {
+        const r = await fetch(`${API}/api/history`);
+        const d = await r.json();
+        renderHistory(d.history || []);
+      } catch (e) { }
+    }
+
+    function renderHistory(history) {
+      const section = document.getElementById("recentSection");
+      const pills = document.getElementById("recentPills");
+      if (!history.length) { section.style.display = "none"; return; }
+      section.style.display = "block";
+      pills.innerHTML = history.map(h => {
+        const dotColor = signalColor(h.signal);
+        return `
       <div class="recent-pill" onclick="fillSearch('${h.symbol}')">
         <div class="pill-signal" style="background:${dotColor}"></div>
         <span>${h.symbol}</span>
         <span style="color:${dotColor};font-size:9px">${h.signal || ""}</span>
         <span class="pill-del" onclick="event.stopPropagation();deleteHistory('${h.symbol}')">×</span>
       </div>`;
-  }).join("");
-}
-
-function fillSearch(sym) {
-  const inp = document.getElementById("symbolInput");
-  const cur = inp.value.split(",").map(s => s.trim()).filter(Boolean);
-  if (!cur.includes(sym)) cur.push(sym);
-  inp.value = cur.join(", ");
-  inp.focus();
-}
-
-async function deleteHistory(sym) {
-  await fetch(`${API}/api/history/${sym}`, { method: "DELETE" });
-  await loadHistory();
-}
-
-function signalColor(sig) {
-  if (!sig) return "var(--text-faint)";
-  if (sig.includes("BUY")) return "var(--green)";
-  if (sig === "WATCH")     return "var(--gold)";
-  return "var(--red)";
-}
-
-// ── Analyze ───────────────────────────────────────────────────────────────────
-async function analyze() {
-  const raw = document.getElementById("symbolInput").value;
-  const symbols = raw.split(/[,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
-  if (!symbols.length) return;
-
-  setLoading(true);
-  clearErrors();
-  document.getElementById("results").innerHTML = "";
-  document.getElementById("emptyState").style.display = "none";
-
-  // Animate loading steps — each appears then vanishes before next shows
-  const steps = ["step1","step2","step3","step4"];
-  const STEP_DUR = 900;   // ms each step stays visible before vanishing
-  steps.forEach((s, i) => {
-    const showAt = i * STEP_DUR;
-    const hideAt = showAt + STEP_DUR - 150;
-    // Show
-    setTimeout(() => {
-      const el = document.getElementById(s);
-      if (el) el.classList.add("active");
-    }, showAt);
-    // Hide (all except last — last stays until request completes)
-    if (i < steps.length - 1) {
-      setTimeout(() => {
-        const el = document.getElementById(s);
-        if (el) { el.classList.remove("active"); el.classList.add("done"); }
-      }, hideAt);
+      }).join("");
     }
-  });
 
-  // Final safety check — ensure symbols is a non-empty array of strings
-  const cleanSymbols = symbols
-    .map(s => String(s).trim().toUpperCase())
-    .filter(s => s.length > 0 && s.length <= 20);
-
-  if (!cleanSymbols.length) {
-    setLoading(false);
-    showError("No valid symbols entered");
-    return;
-  }
-
-  console.log("Sending:", JSON.stringify({ symbols: cleanSymbols, period: selectedRange }));
-
-  try {
-    const r = await fetch(`${API}/api/analyze`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify({ symbols: cleanSymbols, period: selectedRange }),
-    });
-    if (!r.ok) {
-      const errBody = await r.json().catch(() => ({}));
-      throw new Error(`HTTP ${r.status}: ${JSON.stringify(errBody.detail || errBody)}`);
+    function fillSearch(sym) {
+      const inp = document.getElementById("symbolInput");
+      const cur = inp.value.split(",").map(s => s.trim()).filter(Boolean);
+      if (!cur.includes(sym)) cur.push(sym);
+      inp.value = cur.join(", ");
+      inp.focus();
     }
-    const data = await r.json();
 
-    if (data.errors?.length) {
-      data.errors.forEach(e => showError(`${e.symbol}: ${e.error}`));
+    async function deleteHistory(sym) {
+      await fetch(`${API}/api/history/${sym}`, { method: "DELETE" });
+      await loadHistory();
     }
-    if (data.results?.length) {
-      renderResults(data.results);
-      updateRanking(data.results);
-    } else if (!data.errors?.length) {
-      document.getElementById("emptyState").style.display = "block";
+
+    function signalColor(sig) {
+      if (!sig) return "var(--text-faint)";
+      if (sig.includes("BUY")) return "var(--green)";
+      if (sig === "WATCH") return "var(--gold)";
+      return "var(--red)";
     }
-    await loadHistory();
-  } catch(e) {
-    showError(`Request failed: ${e.message}`);
-    document.getElementById("emptyState").style.display = "block";
-  } finally {
-    setLoading(false);
-    steps.forEach(s => {
-      const el = document.getElementById(s);
-      if (el) { el.classList.remove("active"); el.classList.add("done"); }
-    });
-  }
-}
 
-// ── Render Results ────────────────────────────────────────────────────────────
-function renderResults(results) {
-  const container = document.getElementById("results");
-  results.forEach((r, idx) => {
-    const card = buildCard(r);
-    card.style.animationDelay = `${idx * 0.08}s`;
-    container.appendChild(card);
-    // Draw sparkline after DOM insert
-    setTimeout(() => drawSparkline(r), 50 + idx * 80);
-  });
-}
+    // ── Analyze ───────────────────────────────────────────────────────────────────
+    async function analyze() {
+      const raw = document.getElementById("symbolInput").value;
+      const symbols = raw.split(/[,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+      if (!symbols.length) return;
 
-function buildCard(r) {
-  const sigClass = `signal-${r.signal.replace(" ","-")}`;
-  const accentColor = r.signal.includes("BUY") ? "var(--green)" :
-                      r.signal === "WATCH"      ? "var(--gold)"  : "var(--red)";
-  const scoreWidth  = (r.score / r.max_score * 100).toFixed(0);
-  const scoreFill   = r.score >= 6 ? "var(--green)" :
-                      r.score >= 4 ? "var(--gold)"  : "var(--red)";
+      setLoading(true);
+      clearErrors();
+      document.getElementById("results").innerHTML = "";
+      document.getElementById("emptyState").style.display = "none";
 
-  const div = document.createElement("div");
-  div.className = "stock-card card-enter";
-  div.style.setProperty("--card-accent", accentColor);
-  div.dataset.symbol = r.symbol;
+      // Animate loading steps — each appears then vanishes before next shows
+      const steps = ["step1", "step2", "step3", "step4"];
+      const STEP_DUR = 900;   // ms each step stays visible before vanishing
+      steps.forEach((s, i) => {
+        const showAt = i * STEP_DUR;
+        const hideAt = showAt + STEP_DUR - 150;
+        // Show
+        setTimeout(() => {
+          const el = document.getElementById(s);
+          if (el) el.classList.add("active");
+        }, showAt);
+        // Hide (all except last — last stays until request completes)
+        if (i < steps.length - 1) {
+          setTimeout(() => {
+            const el = document.getElementById(s);
+            if (el) { el.classList.remove("active"); el.classList.add("done"); }
+          }, hideAt);
+        }
+      });
 
-  const filters = [
-    { name: "Gap Filter",    val: `${r.gap_atr > 0 ? "+" : ""}${r.gap_atr}×ATR`, sig: r.gap_signal  },
-    { name: "RSI Filter",    val: `RSI = ${r.rsi}`,                               sig: r.rsi_signal  },
-    { name: "MACD Filter",   val: `Hist ${r.macd_hist > 0 ? "+" : ""}${r.macd_hist}`, sig: r.macd_signal },
-    { name: "Volume Filter", val: `${r.vol_ratio}× avg`,                          sig: r.vol_signal  },
-  ];
+      // Final safety check — ensure symbols is a non-empty array of strings, remove duplicates
+      const cleanSymbols = [...new Set(
+        symbols
+          .map(s => String(s).trim().toUpperCase())
+          .filter(s => s.length > 0 && s.length <= 20)
+      )];
 
-  div.innerHTML = `
+      if (!cleanSymbols.length) {
+        setLoading(false);
+        showError("No valid symbols entered");
+        return;
+      }
+
+      console.log("Sending:", { symbols: cleanSymbols, period: selectedRange, start: customStartDate, end: customEndDate });
+
+      try {
+        const r = await fetch(`${API}/api/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+          body: JSON.stringify({
+            symbols: cleanSymbols,
+            period: selectedRange,
+            start_date: customStartDate || null,
+            end_date: customEndDate || null,
+            model: document.getElementById("modelSelect").value,
+          }),
+        });
+        if (!r.ok) {
+          const errBody = await r.json().catch(() => ({}));
+          throw new Error(`HTTP ${r.status}: ${JSON.stringify(errBody.detail || errBody)}`);
+        }
+        const data = await r.json();
+
+        if (data.errors?.length) {
+          data.errors.forEach(e => showError(`${e.symbol}: ${e.error}`));
+        }
+        if (data.results?.length) {
+          renderResults(data.results);
+          updateRanking(data.results);
+        } else if (!data.errors?.length) {
+          document.getElementById("emptyState").style.display = "block";
+        }
+        await loadHistory();
+      } catch (e) {
+        showError(`Request failed: ${e.message}`);
+        document.getElementById("emptyState").style.display = "block";
+      } finally {
+        setLoading(false);
+        steps.forEach(s => {
+          const el = document.getElementById(s);
+          if (el) { el.classList.remove("active"); el.classList.add("done"); }
+        });
+      }
+    }
+
+    // ── Render Results ────────────────────────────────────────────────────────────
+    function renderResults(results) {
+      const container = document.getElementById("results");
+      results.forEach((r, idx) => {
+        const card = buildCard(r);
+        card.style.animationDelay = `${idx * 0.08}s`;
+        container.appendChild(card);
+        // Draw sparkline after DOM insert
+        setTimeout(() => drawSparkline(r), 50 + idx * 80);
+      });
+    }
+
+    function buildCard(r) {
+      const sigClass = `signal-${r.signal.replace(" ", "-")}`;
+      const accentColor = r.signal.includes("BUY") ? "var(--green)" :
+        r.signal === "WATCH" ? "var(--gold)" : "var(--red)";
+      const scoreWidth = (r.score / r.max_score * 100).toFixed(0);
+      const scoreFill = r.score >= 6 ? "var(--green)" :
+        r.score >= 4 ? "var(--gold)" : "var(--red)";
+
+      const div = document.createElement("div");
+      div.className = "stock-card card-enter";
+      div.style.setProperty("--card-accent", accentColor);
+      div.dataset.symbol = r.symbol;
+
+      const filters = [
+        { name: "Gap Filter", val: `${r.gap_atr > 0 ? "+" : ""}${r.gap_atr}×ATR`, sig: r.gap_signal },
+        { name: "RSI Filter", val: `RSI = ${r.rsi}`, sig: r.rsi_signal },
+        { name: "MACD Filter", val: `Hist ${r.macd_hist > 0 ? "+" : ""}${r.macd_hist}`, sig: r.macd_signal },
+        { name: "Volume Filter", val: `${r.vol_ratio}× avg`, sig: r.vol_signal },
+      ];
+
+      div.innerHTML = `
     <div class="card-header">
       <div class="card-top">
         <div>
-          <div class="card-symbol">${r.symbol}</div>
+          <a class="card-symbol" 
+             href="https://www.screener.in/company/${r.symbol}/"
+             target="_blank" rel="noopener"
+             title="View ${r.symbol} on Screener.in"
+             style="text-decoration:none;cursor:pointer;transition:.15s"
+             onmouseover="this.style.color='var(--teal)'"
+             onmouseout="this.style.color=''">${r.symbol}
+            <span style="font-size:10px;vertical-align:super;opacity:.5">↗</span>
+          </a>
           <div class="card-date">${r.date} · Model: ${r.model_name}</div>
         </div>
         <div class="${sigClass} signal-badge">${r.signal}</div>
@@ -967,7 +2138,7 @@ function buildCard(r) {
         </div>
         <div class="level-item">
           <div class="level-label">Gap (ATR)</div>
-          <div class="level-value" style="color:${r.gap_atr>=1?'var(--green)':r.gap_atr>0?'var(--gold)':'var(--red)'}">
+          <div class="level-value" style="color:${r.gap_atr >= 1 ? 'var(--green)' : r.gap_atr > 0 ? 'var(--gold)' : 'var(--red)'}">
             ${r.gap_atr >= 0 ? "+" : ""}${r.gap_atr}×
           </div>
         </div>
@@ -1025,7 +2196,7 @@ function buildCard(r) {
       <div class="model-info">
         <span>Streak above 50H: <strong style="color:var(--teal)">${r.streak_days}d</strong></span>
         <span>52W pos: <strong>${r.pos_52w}%</strong></span>
-        <span>ML pred 5d: <strong style="color:${r.pred_5d_pct>=0?'var(--green)':'var(--red)'}">
+        <span>ML pred 5d: <strong style="color:${r.pred_5d_pct >= 0 ? 'var(--green)' : 'var(--red)'}">
           ${r.pred_5d_pct >= 0 ? "+" : ""}${r.pred_5d_pct}%</strong></span>
         <span>DirAcc: <strong class="model-acc">${r.model_acc?.toFixed(1)}%</strong></span>
       </div>
@@ -1039,131 +2210,131 @@ function buildCard(r) {
         Download PDF Report
       </button>` : ""}
     </div>`;
-  return div;
-}
+      return div;
+    }
 
-// ── Sparkline Canvas ──────────────────────────────────────────────────────────
-function drawSparkline(r) {
-  const canvas = document.getElementById(`spark_${r.symbol}`);
-  if (!canvas || !r.history?.length) return;
-  const ctx  = canvas.getContext("2d");
-  const hist = r.history;
-  const W    = canvas.offsetWidth  || 600;
-  const H    = canvas.offsetHeight || 144;
-  canvas.width  = W; canvas.height = H;
+    // ── Sparkline Canvas ──────────────────────────────────────────────────────────
+    function drawSparkline(r) {
+      const canvas = document.getElementById(`spark_${r.symbol}`);
+      if (!canvas || !r.history?.length) return;
+      const ctx = canvas.getContext("2d");
+      const hist = r.history;
+      const W = canvas.offsetWidth || 600;
+      const H = canvas.offsetHeight || 144;
+      canvas.width = W; canvas.height = H;
 
-  const closes = hist.map(h => h.CLOSE);
-  const e50h   = hist.map(h => h.EMA50_HIGH);
-  const e50l   = hist.map(h => h.EMA50_LOW);
-  const e10    = hist.map(h => h.EMA_10);
-  const allVals= [...closes, ...e50h, ...e50l];
-  const mn = Math.min(...allVals) * 0.998;
-  const mx = Math.max(...allVals) * 1.002;
-  const N  = hist.length;
+      const closes = hist.map(h => h.CLOSE);
+      const e50h = hist.map(h => h.EMA50_HIGH);
+      const e50l = hist.map(h => h.EMA50_LOW);
+      const e10 = hist.map(h => h.EMA_10);
+      const allVals = [...closes, ...e50h, ...e50l];
+      const mn = Math.min(...allVals) * 0.998;
+      const mx = Math.max(...allVals) * 1.002;
+      const N = hist.length;
 
-  const px = (i) => (i / (N-1)) * W;
-  const py = (v) => H - ((v - mn) / (mx - mn)) * H * 0.88 - H * 0.06;
+      const px = (i) => (i / (N - 1)) * W;
+      const py = (v) => H - ((v - mn) / (mx - mn)) * H * 0.88 - H * 0.06;
 
-  // EMA50 band fill
-  ctx.fillStyle = "rgba(52,211,153,0.06)";
-  ctx.beginPath();
-  ctx.moveTo(px(0), py(e50h[0]));
-  for(let i=1;i<N;i++) ctx.lineTo(px(i), py(e50h[i]));
-  for(let i=N-1;i>=0;i--) ctx.lineTo(px(i), py(e50l[i]));
-  ctx.closePath(); ctx.fill();
+      // EMA50 band fill
+      ctx.fillStyle = "rgba(52,211,153,0.06)";
+      ctx.beginPath();
+      ctx.moveTo(px(0), py(e50h[0]));
+      for (let i = 1; i < N; i++) ctx.lineTo(px(i), py(e50h[i]));
+      for (let i = N - 1; i >= 0; i--) ctx.lineTo(px(i), py(e50l[i]));
+      ctx.closePath(); ctx.fill();
 
-  // EMA50 HIGH line
-  ctx.strokeStyle = "rgba(52,211,153,0.6)"; ctx.lineWidth = 1;
-  ctx.setLineDash([4,4]); ctx.beginPath();
-  hist.forEach((h,i) => i===0 ? ctx.moveTo(px(i),py(e50h[i])) : ctx.lineTo(px(i),py(e50h[i])));
-  ctx.stroke();
+      // EMA50 HIGH line
+      ctx.strokeStyle = "rgba(52,211,153,0.6)"; ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]); ctx.beginPath();
+      hist.forEach((h, i) => i === 0 ? ctx.moveTo(px(i), py(e50h[i])) : ctx.lineTo(px(i), py(e50h[i])));
+      ctx.stroke();
 
-  // EMA50 LOW line
-  ctx.strokeStyle = "rgba(248,113,113,0.4)";
-  ctx.beginPath();
-  hist.forEach((h,i) => i===0 ? ctx.moveTo(px(i),py(e50l[i])) : ctx.lineTo(px(i),py(e50l[i])));
-  ctx.stroke();
+      // EMA50 LOW line
+      ctx.strokeStyle = "rgba(248,113,113,0.4)";
+      ctx.beginPath();
+      hist.forEach((h, i) => i === 0 ? ctx.moveTo(px(i), py(e50l[i])) : ctx.lineTo(px(i), py(e50l[i])));
+      ctx.stroke();
 
-  // EMA10 line
-  ctx.strokeStyle = "rgba(251,191,36,0.7)"; ctx.lineWidth = 1.2; ctx.setLineDash([]);
-  ctx.beginPath();
-  hist.forEach((h,i) => i===0 ? ctx.moveTo(px(i),py(e10[i])) : ctx.lineTo(px(i),py(e10[i])));
-  ctx.stroke();
+      // EMA10 line
+      ctx.strokeStyle = "rgba(251,191,36,0.7)"; ctx.lineWidth = 1.2; ctx.setLineDash([]);
+      ctx.beginPath();
+      hist.forEach((h, i) => i === 0 ? ctx.moveTo(px(i), py(e10[i])) : ctx.lineTo(px(i), py(e10[i])));
+      ctx.stroke();
 
-  // Close coloured line
-  ctx.lineWidth = 2; ctx.setLineDash([]);
-  for(let i=1;i<N;i++) {
-    const above = closes[i] > e50h[i];
-    const inBand= closes[i] > e50l[i];
-    ctx.strokeStyle = above ? "rgba(52,211,153,0.9)" :
-                      inBand? "rgba(251,146,60,0.9)"  :
-                              "rgba(248,113,113,0.9)";
-    ctx.beginPath();
-    ctx.moveTo(px(i-1), py(closes[i-1]));
-    ctx.lineTo(px(i),   py(closes[i]));
-    ctx.stroke();
-  }
+      // Close coloured line
+      ctx.lineWidth = 2; ctx.setLineDash([]);
+      for (let i = 1; i < N; i++) {
+        const above = closes[i] > e50h[i];
+        const inBand = closes[i] > e50l[i];
+        ctx.strokeStyle = above ? "rgba(52,211,153,0.9)" :
+          inBand ? "rgba(251,146,60,0.9)" :
+            "rgba(248,113,113,0.9)";
+        ctx.beginPath();
+        ctx.moveTo(px(i - 1), py(closes[i - 1]));
+        ctx.lineTo(px(i), py(closes[i]));
+        ctx.stroke();
+      }
 
-  // Current price dot
-  const lastX = px(N-1); const lastY = py(closes[N-1]);
-  ctx.beginPath();
-  ctx.arc(lastX, lastY, 4, 0, Math.PI*2);
-  ctx.fillStyle = closes[N-1] > e50h[N-1] ? "#34d399" :
-                  closes[N-1] > e50l[N-1] ? "#fb923c" : "#f87171";
-  ctx.fill();
-}
+      // Current price dot
+      const lastX = px(N - 1); const lastY = py(closes[N - 1]);
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+      ctx.fillStyle = closes[N - 1] > e50h[N - 1] ? "#34d399" :
+        closes[N - 1] > e50l[N - 1] ? "#fb923c" : "#f87171";
+      ctx.fill();
+    }
 
-// ── Utils ─────────────────────────────────────────────────────────────────────
-function downloadPDF(symbol) {
-  window.open(`${API}/api/download/${symbol}`, "_blank");
-}
+    // ── Utils ─────────────────────────────────────────────────────────────────────
+    function downloadPDF(symbol) {
+      window.open(`${API}/api/download/${symbol}`, "_blank");
+    }
 
-function setLoading(v) {
-  document.getElementById("loading").classList.toggle("active", v);
-  document.getElementById("analyzeBtn").disabled = v;
-  document.getElementById("analyzeBtn").textContent = v ? "Analyzing..." : "Analyze →";
-}
+    function setLoading(v) {
+      document.getElementById("loading").classList.toggle("active", v);
+      document.getElementById("analyzeBtn").disabled = v;
+      document.getElementById("analyzeBtn").textContent = v ? "Analyzing..." : "Analyze →";
+    }
 
-function showError(msg) {
-  const el = document.getElementById("errorBlock");
-  el.innerHTML += `<div class="error-block">⚠ ${msg}</div>`;
-}
+    function showError(msg) {
+      const el = document.getElementById("errorBlock");
+      el.innerHTML += `<div class="error-block">⚠ ${msg}</div>`;
+    }
 
-function clearErrors() {
-  document.getElementById("errorBlock").innerHTML = "";
-}
+    function clearErrors() {
+      document.getElementById("errorBlock").innerHTML = "";
+    }
 
 
 
-// ── Strength Meter ────────────────────────────────────────────────────────────
+    // ── Strength Meter ────────────────────────────────────────────────────────────
 
-function buildMomentumPanel(m) {
-  if (!m) return "";
-  const boosted = m.momentum_boost;
-  const aligned = m.momentum_aligned;
-  const boostBadge = boosted
-    ? '<span class="momentum-boost">⚡ MOMENTUM BOOST</span>' : "";
+    function buildMomentumPanel(m) {
+      if (!m) return "";
+      const boosted = m.momentum_boost;
+      const aligned = m.momentum_aligned;
+      const boostBadge = boosted
+        ? '<span class="momentum-boost">⚡ MOMENTUM BOOST</span>' : "";
 
-  function mClr(status) {
-    if (["BUILDING","ALL UP","WIDENING","RISING","aligned"].some(s => status?.includes(s))) return "mom-up";
-    if (["FADING","MIXED","NARROWING","FALLING"].some(s => status?.includes(s))) return "mom-mid";
-    return "mom-down";
-  }
+      function mClr(status) {
+        if (["BUILDING", "ALL UP", "WIDENING", "RISING", "aligned"].some(s => status?.includes(s))) return "mom-up";
+        if (["FADING", "MIXED", "NARROWING", "FALLING"].some(s => status?.includes(s))) return "mom-mid";
+        return "mom-down";
+      }
 
-  const items = [
-    { label:"MACD Accel",   val: (m.macd_accel>0?"+":"")+m.macd_accel?.toFixed(3), status: m.macd_accel_status },
-    { label:"EMA Stack",    val: m.ema_stack_status,   status: m.ema_stack===4?"PERFECT":m.ema_stack>=3?"GOOD":"PARTIAL" },
-    { label:"Gap Trend",    val: (m.gap_widening>0?"+":"")+m.gap_widening?.toFixed(3)+"x", status: m.gap_status },
-    { label:"Vol Trend",    val: m.vol_momentum?.toFixed(2)+"x",  status: m.vol_trend },
-  ];
+      const items = [
+        { label: "MACD Accel", val: (m.macd_accel > 0 ? "+" : "") + m.macd_accel?.toFixed(3), status: m.macd_accel_status },
+        { label: "EMA Stack", val: m.ema_stack_status, status: m.ema_stack === 4 ? "PERFECT" : m.ema_stack >= 3 ? "GOOD" : "PARTIAL" },
+        { label: "Gap Trend", val: (m.gap_widening > 0 ? "+" : "") + m.gap_widening?.toFixed(3) + "x", status: m.gap_status },
+        { label: "Vol Trend", val: m.vol_momentum?.toFixed(2) + "x", status: m.vol_trend },
+      ];
 
-  const rocs = [
-    { label:"ROC 5d",  val: m.roc_5,  },
-    { label:"ROC 10d", val: m.roc_10, },
-    { label:"ROC 20d", val: m.roc_20, },
-  ];
+      const rocs = [
+        { label: "ROC 5d", val: m.roc_5, },
+        { label: "ROC 10d", val: m.roc_10, },
+        { label: "ROC 20d", val: m.roc_20, },
+      ];
 
-  return `
+      return `
     <div class="momentum-panel">
       <div class="momentum-title">
         Momentum Analysis ${boostBadge}
@@ -1174,121 +2345,116 @@ function buildMomentumPanel(m) {
           <div class="mom-item">
             <div class="mom-label">${it.label}</div>
             <div class="mom-val ${mClr(it.status)}">${it.val}</div>
-            <div class="mom-status ${mClr(it.status)}">${it.status||""}</div>
+            <div class="mom-status ${mClr(it.status)}">${it.status || ""}</div>
           </div>`).join("")}
       </div>
       <div class="roc-row">
         ${rocs.map(r => `
           <div class="roc-item">
             <div class="roc-label">${r.label}</div>
-            <div class="roc-val ${r.val>=0?"mom-up":"mom-down"}">${r.val>=0?"+":""}${r.val?.toFixed(2)}%</div>
+            <div class="roc-val ${r.val >= 0 ? "mom-up" : "mom-down"}">${r.val >= 0 ? "+" : ""}${r.val?.toFixed(2)}%</div>
           </div>`).join("")}
         <div class="roc-item">
           <div class="roc-label">Consec Up</div>
-          <div class="roc-val ${m.consec_up>=2?"mom-up":"mom-mid"}">${m.consec_up}d</div>
+          <div class="roc-val ${m.consec_up >= 2 ? "mom-up" : "mom-mid"}">${m.consec_up}d</div>
         </div>
       </div>
     </div>`;
-}
+    }
 
-function buildStrengthMeter(strength, label) {
-  const colours = {5:"#ffea00",4:"#69ff47",3:"#40c4ff",2:"#888888",1:"#555555"};
-  const clr = colours[strength] || "#555";
-  const dots = [1,2,3,4,5].map(i => {
-    const cls = i <= strength ? `filled-${strength}` : "empty";
-    return `<div class="strength-dot ${cls}">${i <= strength ? i : ""}</div>`;
-  }).join("");
-  return `
+    function buildStrengthMeter(strength, label) {
+      const colours = { 5: "#ffea00", 4: "#69ff47", 3: "#40c4ff", 2: "#888888", 1: "#555555" };
+      const clr = colours[strength] || "#555";
+      const dots = [1, 2, 3, 4, 5].map(i => {
+        const cls = i <= strength ? `filled-${strength}` : "empty";
+        return `<div class="strength-dot ${cls}">${i <= strength ? i : ""}</div>`;
+      }).join("");
+      return `
     <div class="strength-meter">
       <div class="strength-label">Strength</div>
       <div class="strength-value" style="color:${clr}">${strength}</div>
       <div class="strength-dots">${dots}</div>
       <div class="strength-desc" style="color:${clr}">${label}</div>
     </div>`;
-}
+    }
 
-// ── Ranking Table ─────────────────────────────────────────────────────────────
-let allResults = [];
+    // ── Ranking Table ─────────────────────────────────────────────────────────────
+    let allResults = [];
 
-function updateRanking(newResults) {
-  // Merge new results into allResults (replace if same symbol)
-  newResults.forEach(r => {
-    const idx = allResults.findIndex(x => x.symbol === r.symbol);
-    if (idx >= 0) allResults[idx] = r;
-    else allResults.push(r);
-  });
-  renderRanking();
-}
+    function updateRanking(newResults) {
+      // Merge new results into allResults (replace if same symbol)
+      newResults.forEach(r => {
+        const idx = allResults.findIndex(x => x.symbol === r.symbol);
+        if (idx >= 0) allResults[idx] = r;
+        else allResults.push(r);
+      });
+      renderRanking();
+    }
 
-function renderRanking() {
-  const section = document.getElementById("rankingSection");
-  const tbody   = document.getElementById("rankingBody");
-  if (!allResults.length) { section.style.display = "none"; return; }
-  section.style.display = "block";
+    function renderRanking() {
+      const section = document.getElementById("rankingSection");
+      const tbody = document.getElementById("rankingBody");
+      if (!allResults.length) { section.style.display = "none"; return; }
+      section.style.display = "block";
 
-  // ── Composite sort: Signal tier → Strength → Score → ML Pred ──────────────
-  // Signal tier: STRONG BUY=4, BUY=3, WATCH=2, AVOID=1
-  function sigTier(s) {
-    if (s === "STRONG BUY") return 4;
-    if (s === "BUY")        return 3;
-    if (s === "WATCH")      return 2;
-    return 1;
-  }
-  const sorted = [...allResults].sort((a, b) => {
-    // 1. Signal tier (STRONG BUY first)
-    const td = sigTier(b.signal) - sigTier(a.signal);
-    if (td !== 0) return td;
-    // 2. Strength rating (5 first)
-    const sd = (b.strength || 1) - (a.strength || 1);
-    if (sd !== 0) return sd;
-    // 3. Momentum boost (boosted stocks first)
-    const ma = a.momentum?.momentum_boost ? 1 : 0;
-    const mb = b.momentum?.momentum_boost ? 1 : 0;
-    if (mb !== ma) return mb - ma;
-    // 4. Score /8
-    const scd = (b.score || 0) - (a.score || 0);
-    if (scd !== 0) return scd;
-    // 5. ML Pred as tiebreaker
-    return b.pred_5d_pct - a.pred_5d_pct;
-  });
+      // ── Composite sort: Signal tier → Strength → Score → ML Pred ──────────────
+      // Signal tier: STRONG BUY=4, BUY=3, WATCH=2, AVOID=1
+      function sigTier(s) {
+        if (s === "STRONG BUY") return 4;
+        if (s === "BUY") return 3;
+        if (s === "WATCH") return 2;
+        return 1;
+      }
+      const sorted = [...allResults].sort((a, b) => {
+        // 1. Signal tier (STRONG BUY first)
+        const td = sigTier(b.signal) - sigTier(a.signal);
+        if (td !== 0) return td;
+        // 2. Strength rating (5 first)
+        const sd = (b.strength || 1) - (a.strength || 1);
+        if (sd !== 0) return sd;
+        // 3. Momentum boost (boosted stocks first)
+        const ma = a.momentum?.momentum_boost ? 1 : 0;
+        const mb = b.momentum?.momentum_boost ? 1 : 0;
+        if (mb !== ma) return mb - ma;
+        // 4. Score /8
+        const scd = (b.score || 0) - (a.score || 0);
+        if (scd !== 0) return scd;
+        // 5. ML Pred as tiebreaker
+        return b.pred_5d_pct - a.pred_5d_pct;
+      });
 
-  const medals = ["🥇","🥈","🥉"];
-  tbody.innerHTML = sorted.map((r, i) => {
-    const sigClass = r.signal.includes("BUY") ? "signal-STRONG-BUY" :
-                     r.signal === "WATCH"      ? "signal-WATCH"       : "signal-AVOID";
-    const retClr   = r.pred_5d_pct > 0 ? "rank-positive" :
-                     r.pred_5d_pct < 0 ? "rank-negative" : "rank-neutral";
-    const gapClr   = r.gap_atr >= 1 ? "rank-positive" :
-                     r.gap_atr > 0   ? "rank-gold"      : "rank-negative";
-    const scorePct = (r.score / r.max_score * 100).toFixed(0);
-    const scoreClr = r.score >= 6 ? "var(--green)" :
-                     r.score >= 4 ? "var(--gold)"  : "var(--red)";
-    // Rank badge coloured by signal tier
-    const rankClr = r.signal==="STRONG BUY" ? "var(--green)" :
-                    r.signal==="BUY"         ? "var(--teal)"  :
-                    r.signal==="WATCH"       ? "var(--gold)"  : "var(--red)";
-    const medal = i < 3
-      ? `<span class="medal-${i+1}" style="color:${rankClr}">${medals[i]}</span>`
-      : `<span class="rank-num" style="color:${rankClr};font-weight:700">${i+1}</span>`;
-    const pdfBtn   = r.pdf_ready
-      ? `<button onclick="event.stopPropagation();downloadPDF('${r.symbol}')"
+      tbody.innerHTML = sorted.map((r, i) => {
+        const sigClass = r.signal.includes("BUY") ? "signal-STRONG-BUY" :
+          r.signal === "WATCH" ? "signal-WATCH" : "signal-AVOID";
+        const retClr = r.pred_5d_pct > 0 ? "rank-positive" :
+          r.pred_5d_pct < 0 ? "rank-negative" : "rank-neutral";
+        const gapClr = r.gap_atr >= 1 ? "rank-positive" :
+          r.gap_atr > 0 ? "rank-gold" : "rank-negative";
+        const scorePct = (r.score / r.max_score * 100).toFixed(0);
+        const scoreClr = r.score >= 6 ? "var(--green)" :
+          r.score >= 4 ? "var(--gold)" : "var(--red)";
+        const rankClr = r.signal === "STRONG BUY" ? "var(--green)" :
+          r.signal === "BUY" ? "var(--teal)" :
+            r.signal === "WATCH" ? "var(--gold)" : "var(--red)";
+        const medal = `<span class="rank-badge" style="color:${rankClr}">${i + 1}</span>`;
+        const pdfBtn = r.pdf_ready
+          ? `<button onclick="event.stopPropagation();downloadPDF('${r.symbol}')"
            style="background:transparent;border:1px solid var(--border);
            color:var(--text-dim);padding:3px 8px;border-radius:3px;
            font-family:var(--font-mono);font-size:9px;cursor:pointer"
            onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'"
            onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
            PDF</button>`
-      : `<span style="color:var(--text-faint);font-size:9px">—</span>`;
+          : `<span style="color:var(--text-faint);font-size:9px">—</span>`;
 
-    return `<tr onclick="scrollToCard('${r.symbol}')">
+        return `<tr onclick="scrollToCard('${r.symbol}')">
       <td>${medal}</td>
       <td><span class="rank-sym">${r.symbol}</span>
           <br><span style="font-size:9px;color:var(--text-faint)">${r.date}</span></td>
       <td><span class="${sigClass} rank-signal">${r.signal}</span></td>
       <td style="text-align:center">
-        <span style="font-size:16px;font-weight:800;color:${
-          {5:'#ffea00',4:'#69ff47',3:'#40c4ff',2:'#888',1:'#555'}[r.strength||1]
-        }">${r.strength || 1}/5</span>
+        <span style="font-size:16px;font-weight:800;color:${{ 5: '#ffea00', 4: '#69ff47', 3: '#40c4ff', 2: '#888', 1: '#555' }[r.strength || 1]
+          }">${r.strength || 1}/5</span>
       </td>
       <td>
         <div class="rank-score-bar">
@@ -1306,36 +2472,35 @@ function renderRanking() {
       <td style="color:var(--red)">Rs.${r.stop_loss}</td>
       <td style="color:var(--green)">Rs.${r.target_1m}</td>
       <td style="text-align:center">
-        ${r.beta != null ? `<span style="color:${
-          r.beta_regime==='HIGH' ? 'var(--red)' :
-          r.beta_regime==='LOW'  ? 'var(--teal)' : 'var(--text-dim)'
-        };font-size:11px">${r.beta?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
-        <br><span style="font-size:8px;color:var(--text-faint)">${r.beta_regime||''}</span>
+        ${r.beta != null ? `<span style="color:${r.beta_regime === 'HIGH' ? 'var(--red)' :
+              r.beta_regime === 'LOW' ? 'var(--teal)' : 'var(--text-dim)'
+            };font-size:11px">${r.beta?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
+        <br><span style="font-size:8px;color:var(--text-faint)">${r.beta_regime || ''}</span>
       </td>
       <td style="text-align:center">
-        ${r.zscore_20 != null ? `<span style="color:${
-          Math.abs(r.zscore_20)>2 ? 'var(--red)' :
-          Math.abs(r.zscore_20)>1 ? 'var(--gold)' : 'var(--green)'
-        };font-size:11px">${r.zscore_20?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
+        ${r.zscore_20 != null ? `<span style="color:${Math.abs(r.zscore_20) > 2 ? 'var(--red)' :
+              Math.abs(r.zscore_20) > 1 ? 'var(--gold)' : 'var(--green)'
+            };font-size:11px">${r.zscore_20?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
       </td>
       <td style="color:var(--gold)">${r.model_acc?.toFixed(1)}%</td>
       <td>${pdfBtn}</td>
     </tr>`;
-  }).join("");
-}
+      }).join("");
+    }
 
-function scrollToCard(symbol) {
-  const card = document.querySelector(`[data-symbol="${symbol}"]`);
-  if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
-}
+    function scrollToCard(symbol) {
+      const card = document.querySelector(`[data-symbol="${symbol}"]`);
+      if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
 
-function clearRanking() {
-  allResults = [];
-  renderRanking();
-}
+    function clearRanking() {
+      allResults = [];
+      renderRanking();
+    }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
-init();
-</script>
+    // ── Boot ──────────────────────────────────────────────────────────────────────
+    init();
+  </script>
 </body>
+
 </html>
