@@ -135,6 +135,16 @@ def _slope(s, w=10):
 
 
 # ── Fetch from Yahoo Finance ──────────────────────────────────────────────────
+PDF_READY_CACHE = {}
+
+def build_pdf_bg(result_copy, d_eng_copy, sym):
+    try:
+        build_pdf(result_copy, d_eng_copy)
+        PDF_READY_CACHE[sym] = "ready"
+    except Exception as pe:
+        logger.warning(f"PDF build failed for {sym}: {pe}")
+        PDF_READY_CACHE[sym] = "error"
+
 def fetch_yahoo(symbol: str, period: str = "3y",
                 start_date: str = None, end_date: str = None):
     """Download OHLCV. Uses date range if start/end provided, else period."""
@@ -1290,7 +1300,7 @@ def delete_history(symbol: str):
 
 
 @app.post("/api/analyze")
-async def analyze(req: AnalyzeRequest):
+async def analyze(req: AnalyzeRequest, background_tasks: BackgroundTasks):
     # Normalize — handle None, empty list, or comma-separated strings
     raw_syms = req.symbols or []
     symbols  = []
@@ -1322,12 +1332,9 @@ async def analyze(req: AnalyzeRequest):
             result     = generate_signal(d_eng, sym, model_name=req.model)
 
             # Build PDF in background (non-blocking)
-            try:
-                pdf_path = build_pdf(result, d_eng)
-                result["pdf_ready"] = True
-            except Exception as pe:
-                logger.warning(f"PDF build failed for {sym}: {pe}")
-                result["pdf_ready"] = False
+            result["pdf_ready"] = False
+            PDF_READY_CACHE[sym] = "pending"
+            background_tasks.add_task(build_pdf_bg, dict(result), d_eng.copy(), sym)
 
             add_to_history(sym, sym, result["signal"])
             results.append(result)
@@ -1339,6 +1346,12 @@ async def analyze(req: AnalyzeRequest):
             errors.append({"symbol": sym, "error": str(e)})
 
     return {"results": results, "errors": errors, "count": len(results)}
+
+
+@app.get("/api/pdf_status/{symbol}")
+def pdf_status(symbol: str):
+    sym = symbol.upper()
+    return {"status": PDF_READY_CACHE.get(sym, "not_found")}
 
 
 @app.get("/api/download/{symbol}")

@@ -1576,6 +1576,9 @@
         <button class="search-btn" id="analyzeBtn" onclick="analyze()">
           Analyze →
         </button>
+        <button class="search-btn" id="stopBtn" onclick="stopAnalysis()" style="display:none; background:var(--red);">
+          Stop
+        </button>
       </div>
 
       <!-- Date range selector -->
@@ -1778,6 +1781,16 @@
 
     let customStartDate = null;
     let customEndDate = null;
+    let abortController = null;
+
+    function stopAnalysis() {
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
+        showError("Analysis stopped by user.");
+        setLoading(false);
+      }
+    }
 
     // ── Download ranking table as CSV ─────────────────────────────────────────
     function downloadRankingCSV() {
@@ -1983,6 +1996,9 @@
 
     // ── Analyze ───────────────────────────────────────────────────────────────────
     async function analyze() {
+      if (abortController) abortController.abort();
+      abortController = new AbortController();
+
       const raw = document.getElementById("symbolInput").value;
       const symbols = raw.split(/[,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
       if (!symbols.length) return;
@@ -2031,6 +2047,7 @@
         const r = await fetch(`${API}/api/analyze`, {
           method: "POST",
           headers: { "Content-Type": "application/json; charset=utf-8" },
+          signal: abortController.signal,
           body: JSON.stringify({
             symbols: cleanSymbols,
             period: selectedRange,
@@ -2056,9 +2073,14 @@
         }
         await loadHistory();
       } catch (e) {
-        showError(`Request failed: ${e.message}`);
-        document.getElementById("emptyState").style.display = "block";
+        if (e.name === "AbortError") {
+          console.log("Fetch aborted");
+        } else {
+          showError(`Request failed: ${e.message}`);
+          document.getElementById("emptyState").style.display = "block";
+        }
       } finally {
+        abortController = null;
         setLoading(false);
         steps.forEach(s => {
           const el = document.getElementById(s);
@@ -2076,7 +2098,56 @@
         container.appendChild(card);
         // Draw sparkline after DOM insert
         setTimeout(() => drawSparkline(r), 50 + idx * 80);
+        pollPdfStatus(r.symbol);
       });
+    }
+
+    function pollPdfStatus(symbol) {
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        if (attempts > 30) {
+          clearInterval(interval);
+          const btn = document.getElementById(`pdf-btn-${symbol}`);
+          if (btn) btn.innerHTML = "PDF Timeout";
+          return;
+        }
+        try {
+          const r = await fetch(`${API}/api/pdf_status/${symbol}`);
+          const data = await r.json();
+          if (data.status === "ready") {
+            clearInterval(interval);
+            const btn = document.getElementById(`pdf-btn-${symbol}`);
+            if (btn) {
+              btn.disabled = false;
+              btn.style.opacity = "1";
+              btn.style.cursor = "pointer";
+              btn.onclick = () => downloadPDF(symbol);
+              btn.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                </svg>
+                Download PDF Report
+              `;
+            }
+            const rankBtn = document.getElementById(`pdf-rank-${symbol}`);
+            if (rankBtn) {
+              rankBtn.disabled = false;
+              rankBtn.style.opacity = "1";
+              rankBtn.style.cursor = "pointer";
+              rankBtn.onclick = (e) => { e.stopPropagation(); downloadPDF(symbol); };
+            }
+          } else if (data.status === "error") {
+            clearInterval(interval);
+            const btn = document.getElementById(`pdf-btn-${symbol}`);
+            if (btn) btn.innerHTML = "PDF Error";
+            const rankBtn = document.getElementById(`pdf-rank-${symbol}`);
+            if (rankBtn) rankBtn.innerHTML = "Error";
+          }
+        } catch (e) {
+            console.error("Polling error for", symbol, e);
+        }
+      }, 2000);
     }
 
     function buildCard(r) {
@@ -2202,13 +2273,12 @@
       </div>
 
       <!-- Download -->
-      ${r.pdf_ready ? `
-      <button class="download-btn" onclick="downloadPDF('${r.symbol}')">
+      <button class="download-btn" id="pdf-btn-${r.symbol}" disabled style="opacity:0.6; cursor:wait">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
         </svg>
-        Download PDF Report
-      </button>` : ""}
+        Generating PDF...
+      </button>
     </div>`;
       return div;
     }
@@ -2291,8 +2361,9 @@
 
     function setLoading(v) {
       document.getElementById("loading").classList.toggle("active", v);
-      document.getElementById("analyzeBtn").disabled = v;
-      document.getElementById("analyzeBtn").textContent = v ? "Analyzing..." : "Analyze →";
+      document.getElementById("analyzeBtn").style.display = v ? "none" : "";
+      const stopBtn = document.getElementById("stopBtn");
+      if (stopBtn) stopBtn.style.display = v ? "" : "none";
     }
 
     function showError(msg) {
