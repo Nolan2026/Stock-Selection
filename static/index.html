@@ -2106,7 +2106,7 @@
       let attempts = 0;
       const interval = setInterval(async () => {
         attempts++;
-        if (attempts > 30) {
+        if (attempts > 300) {
           clearInterval(interval);
           const btn = document.getElementById(`pdf-btn-${symbol}`);
           if (btn) btn.innerHTML = "PDF Timeout";
@@ -2132,9 +2132,15 @@
             }
             const rankBtn = document.getElementById(`pdf-rank-${symbol}`);
             if (rankBtn) {
+              const resIdx = allResults.findIndex(x => x.symbol === symbol);
+              if (resIdx >= 0) allResults[resIdx].pdf_ready = true;
               rankBtn.disabled = false;
+              rankBtn.innerHTML = "PDF";
+              rankBtn.style.color = "var(--text-dim)";
               rankBtn.style.opacity = "1";
               rankBtn.style.cursor = "pointer";
+              rankBtn.onmouseover = function() { this.style.borderColor='var(--teal)'; this.style.color='var(--teal)'; };
+              rankBtn.onmouseout = function() { this.style.borderColor='var(--border)'; this.style.color='var(--text-dim)'; };
               rankBtn.onclick = (e) => { e.stopPropagation(); downloadPDF(symbol); };
             }
           } else if (data.status === "error") {
@@ -2185,7 +2191,20 @@
           </a>
           <div class="card-date">${r.date} · Model: ${r.model_name}</div>
         </div>
-        <div class="${sigClass} signal-badge">${r.signal}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <a href="https://in.tradingview.com/chart/?symbol=NSE%3A${r.symbol}" 
+             target="_blank" rel="noopener"
+             title="View on TradingView"
+             style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text-faint);transition:.15s;text-decoration:none;"
+             onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'"
+             onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-faint)'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M3 3v18h18"/>
+              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+            </svg>
+          </a>
+          <div class="${sigClass} signal-badge" style="cursor: pointer;" title="View on TradingView" onclick="window.open('https://in.tradingview.com/chart/?symbol=NSE%3A${r.symbol}', '_blank')">${r.signal}</div>
+        </div>
       </div>
       <div class="score-bar">
         <div class="score-track">
@@ -2509,14 +2528,18 @@
             r.signal === "WATCH" ? "var(--gold)" : "var(--red)";
         const medal = `<span class="rank-badge" style="color:${rankClr}">${i + 1}</span>`;
         const pdfBtn = r.pdf_ready
-          ? `<button onclick="event.stopPropagation();downloadPDF('${r.symbol}')"
+          ? `<button id="pdf-rank-${r.symbol}" onclick="event.stopPropagation();downloadPDF('${r.symbol}')"
            style="background:transparent;border:1px solid var(--border);
            color:var(--text-dim);padding:3px 8px;border-radius:3px;
            font-family:var(--font-mono);font-size:9px;cursor:pointer"
            onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'"
            onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
            PDF</button>`
-          : `<span style="color:var(--text-faint);font-size:9px">—</span>`;
+          : `<button id="pdf-rank-${r.symbol}" disabled
+           style="background:transparent;border:1px solid var(--border);
+           color:var(--text-faint);padding:3px 8px;border-radius:3px;
+           font-family:var(--font-mono);font-size:9px;opacity:0.6;cursor:default;">
+           Wait</button>`;
 
         return `<tr onclick="scrollToCard('${r.symbol}')">
       <td>${medal}</td>

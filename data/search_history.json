@@ -1,21 +1,99 @@
 [
   {
-    "symbol": "SMSPHARMA",
-    "name": "SMSPHARMA",
+    "symbol": "TDPOWERSYS",
+    "name": "TDPOWERSYS",
+    "signal": "STRONG BUY",
+    "searched_at": "2026-04-10T17:00:13.485771"
+  },
+  {
+    "symbol": "WSTCSTPAPR",
+    "name": "WSTCSTPAPR",
     "signal": "BUY",
-    "searched_at": "2026-04-09T16:15:26.405151"
+    "searched_at": "2026-04-10T16:40:14.036810"
   },
   {
     "symbol": "SOUTHWEST",
     "name": "SOUTHWEST",
+    "signal": "BUY",
+    "searched_at": "2026-04-10T16:35:38.345530"
+  },
+  {
+    "symbol": "APEX",
+    "name": "APEX",
     "signal": "STRONG BUY",
-    "searched_at": "2026-04-09T16:13:43.090314"
+    "searched_at": "2026-04-10T16:35:37.193252"
+  },
+  {
+    "symbol": "DENORA",
+    "name": "DENORA",
+    "signal": "STRONG BUY",
+    "searched_at": "2026-04-10T16:35:36.168019"
+  },
+  {
+    "symbol": "AKUMS",
+    "name": "AKUMS",
+    "signal": "STRONG BUY",
+    "searched_at": "2026-04-10T16:35:35.088959"
+  },
+  {
+    "symbol": "KHAITANLTD",
+    "name": "KHAITANLTD",
+    "signal": "BUY",
+    "searched_at": "2026-04-10T16:24:51.734015"
+  },
+  {
+    "symbol": "ORTEL",
+    "name": "ORTEL",
+    "signal": "BUY",
+    "searched_at": "2026-04-10T16:24:48.032716"
+  },
+  {
+    "symbol": "LUMAXTECH",
+    "name": "LUMAXTECH",
+    "signal": "STRONG BUY",
+    "searched_at": "2026-04-10T16:24:43.376556"
+  },
+  {
+    "symbol": "SONACOMS",
+    "name": "SONACOMS",
+    "signal": "BUY",
+    "searched_at": "2026-04-10T16:24:41.078860"
+  },
+  {
+    "symbol": "KESORAMIND",
+    "name": "KESORAMIND",
+    "signal": "BUY",
+    "searched_at": "2026-04-10T16:22:24.759744"
+  },
+  {
+    "symbol": "GICRE",
+    "name": "GICRE",
+    "signal": "BUY",
+    "searched_at": "2026-04-10T16:22:21.118908"
+  },
+  {
+    "symbol": "ENGINERSIN",
+    "name": "ENGINERSIN",
+    "signal": "WATCH",
+    "searched_at": "2026-04-10T16:22:19.431132"
+  },
+  {
+    "symbol": "JAYNECOIND",
+    "name": "JAYNECOIND",
+    "signal": "BUY",
+    "searched_at": "2026-04-10T16:22:09.991169"
   },
   {
     "symbol": "PFC",
     "name": "PFC",
     "signal": "BUY",
-    "searched_at": "2026-04-09T16:03:58.695517"
+    "searched_at": "2026-04-10T16:22:06.963151"
+  },
+  {
+    "symbol": "SMSPHARMA",
+    "name": "SMSPHARMA",
+    "signal": "BUY",
+    "searched_at": "2026-04-09T16:15:26.405151"
   },
   {
     "symbol": "APARINDS",
@@ -40,83 +118,5 @@
     "name": "GVT&D",
     "signal": "BUY",
     "searched_at": "2026-04-09T16:03:49.447935"
-  },
-  {
-    "symbol": "SAKAR",
-    "name": "SAKAR",
-    "signal": "STRONG BUY",
-    "searched_at": "2026-04-09T16:03:48.322752"
-  },
-  {
-    "symbol": "PRECWIRE",
-    "name": "PRECWIRE",
-    "signal": "WATCH",
-    "searched_at": "2026-04-09T16:03:47.044532"
-  },
-  {
-    "symbol": "ONGC",
-    "name": "ONGC",
-    "signal": "WATCH",
-    "searched_at": "2026-04-09T15:58:11.681496"
-  },
-  {
-    "symbol": "GPIL",
-    "name": "GPIL",
-    "signal": "BUY",
-    "searched_at": "2026-04-09T15:58:10.553784"
-  },
-  {
-    "symbol": "TCS",
-    "name": "TCS",
-    "signal": "WATCH",
-    "searched_at": "2026-04-09T15:58:09.478872"
-  },
-  {
-    "symbol": "TATASTEEL",
-    "name": "TATASTEEL",
-    "signal": "BUY",
-    "searched_at": "2026-04-09T15:58:08.374355"
-  },
-  {
-    "symbol": "INDSWFTLAB",
-    "name": "INDSWFTLAB",
-    "signal": "STRONG BUY",
-    "searched_at": "2026-04-09T15:58:07.186535"
-  },
-  {
-    "symbol": "TRENT",
-    "name": "TRENT",
-    "signal": "WATCH",
-    "searched_at": "2026-04-09T15:58:05.986654"
-  },
-  {
-    "symbol": "INDHOTEL",
-    "name": "INDHOTEL",
-    "signal": "WATCH",
-    "searched_at": "2026-04-09T15:58:04.886750"
-  },
-  {
-    "symbol": "ASHOKLEY",
-    "name": "ASHOKLEY",
-    "signal": "BUY",
-    "searched_at": "2026-04-09T15:58:02.713903"
-  },
-  {
-    "symbol": "AUROPHARMA",
-    "name": "AUROPHARMA",
-    "signal": "BUY",
-    "searched_at": "2026-04-09T15:58:01.581812"
-  },
-  {
-    "symbol": "CUPID",
-    "name": "CUPID",
-    "signal": "WATCH",
-    "searched_at": "2026-04-08T21:58:49.435387"
-  },
-  {
-    "symbol": "SAIL",
-    "name": "SAIL",
-    "signal": "BUY",
-    "searched_at": "2026-04-08T21:57:44.684368"
   }
 ]

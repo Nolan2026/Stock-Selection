@@ -1,1 +1,26 @@
+# App Data
 data/reports/*.pdf
+data/search_history.json
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# IDEs and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
