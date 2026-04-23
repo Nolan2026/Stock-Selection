@@ -1,0 +1,273 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ▌ SWING TRADE ALL-CRITERIA SIGNAL  │  Pine Script v5
+// ▌ Shows a small reverse green triangle (▼ below candle) when ALL
+// ▌ swing trade buy criteria are met simultaneously.
+// ▌ Mirrors the ML filter logic from stock_model ensemble.
+// ═══════════════════════════════════════════════════════════════════════════
+
+//@version=5
+indicator(title="Swing Trade All-Criteria Signal", shorttitle="ST-Signal", overlay=true, max_bars_back=500)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §1  USER INPUTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+grp_ema = "EMA Settings"
+ema_h_len = input.int(50,  "EMA High Period",  minval=1, maxval=500, group=grp_ema)
+ema_l_len = input.int(50,  "EMA Low Period",   minval=1, maxval=500, group=grp_ema)
+ema_c_len = input.int(10,  "EMA Close Period", minval=1, maxval=500, group=grp_ema)
+
+grp_osc = "Oscillator Settings"
+rsi_len     = input.int(14, "RSI Length",    minval=2,  group=grp_osc)
+adx_len     = input.int(14, "ADX Length",    minval=2,  group=grp_osc)
+atr_len     = input.int(14, "ATR Length",    minval=1,  group=grp_osc)
+vol_ma_len  = input.int(20, "Volume MA",     minval=5,  group=grp_osc)
+
+grp_thresh = "Criteria Thresholds"
+rsi_min     = input.float(40.0, "RSI Min (Bullish Zone)", minval=10, maxval=70, step=1.0, group=grp_thresh)
+rsi_max     = input.float(75.0, "RSI Max (Not Overbought)", minval=50, maxval=90, step=1.0, group=grp_thresh)
+adx_min     = input.float(20.0, "ADX Min (Trend Strength)", minval=10, maxval=50, step=1.0, group=grp_thresh)
+vol_min     = input.float(1.0,  "Vol Ratio Min",  minval=0.5, maxval=3.0, step=0.1, group=grp_thresh)
+score_min   = input.float(2.0,  "Min ML Score for BUY", minval=0.0, maxval=10.0, step=0.5, group=grp_thresh)
+
+grp_filter = "Filter Toggles"
+use_ema_breakout = input.bool(true, "Require EMA Close > EMA High (Channel Breakout)", group=grp_filter)
+use_rsi          = input.bool(true, "Require RSI in Bullish Zone", group=grp_filter)
+use_macd         = input.bool(true, "Require MACD Bullish (Histogram > 0)", group=grp_filter)
+use_adx          = input.bool(true, "Require ADX Strong Trend + DI+ > DI-", group=grp_filter)
+use_volume       = input.bool(true, "Require Volume Above Average", group=grp_filter)
+use_stoch        = input.bool(true, "Require Stochastic Bullish (K > D)", group=grp_filter)
+use_obv          = input.bool(true, "Require OBV Bullish Trend", group=grp_filter)
+use_bb           = input.bool(true, "Require BB %B < 0.8 (Not Overbought)", group=grp_filter)
+use_near52       = input.bool(false, "Require Near 52-Week High (≥95%)", group=grp_filter)
+use_ml_score     = input.bool(true, "Require ML Score ≥ Threshold", group=grp_filter)
+
+grp_style = "Signal Style"
+sig_color  = input.color(color.new(#00e676, 0), "Triangle Color", group=grp_style)
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §2  CORE INDICATORS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// EMAs (matches model: e50h / e50l / e10)
+ema_h = ta.ema(high,  ema_h_len)
+ema_l = ta.ema(low,   ema_l_len)
+ema_c = ta.ema(close, ema_c_len)
+
+// RSI
+rsi14 = ta.rsi(close, rsi_len)
+
+// MACD (12, 26, 9)
+[macd_line, macd_sig, macd_hist] = ta.macd(close, 12, 26, 9)
+
+// Stochastic (14, 3)
+stoch_k = ta.stoch(close, high, low, 14)
+stoch_d = ta.sma(stoch_k, 3)
+
+// ATR
+atr14 = ta.atr(atr_len)
+
+// ADX / DMI
+[adx_val, di_plus, di_minus] = ta.dmi(adx_len, adx_len)
+
+// Bollinger Bands
+bb_basis = ta.sma(close, 20)
+bb_dev   = ta.stdev(close, 20)
+bb_upper = bb_basis + 2.0 * bb_dev
+bb_lower = bb_basis - 2.0 * bb_dev
+bb_pct_b = (close - bb_lower) / (bb_upper - bb_lower)
+
+// Volume
+vol_sma   = ta.sma(volume, vol_ma_len)
+vol_ratio = volume / vol_sma
+
+// OBV
+obv       = ta.obv
+obv_ema20 = ta.ema(obv, 20)
+obv_trend = obv > obv_ema20
+
+// 52-Week High
+hi52          = ta.highest(high, 252)
+near_52w_high = close / hi52 >= 0.95
+
+// EMA slope (close EMA rising)
+ema_rising = ema_c > ema_c[3]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §3  COMPOSITE ML SCORE  [-10, +10]  (mirrors projection script)
+// ─────────────────────────────────────────────────────────────────────────────
+
+s1_chan  = ema_c > ema_h ? 2.0 : ema_c > ema_l ? 0.5 : -2.0
+s2_slope = ema_c > ema_c[3] ? 1.0 : ema_c < ema_c[3] ? -1.0 : 0.0
+s3_rsi   = rsi14 > 55 and rsi14 < 75 ? 1.5 : rsi14 >= 75 ? 0.5 : rsi14 < 45 and rsi14 > 25 ? -1.5 : rsi14 <= 25 ? -0.5 : 0.0
+
+macd_xu  = ta.crossover(macd_line,  macd_sig)
+macd_xd  = ta.crossunder(macd_line, macd_sig)
+s4_macd  = macd_hist > 0 and macd_line > 0 ? 1.5 : macd_hist > 0 and macd_line < 0 ? 0.5 : macd_hist < 0 and macd_line < 0 ? -1.5 : macd_hist < 0 and macd_line > 0 ? -0.5 : 0.0
+s4_cross = macd_xu ? 0.5 : macd_xd ? -0.5 : 0.0
+
+adx_str  = adx_val > 25
+s5_adx   = adx_str and di_plus > di_minus ? 1.5 : adx_str and di_minus > di_plus ? -1.5 : 0.0
+
+stoch_xu = ta.crossover(stoch_k,  stoch_d)
+stoch_xd = ta.crossunder(stoch_k, stoch_d)
+s6_stoch = stoch_k > stoch_d and stoch_k < 80 and stoch_k > 20 ? 1.0 : stoch_k < stoch_d and stoch_k > 20 and stoch_k < 80 ? -1.0 : 0.0
+s6_cross = stoch_xu ? 0.5 : stoch_xd ? -0.5 : 0.0
+
+s7_vol   = vol_ratio > 1.5 and close > open ? 0.5 : vol_ratio > 1.5 and close < open ? -0.5 : 0.0
+s8_obv   = obv_trend ? 0.5 : -0.5
+high_52w_dist = (close - hi52) / hi52 * 100.0
+s9_52w   = near_52w_high ? 0.5 : high_52w_dist < -20 ? -0.5 : 0.0
+s10_bb   = bb_pct_b > 0.8 ? -0.5 : bb_pct_b < 0.2 ? 0.5 : 0.0
+
+raw_score = s1_chan + s2_slope + s3_rsi + s4_macd + s4_cross + s5_adx + s6_stoch + s6_cross + s7_vol + s8_obv + s9_52w + s10_bb
+score     = math.max(-10.0, math.min(10.0, raw_score))
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §4  CRITERIA CHECK  (minimum-pass threshold)
+// ─────────────────────────────────────────────────────────────────────────────
+
+min_criteria = input.int(7, "Min Criteria to Pass", minval=1, maxval=10, group=grp_filter,
+     tooltip="Triangle appears when at least this many enabled criteria pass. Set to total enabled for strict ALL mode.")
+
+// Each criterion — evaluated only if its toggle is ON
+c_ema   = use_ema_breakout ? (ema_c > ema_h) : true
+c_rsi   = use_rsi          ? (rsi14 >= rsi_min and rsi14 <= rsi_max) : true
+c_macd  = use_macd         ? (macd_hist > 0) : true
+c_adx   = use_adx          ? (adx_val >= adx_min and di_plus > di_minus) : true
+c_vol   = use_volume       ? (vol_ratio >= vol_min) : true
+c_stoch = use_stoch        ? (stoch_k > stoch_d and stoch_k > 20 and stoch_k < 80) : true
+c_obv   = use_obv          ? obv_trend : true
+c_bb    = use_bb           ? (bb_pct_b < 0.8) : true
+c_52w   = use_near52       ? near_52w_high : true
+c_score = use_ml_score     ? (score >= score_min) : true
+
+// Count how many enabled criteria pass
+pass_count = (c_ema ? 1 : 0) + (c_rsi ? 1 : 0) + (c_macd ? 1 : 0) + (c_adx ? 1 : 0) + (c_vol ? 1 : 0) + (c_stoch ? 1 : 0) + (c_obv ? 1 : 0) + (c_bb ? 1 : 0) + (c_52w ? 1 : 0) + (c_score ? 1 : 0)
+enabled_count = (use_ema_breakout ? 1 : 0) + (use_rsi ? 1 : 0) + (use_macd ? 1 : 0) + (use_adx ? 1 : 0) + (use_volume ? 1 : 0) + (use_stoch ? 1 : 0) + (use_obv ? 1 : 0) + (use_bb ? 1 : 0) + (use_near52 ? 1 : 0) + (use_ml_score ? 1 : 0)
+
+// Signal fires when enough criteria pass
+all_criteria_met = pass_count >= min_criteria
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §5  PLOT: REVERSE GREEN TRIANGLE (▼ below candle)
+// ─────────────────────────────────────────────────────────────────────────────
+
+plotshape(
+     all_criteria_met,
+     title      = "All Criteria Met",
+     location   = location.belowbar,
+     style      = shape.triangleup,
+     size       = size.small,
+     color      = sig_color,
+     text       = "",
+     textcolor  = sig_color
+     )
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §6  OPTIONAL: EMA LINES FOR CONTEXT
+// ─────────────────────────────────────────────────────────────────────────────
+
+grp_vis = "Visual Overlays"
+show_emas = input.bool(true, "Show EMA Lines", group=grp_vis)
+show_info = input.bool(true, "Show Criteria Info Table", group=grp_vis)
+
+plot(show_emas ? ema_h : na, title="EMA High",  color=color.new(#fbbf24, 30), linewidth=1)
+plot(show_emas ? ema_l : na, title="EMA Low",   color=color.new(#f87171, 30), linewidth=1)
+plot(show_emas ? ema_c : na, title="EMA Close", color=color.new(#00e5ff, 30), linewidth=2)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §7  CRITERIA STATUS TABLE  (top-right, last bar only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+var tbl = table.new(position.top_right, 3, 13,
+     bgcolor      = color.new(#0d1525, 10),
+     border_color = color.new(#1a2535, 0),
+     border_width = 1,
+     frame_color  = color.new(#4a9fd4, 0),
+     frame_width  = 1)
+
+_pass_col = color.new(#34d399, 0)
+_fail_col = color.new(#f87171, 0)
+_head_bg  = color.new(#0a0f1a, 0)
+_text_col = color.new(#c8d6e8, 0)
+
+if show_info and barstate.islast
+    // Header
+    table.cell(tbl, 0, 0, "CRITERIA CHECK", bgcolor=_head_bg, text_color=color.new(#4a9fd4, 0), text_size=size.small, text_halign=text.align_center)
+    table.merge_cells(tbl, 0, 0, 2, 0)
+
+    // Column headers
+    table.cell(tbl, 0, 1, "Criterion",  text_color=color.new(#4a9fd4, 0), text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 1, "Value",      text_color=color.new(#4a9fd4, 0), text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 1, "Status",     text_color=color.new(#4a9fd4, 0), text_size=size.tiny, text_halign=text.align_center)
+
+    // Row 1: EMA Breakout
+    table.cell(tbl, 0, 2, "EMA Breakout",   text_color=_text_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 2, ema_c > ema_h ? "Above" : "Below",  text_color=c_ema ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 2, c_ema ? "✓" : "✗",  text_color=c_ema ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_center)
+
+    // Row 2: RSI
+    table.cell(tbl, 0, 3, "RSI (" + str.tostring(rsi_len) + ")", text_color=_text_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 3, str.tostring(math.round(rsi14, 1)),     text_color=c_rsi ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 3, c_rsi ? "✓" : "✗",  text_color=c_rsi ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_center)
+
+    // Row 3: MACD
+    table.cell(tbl, 0, 4, "MACD Hist",  text_color=_text_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 4, str.tostring(math.round(macd_hist, 3)), text_color=c_macd ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 4, c_macd ? "✓" : "✗",  text_color=c_macd ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_center)
+
+    // Row 4: ADX
+    table.cell(tbl, 0, 5, "ADX + DI+>DI-",  text_color=_text_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 5, str.tostring(math.round(adx_val, 1)),   text_color=c_adx ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 5, c_adx ? "✓" : "✗",  text_color=c_adx ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_center)
+
+    // Row 5: Volume
+    table.cell(tbl, 0, 6, "Vol Ratio",  text_color=_text_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 6, str.tostring(math.round(vol_ratio, 2)) + "x",  text_color=c_vol ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 6, c_vol ? "✓" : "✗",  text_color=c_vol ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_center)
+
+    // Row 6: Stochastic
+    table.cell(tbl, 0, 7, "Stoch K>D",  text_color=_text_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 7, str.tostring(math.round(stoch_k, 1)) + "/" + str.tostring(math.round(stoch_d, 1)),  text_color=c_stoch ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 7, c_stoch ? "✓" : "✗",  text_color=c_stoch ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_center)
+
+    // Row 7: OBV
+    table.cell(tbl, 0, 8, "OBV Trend",  text_color=_text_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 8, obv_trend ? "Bullish" : "Bearish",  text_color=c_obv ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 8, c_obv ? "✓" : "✗",  text_color=c_obv ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_center)
+
+    // Row 8: BB %B
+    table.cell(tbl, 0, 9, "BB %B < 0.8",  text_color=_text_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 9, str.tostring(math.round(bb_pct_b, 2)),  text_color=c_bb ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 9, c_bb ? "✓" : "✗",  text_color=c_bb ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_center)
+
+    // Row 9: 52W High
+    table.cell(tbl, 0, 10, "Near 52W High",  text_color=_text_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 10, str.tostring(math.round(high_52w_dist, 1)) + "%",  text_color=c_52w ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 10, c_52w ? "✓" : "✗",  text_color=c_52w ? _pass_col : _fail_col, text_size=size.tiny, text_halign=text.align_center)
+
+    // Row 10: ML Score
+    sc_col = score >= score_min ? _pass_col : _fail_col
+    table.cell(tbl, 0, 11, "ML Score",  text_color=_text_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 11, str.tostring(math.round(score, 1)) + "/10",  text_color=sc_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 11, c_score ? "✓" : "✗",  text_color=sc_col, text_size=size.tiny, text_halign=text.align_center)
+
+    // Summary row
+    all_col = all_criteria_met ? _pass_col : _fail_col
+    table.cell(tbl, 0, 12, "RESULT (≥" + str.tostring(min_criteria) + ")",   bgcolor=color.new(all_col, 85), text_color=all_col, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(tbl, 1, 12, str.tostring(pass_count) + "/" + str.tostring(enabled_count),  bgcolor=color.new(all_col, 85), text_color=all_col, text_size=size.tiny, text_halign=text.align_right)
+    table.cell(tbl, 2, 12, all_criteria_met ? "✓ BUY" : "✗ WAIT",  bgcolor=color.new(all_col, 85), text_color=all_col, text_size=size.tiny, text_halign=text.align_center)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §8  BACKGROUND FLASH ON SIGNAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+bgcolor(all_criteria_met ? color.new(#00e676, 93) : na, title="Signal Flash")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §9  ALERT CONDITION
+// ─────────────────────────────────────────────────────────────────────────────
+
+alertcondition(all_criteria_met, title="All Criteria BUY", message="[ST-Signal] ALL criteria met — BUY signal | {{ticker}} @ {{close}}")

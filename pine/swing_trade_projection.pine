@@ -1,0 +1,271 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ▌ SWING TRADE PROJECTION  │  Pine Script v5
+// ▌ Mirrors stock_model-1.pkl ensemble logic  (Acc ~68.5%)
+// ▌ EMAs: EMA(High) | EMA(Low) | EMA(Close)  +  3-Month ML Projection
+// ═══════════════════════════════════════════════════════════════════════════
+
+//@version=5
+indicator(title="Swing Trade ML Projection [stock_model-1]", shorttitle="ML-Proj 3M", overlay=true, max_bars_back=500, max_lines_count=20, max_labels_count=10)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §1  USER INPUTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+grp_ema    = "EMA Settings"
+ema_h_len  = input.int(50,  "EMA High Period",  minval=1, maxval=500, group=grp_ema)
+ema_l_len  = input.int(50,  "EMA Low Period",   minval=1, maxval=500, group=grp_ema)
+ema_c_len  = input.int(10,  "EMA Close Period", minval=1, maxval=500, group=grp_ema)
+col_emah   = input.color(color.new(#fbbf24, 0), "EMA High Color",  group=grp_ema)
+col_emal   = input.color(color.new(#f87171, 0), "EMA Low Color",   group=grp_ema)
+col_emac   = input.color(color.new(#00e5ff, 0), "EMA Close Color", group=grp_ema)
+
+grp_proj   = "Projection Settings"
+proj_bars  = input.int(65,    "Projection Bars (~3 Months)", minval=10, maxval=200, group=grp_proj)
+show_bands = input.bool(true,  "Show Confidence Bands",       group=grp_proj)
+show_score = input.bool(true,  "Show ML Score Table",          group=grp_proj)
+model_acc  = input.float(68.5, "Model Accuracy %",             minval=50.0, maxval=100.0, step=0.1, group=grp_proj)
+
+grp_ind    = "Indicator Settings"
+rsi_len    = input.int(14, "RSI Length", minval=2, group=grp_ind)
+adx_len    = input.int(14, "ADX Length", minval=2, group=grp_ind)
+atr_len    = input.int(14, "ATR Length", minval=1, group=grp_ind)
+vol_ma_len = input.int(20, "Volume MA",  minval=5, group=grp_ind)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §2  THREE EMAs  (matches model: e50h / e50l / e10)
+// ─────────────────────────────────────────────────────────────────────────────
+
+ema_h = ta.ema(high,  ema_h_len)
+ema_l = ta.ema(low,   ema_l_len)
+ema_c = ta.ema(close, ema_c_len)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §3  BASE INDICATORS
+// ─────────────────────────────────────────────────────────────────────────────
+
+rsi14   = ta.rsi(close, rsi_len)
+[macd_line, macd_sig, macd_hist] = ta.macd(close, 12, 26, 9)
+stoch_k = ta.stoch(close, high, low, 14)
+stoch_d = ta.sma(stoch_k, 3)
+atr14   = ta.atr(atr_len)
+[adx_val, di_plus, di_minus] = ta.dmi(adx_len, adx_len)
+
+bb_basis = ta.sma(close, 20)
+bb_dev   = ta.stdev(close, 20)
+bb_upper = bb_basis + 2.0 * bb_dev
+bb_lower = bb_basis - 2.0 * bb_dev
+bb_pct_b = (close - bb_lower) / (bb_upper - bb_lower)
+
+vol_sma   = ta.sma(volume, vol_ma_len)
+vol_ratio = volume / vol_sma
+
+obv       = ta.obv
+obv_ema20 = ta.ema(obv, 20)
+obv_trend = obv > obv_ema20 ? 1 : 0
+
+hi52          = ta.highest(high, 252)
+near_52w_high = close / hi52 >= 0.95 ? 1 : 0
+high_52w_dist = (close - hi52) / hi52 * 100.0
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §4  COMPOSITE ML SCORE  [-10, +10]
+// ─────────────────────────────────────────────────────────────────────────────
+
+s1_chan  = ema_c > ema_h ? 2.0 : ema_c > ema_l ? 0.5 : -2.0
+s2_slope = ema_c > ema_c[3] ? 1.0 : ema_c < ema_c[3] ? -1.0 : 0.0
+s3_rsi   = rsi14 > 55 and rsi14 < 75 ? 1.5 : rsi14 >= 75 ? 0.5 : rsi14 < 45 and rsi14 > 25 ? -1.5 : rsi14 <= 25 ? -0.5 : 0.0
+
+macd_xu  = ta.crossover(macd_line,  macd_sig)
+macd_xd  = ta.crossunder(macd_line, macd_sig)
+s4_macd  = macd_hist > 0 and macd_line > 0 ? 1.5 : macd_hist > 0 and macd_line < 0 ? 0.5 : macd_hist < 0 and macd_line < 0 ? -1.5 : macd_hist < 0 and macd_line > 0 ? -0.5 : 0.0
+s4_cross = macd_xu ? 0.5 : macd_xd ? -0.5 : 0.0
+
+adx_str  = adx_val > 25
+s5_adx   = adx_str and di_plus > di_minus ? 1.5 : adx_str and di_minus > di_plus ? -1.5 : 0.0
+
+stoch_xu = ta.crossover(stoch_k,  stoch_d)
+stoch_xd = ta.crossunder(stoch_k, stoch_d)
+s6_stoch = stoch_k > stoch_d and stoch_k < 80 and stoch_k > 20 ? 1.0 : stoch_k < stoch_d and stoch_k > 20 and stoch_k < 80 ? -1.0 : 0.0
+s6_cross = stoch_xu ? 0.5 : stoch_xd ? -0.5 : 0.0
+
+s7_vol   = vol_ratio > 1.5 and close > open ? 0.5 : vol_ratio > 1.5 and close < open ? -0.5 : 0.0
+s8_obv   = obv_trend == 1 ? 0.5 : -0.5
+s9_52w   = near_52w_high == 1 ? 0.5 : high_52w_dist < -20 ? -0.5 : 0.0
+s10_bb   = bb_pct_b > 0.8 ? -0.5 : bb_pct_b < 0.2 ? 0.5 : 0.0
+
+raw_score = s1_chan + s2_slope + s3_rsi + s4_macd + s4_cross + s5_adx + s6_stoch + s6_cross + s7_vol + s8_obv + s9_52w + s10_bb
+score     = math.max(-10.0, math.min(10.0, raw_score))
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §5  SIGNAL CLASSIFICATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+signal_label = score >= 2.0 ? "BUY" : score <= -2.0 ? "SELL" : "HOLD"
+proj_col     = signal_label == "BUY" ? color.new(#34d399, 10) : signal_label == "SELL" ? color.new(#f87171, 10) : color.new(#fbbf24, 10)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §6  PLOT: THREE EMAs
+// ─────────────────────────────────────────────────────────────────────────────
+
+p_emah = plot(ema_h, title="EMA High",  color=col_emah, linewidth=2)
+p_emal = plot(ema_l, title="EMA Low",   color=col_emal, linewidth=2)
+p_emac = plot(ema_c, title="EMA Close", color=col_emac, linewidth=2)
+
+fill(p_emah, p_emal, color=color.new(#fbbf24, 92), title="EMA Channel Fill")
+
+plotshape(ta.crossover(ema_c, ema_h),  title="Break Above", location=location.belowbar, style=shape.triangleup,   size=size.small, color=color.new(#34d399, 0), text="B+")
+plotshape(ta.crossunder(ema_c, ema_l), title="Break Below", location=location.abovebar, style=shape.triangledown, size=size.small, color=color.new(#f87171, 0), text="B-")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §7  3-MONTH PROJECTION LINE
+//
+//  KEY: Lines in Pine Script use price coordinates (Y) and bar-index (X).
+//  They behave exactly like manually drawn trend lines — they move with
+//  candles when you pan/scroll the chart because they share the same
+//  coordinate space.
+//
+//  We use line.set_xy1/xy2 to UPDATE the existing line object every bar
+//  (both historical last bar AND real-time ticks via barstate.isrealtime).
+//  This guarantees the line always starts from the current last candle.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Declare persistent line/label objects (created once, updated every tick)
+var line  ln_main  = na
+var line  ln_upper = na
+var line  ln_lower = na
+var label lb_end   = na
+var label lb_now   = na
+
+// ── Projection math (runs every bar so values are always current) ─────────────
+float drift      = score / 10.0 * 0.15
+float end_price  = close * (1.0 + drift)
+float band_atr   = atr14 * 0.3
+float band_end   = atr14 * math.sqrt(float(proj_bars)) * 0.35
+float tgt_pct    = drift * 100.0
+string t_sign    = tgt_pct >= 0.0 ? "+" : ""
+string end_txt   = "3M Target: " + str.tostring(math.round(end_price, 2)) + "\n" + t_sign + str.tostring(math.round(tgt_pct, 1)) + "%" + "\nSignal: " + signal_label + "\nAcc: " + str.tostring(model_acc) + "%"
+string now_txt   = "Score: " + str.tostring(math.round(score, 1)) + "/10  " + signal_label
+
+// ── Update on last bar AND every real-time tick ───────────────────────────────
+// This is what makes it behave like a native TradingView trend line
+if barstate.islast or barstate.isrealtime
+    int   x1 = bar_index
+    int   x2 = bar_index + proj_bars
+    float y1 = close
+    float y2 = end_price
+
+    // Main projection line
+    if na(ln_main)
+        ln_main := line.new(x1, y1, x2, y2, color=proj_col, width=3, style=line.style_solid)
+    else
+        line.set_xy1(ln_main, x1, y1)
+        line.set_xy2(ln_main, x2, y2)
+        line.set_color(ln_main, proj_col)
+
+    // Confidence bands
+    if show_bands
+        if na(ln_upper)
+            ln_upper := line.new(x1, y1 + band_atr, x2, y2 + band_end, color=color.new(#34d399, 60), width=1, style=line.style_dashed)
+            ln_lower := line.new(x1, y1 - band_atr, x2, y2 - band_end, color=color.new(#f87171, 60), width=1, style=line.style_dashed)
+        else
+            line.set_xy1(ln_upper, x1, y1 + band_atr)
+            line.set_xy2(ln_upper, x2, y2 + band_end)
+            line.set_xy1(ln_lower, x1, y1 - band_atr)
+            line.set_xy2(ln_lower, x2, y2 - band_end)
+    else
+        // Hide bands if turned off
+        if not na(ln_upper)
+            line.set_color(ln_upper, color.new(color.white, 100))
+            line.set_color(ln_lower, color.new(color.white, 100))
+
+    // Target label (at end of projection)
+    if na(lb_end)
+        lb_end := label.new(x2, y2, text=end_txt, color=proj_col, textcolor=color.white, style=label.style_label_left, size=size.normal)
+        lb_now := label.new(x1, y1, text=now_txt, color=color.new(#0d1525, 20), textcolor=proj_col, style=label.style_label_right, size=size.small)
+    else
+        label.set_xy(lb_end, x2, y2)
+        label.set_text(lb_end, end_txt)
+        label.set_color(lb_end, proj_col)
+        label.set_xy(lb_now, x1, y1)
+        label.set_text(lb_now, now_txt)
+        label.set_textcolor(lb_now, proj_col)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §8  ALERT CONDITIONS (no chart dots)
+// ─────────────────────────────────────────────────────────────────────────────
+
+hc_buy  = score > 4.0  and macd_xu and ema_c > ema_h
+hc_sell = score < -4.0 and macd_xd and ema_c < ema_l
+
+alertcondition(hc_buy,  title="ML HC BUY",  message="[ML-Proj] HIGH-CONFIDENCE BUY | {{ticker}} @ {{close}}")
+alertcondition(hc_sell, title="ML HC SELL", message="[ML-Proj] HIGH-CONFIDENCE SELL | {{ticker}} @ {{close}}")
+alertcondition(ta.crossover(ema_c, ema_h),  title="EMA Break Above", message="[ML-Proj] EMA-Close broke ABOVE channel | {{ticker}}")
+alertcondition(ta.crossunder(ema_c, ema_l), title="EMA Break Below", message="[ML-Proj] EMA-Close broke BELOW channel | {{ticker}}")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §9  ML SCORE TABLE
+// ─────────────────────────────────────────────────────────────────────────────
+
+var tbl = table.new(position.top_right, 2, 13, bgcolor=color.new(#0d1525, 10), border_color=color.new(#1a2535, 0), border_width=1, frame_color=color.new(#4a9fd4, 0), frame_width=1)
+
+if show_score and barstate.islast
+    table.cell(tbl, 0, 0, "ML SCORE  [stock_model-1]", bgcolor=color.new(#0a0f1a, 0), text_color=color.new(#4a9fd4, 0), text_size=size.small, text_halign=text.align_center)
+    table.merge_cells(tbl, 0, 0, 1, 0)
+
+    sc  = score >= 2.0 ? color.new(#34d399, 0) : score <= -2.0 ? color.new(#f87171, 0) : color.new(#fbbf24, 0)
+    table.cell(tbl, 0, 1, "Score",    text_color=color.new(#c8d6e8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 1, str.tostring(math.round(score, 1)) + " / 10  [" + signal_label + "]", text_color=sc, text_size=size.small, text_halign=text.align_right)
+
+    sbg = signal_label == "BUY" ? color.new(#34d399, 20) : signal_label == "SELL" ? color.new(#f87171, 20) : color.new(#fbbf24, 20)
+    stc = signal_label == "BUY" ? color.new(#34d399, 0)  : signal_label == "SELL" ? color.new(#f87171, 0)  : color.new(#fbbf24, 0)
+    table.cell(tbl, 0, 2, "Signal",   text_color=color.new(#c8d6e8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 2, signal_label, bgcolor=sbg, text_color=stc, text_size=size.small, text_halign=text.align_right)
+
+    table.cell(tbl, 0, 3, "Model Acc", text_color=color.new(#c8d6e8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 3, str.tostring(model_acc) + " %", text_color=color.new(#a78bfa, 0), text_size=size.small, text_halign=text.align_right)
+
+    ch_label = ema_c > ema_h ? "Above Channel" : ema_c > ema_l ? "In Channel" : "Below Channel"
+    ch_color = ema_c > ema_h ? color.new(#34d399, 0) : ema_c > ema_l ? color.new(#fbbf24, 0) : color.new(#f87171, 0)
+    table.cell(tbl, 0, 4, "EMA Position", text_color=color.new(#c8d6e8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 4, ch_label, text_color=ch_color, text_size=size.small, text_halign=text.align_right)
+
+    rc = rsi14 > 70 ? color.new(#f87171, 0) : rsi14 < 30 ? color.new(#34d399, 0) : color.new(#c8d6e8, 0)
+    table.cell(tbl, 0, 5, "RSI " + str.tostring(rsi_len), text_color=color.new(#c8d6e8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 5, str.tostring(math.round(rsi14, 1)), text_color=rc, text_size=size.small, text_halign=text.align_right)
+
+    ac = adx_val > 25 ? color.new(#34d399, 0) : color.new(#fbbf24, 0)
+    al = str.tostring(math.round(adx_val, 1)) + (adx_val > 25 ? " Strong" : " Weak")
+    table.cell(tbl, 0, 6, "ADX " + str.tostring(adx_len), text_color=color.new(#c8d6e8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 6, al, text_color=ac, text_size=size.small, text_halign=text.align_right)
+
+    vc = vol_ratio > 1.5 ? color.new(#34d399, 0) : vol_ratio < 0.7 ? color.new(#f87171, 0) : color.new(#c8d6e8, 0)
+    table.cell(tbl, 0, 7, "Vol Ratio", text_color=color.new(#c8d6e8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 7, str.tostring(math.round(vol_ratio, 2)) + "x", text_color=vc, text_size=size.small, text_halign=text.align_right)
+
+    dc = high_52w_dist > -5 ? color.new(#34d399, 0) : high_52w_dist < -20 ? color.new(#f87171, 0) : color.new(#fbbf24, 0)
+    table.cell(tbl, 0, 8, "52W High Dist", text_color=color.new(#c8d6e8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 8, str.tostring(math.round(high_52w_dist, 1)) + "%", text_color=dc, text_size=size.small, text_halign=text.align_right)
+
+    oc = obv_trend == 1 ? color.new(#34d399, 0) : color.new(#f87171, 0)
+    table.cell(tbl, 0, 9, "OBV Trend", text_color=color.new(#c8d6e8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 9, obv_trend == 1 ? "Bullish" : "Bearish", text_color=oc, text_size=size.small, text_halign=text.align_right)
+
+    table.cell(tbl, 0, 10, "EMA" + str.tostring(ema_h_len) + " High", text_color=col_emah, text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 10, str.tostring(math.round(ema_h, 2)), text_color=col_emah, text_size=size.small, text_halign=text.align_right)
+    table.cell(tbl, 0, 11, "EMA" + str.tostring(ema_l_len) + " Low", text_color=col_emal, text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 11, str.tostring(math.round(ema_l, 2)), text_color=col_emal, text_size=size.small, text_halign=text.align_right)
+
+    pp  = close * (1.0 + score / 10.0 * 0.15)
+    ppc = score / 10.0 * 15.0
+    pps = ppc >= 0.0 ? "+" : ""
+    ppl = str.tostring(math.round(pp, 2)) + "  (" + pps + str.tostring(math.round(ppc, 1)) + "%)"
+    ptc = score >= 0 ? color.new(#34d399, 0) : color.new(#f87171, 0)
+    table.cell(tbl, 0, 12, "3M Target", text_color=color.new(#c8d6e8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(tbl, 1, 12, ppl, text_color=ptc, text_size=size.small, text_halign=text.align_right)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §10  BACKGROUND SHADING
+// ─────────────────────────────────────────────────────────────────────────────
+
+bg_col = ema_c > ema_h ? color.new(#34d399, 97) : ema_c < ema_l ? color.new(#f87171, 97) : na
+bgcolor(bg_col, title="EMA Channel Background")

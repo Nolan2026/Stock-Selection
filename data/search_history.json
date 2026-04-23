@@ -1,122 +1,122 @@
 [
   {
-    "symbol": "INDIANB",
-    "name": "INDIANB",
+    "symbol": "TAINWALCHM",
+    "name": "TAINWALCHM",
     "signal": "BUY",
-    "searched_at": "2026-04-11T20:44:26.018069"
+    "searched_at": "2026-04-22T20:36:02.379602"
   },
   {
-    "symbol": "INDSWFTLAB",
-    "name": "INDSWFTLAB",
+    "symbol": "ITI",
+    "name": "ITI",
     "signal": "BUY",
-    "searched_at": "2026-04-11T20:44:24.912010"
+    "searched_at": "2026-04-22T20:24:52.206252"
   },
   {
-    "symbol": "KESORAMIND",
-    "name": "KESORAMIND",
-    "signal": "BUY",
-    "searched_at": "2026-04-11T20:44:23.829621"
-  },
-  {
-    "symbol": "GICRE",
-    "name": "GICRE",
-    "signal": "BUY",
-    "searched_at": "2026-04-11T20:44:22.778180"
-  },
-  {
-    "symbol": "ENGINERSIN",
-    "name": "ENGINERSIN",
+    "symbol": "SESHAPAPER",
+    "name": "SESHAPAPER",
     "signal": "WATCH",
-    "searched_at": "2026-04-11T20:44:21.835122"
+    "searched_at": "2026-04-22T20:24:49.582469"
   },
   {
-    "symbol": "TDPOWERSYS",
-    "name": "TDPOWERSYS",
+    "symbol": "WANBURY",
+    "name": "WANBURY",
     "signal": "STRONG BUY",
-    "searched_at": "2026-04-11T20:44:20.886082"
+    "searched_at": "2026-04-22T20:24:48.390557"
   },
   {
-    "symbol": "APEX",
-    "name": "APEX",
+    "symbol": "SPAL",
+    "name": "SPAL",
+    "signal": "BUY",
+    "searched_at": "2026-04-22T20:24:47.147299"
+  },
+  {
+    "symbol": "CHENNPETRO",
+    "name": "CHENNPETRO",
+    "signal": "BUY",
+    "searched_at": "2026-04-22T20:24:45.882817"
+  },
+  {
+    "symbol": "WSTCSTPAPR",
+    "name": "WSTCSTPAPR",
+    "signal": "BUY",
+    "searched_at": "2026-04-22T20:24:44.705928"
+  },
+  {
+    "symbol": "JKPAPER",
+    "name": "JKPAPER",
+    "signal": "BUY",
+    "searched_at": "2026-04-22T20:24:43.685925"
+  },
+  {
+    "symbol": "AHLEAST",
+    "name": "AHLEAST",
     "signal": "STRONG BUY",
-    "searched_at": "2026-04-11T20:44:19.785254"
+    "searched_at": "2026-04-22T20:24:42.473952"
   },
   {
-    "symbol": "SONACOMS",
-    "name": "SONACOMS",
-    "signal": "BUY",
-    "searched_at": "2026-04-11T20:44:18.816271"
-  },
-  {
-    "symbol": "JAYNECOIND",
-    "name": "JAYNECOIND",
-    "signal": "BUY",
-    "searched_at": "2026-04-11T20:44:17.640077"
-  },
-  {
-    "symbol": "PFC",
-    "name": "PFC",
-    "signal": "BUY",
-    "searched_at": "2026-04-11T20:44:16.380816"
-  },
-  {
-    "symbol": "DENORA",
-    "name": "DENORA",
-    "signal": "STRONG BUY",
-    "searched_at": "2026-04-11T20:34:36.433878"
-  },
-  {
-    "symbol": "AKUMS",
-    "name": "AKUMS",
-    "signal": "STRONG BUY",
-    "searched_at": "2026-04-11T20:34:35.432937"
-  },
-  {
-    "symbol": "ORTEL",
-    "name": "ORTEL",
-    "signal": "BUY",
-    "searched_at": "2026-04-11T20:34:34.670783"
-  },
-  {
-    "symbol": "KHAITANLTD",
-    "name": "KHAITANLTD",
-    "signal": "BUY",
-    "searched_at": "2026-04-11T20:34:33.636489"
-  },
-  {
-    "symbol": "LUMAXTECH",
-    "name": "LUMAXTECH",
-    "signal": "STRONG BUY",
-    "searched_at": "2026-04-11T20:34:31.650059"
-  },
-  {
-    "symbol": "ARIES",
-    "name": "ARIES",
-    "signal": "BUY",
-    "searched_at": "2026-04-11T20:34:28.579083"
-  },
-  {
-    "symbol": "NITCO",
-    "name": "NITCO",
-    "signal": "BUY",
-    "searched_at": "2026-04-11T20:34:27.369390"
-  },
-  {
-    "symbol": "HINDPETRO",
-    "name": "HINDPETRO",
-    "signal": "BUY",
-    "searched_at": "2026-04-11T20:05:05.213536"
-  },
-  {
-    "symbol": "MOTHERSON",
-    "name": "MOTHERSON",
+    "symbol": "KABRAEXTRU",
+    "name": "KABRAEXTRU",
     "signal": "WATCH",
-    "searched_at": "2026-04-11T19:58:27.279261"
+    "searched_at": "2026-04-22T20:24:41.135626"
   },
   {
-    "symbol": "ASHOKLEY",
-    "name": "ASHOKLEY",
+    "symbol": "TECHM",
+    "name": "TECHM",
+    "signal": "BUY",
+    "searched_at": "2026-04-22T20:20:13.078783"
+  },
+  {
+    "symbol": "TCS",
+    "name": "TCS",
     "signal": "WATCH",
-    "searched_at": "2026-04-11T19:58:26.302717"
+    "searched_at": "2026-04-22T20:20:11.477934"
+  },
+  {
+    "symbol": "M&M",
+    "name": "M&M",
+    "signal": "WATCH",
+    "searched_at": "2026-04-22T20:20:09.729306"
+  },
+  {
+    "symbol": "INFY",
+    "name": "INFY",
+    "signal": "BUY",
+    "searched_at": "2026-04-22T20:20:08.166759"
+  },
+  {
+    "symbol": "HCLTECH",
+    "name": "HCLTECH",
+    "signal": "WATCH",
+    "searched_at": "2026-04-22T20:20:06.440452"
+  },
+  {
+    "symbol": "HINDALCO",
+    "name": "HINDALCO",
+    "signal": "WATCH",
+    "searched_at": "2026-04-22T20:18:36.834830"
+  },
+  {
+    "symbol": "NTPC",
+    "name": "NTPC",
+    "signal": "BUY",
+    "searched_at": "2026-04-22T20:18:34.634581"
+  },
+  {
+    "symbol": "HINDUNILVR",
+    "name": "HINDUNILVR",
+    "signal": "WATCH",
+    "searched_at": "2026-04-22T20:18:33.061557"
+  },
+  {
+    "symbol": "TATACONSUM",
+    "name": "TATACONSUM",
+    "signal": "WATCH",
+    "searched_at": "2026-04-22T20:18:31.045629"
+  },
+  {
+    "symbol": "GESHIP",
+    "name": "GESHIP",
+    "signal": "BUY",
+    "searched_at": "2026-04-22T17:21:51.458109"
   }
 ]

@@ -1,7 +1,10 @@
-# App Data
-data/reports/*.pdf
+# App Data / Generated Files
+data/reports/
 data/search_history.json
 *.pdf
+*.csv
+*.xlsx
+*.log
 
 # Python
 __pycache__/
@@ -18,6 +21,13 @@ env/
 
 # Jupyter Notebooks
 .ipynb_checkpoints
+*.ipynb
+
+# Testing and Scratch files
+test_*.py
+*_test.py
+test.py
+test_valuation.py
 
 # IDEs and OS
 .vscode/

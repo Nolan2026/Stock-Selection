@@ -244,7 +244,44 @@
     .search-wrap {
       display: flex;
       gap: 12px;
-      margin-bottom: 12px
+      margin-bottom: 8px
+    }
+
+    /* ── Mode Switcher ────────────────────────────────────────────────────── */
+    .mode-switcher {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      width: fit-content;
+    }
+
+    .mode-btn {
+      padding: 8px 20px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .mode-btn.active {
+      background: var(--teal);
+      color: var(--bg);
+      box-shadow: 0 4px 12px rgba(74, 159, 212, 0.3);
+    }
+
+    .mode-btn:not(.active):hover {
+      background: rgba(255, 255, 255, 0.05);
     }
 
     /* ── Search enhancements ──────────────────────────────────────────────── */
@@ -468,6 +505,20 @@
       color: var(--teal)
     }
 
+    /* Valuation specific history pills */
+    #val-recent-pills .recent-pill {
+      background: linear-gradient(135deg, rgba(74, 159, 212, 0.15), rgba(45, 212, 191, 0.15));
+      border: 1px solid var(--teal);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    #val-recent-pills .recent-pill:hover {
+      background: linear-gradient(135deg, rgba(74, 159, 212, 0.25), rgba(45, 212, 191, 0.25));
+      box-shadow: 0 4px 12px rgba(45, 212, 191, 0.2);
+      transform: translateY(-1px);
+    }
+
     .pill-signal {
       width: 7px;
       height: 7px;
@@ -590,6 +641,202 @@
     .stock-card:hover {
       border-color: var(--border2);
       box-shadow: 0 8px 32px rgba(0, 0, 0, .4)
+    }
+
+    /* ── Valuation Specific Styles ─────────────────────────────────────────── */
+    .val-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0;
+      overflow: hidden;
+      margin-bottom: 32px;
+      animation: cardIn 0.5s ease-out;
+    }
+
+    .val-header {
+      padding: 24px 32px;
+      background: linear-gradient(to right, rgba(74, 159, 212, 0.05), transparent);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .val-title-group h2 {
+      font-family: var(--font-display);
+      font-size: 28px;
+      letter-spacing: -1px;
+      color: var(--text);
+    }
+
+    .val-title-group p {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    .val-score-circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 4px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      position: relative;
+    }
+
+    .val-score-circle .val-score-num {
+      font-size: 24px;
+      font-weight: 800;
+      font-family: var(--font-display);
+    }
+
+    .val-score-circle .val-score-label {
+      font-size: 8px;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+
+    .val-summary-box {
+      padding: 24px 32px;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .val-verdict-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .val-verdict-pill {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .val-summary-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-dim);
+    }
+
+    .val-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .val-metric-item {
+      background: var(--panel);
+      padding: 20px 24px;
+      transition: all 0.2s;
+    }
+
+    .val-metric-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .val-m-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .val-m-name {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-faint);
+    }
+
+    .val-m-verdict {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .val-m-body {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .val-m-value {
+      font-size: 24px;
+      font-weight: 700;
+      font-family: var(--font-display);
+      color: var(--text);
+    }
+
+    .val-m-unit {
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+
+    .val-m-context {
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--text-dim);
+    }
+
+    .val-factors-section {
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    .val-factor-group h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .val-factor-list {
+      list-style: none;
+    }
+
+    .val-factor-list li {
+      font-size: 13px;
+      margin-bottom: 10px;
+      padding-left: 20px;
+      position: relative;
+      color: var(--text-dim);
+    }
+
+    .val-factor-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 8px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .pos-factors li::before {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .risk-factors li::before {
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red);
     }
 
     .card-header {
@@ -1540,8 +1787,10 @@
     </div>
     <div class="topbar-right">
       <div class="header-model-selector">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          style="opacity:0.6">
+          <path
+            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
           <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
           <line x1="12" y1="22.08" x2="12" y2="12" />
         </svg>
@@ -1566,15 +1815,22 @@
 
     <!-- Search -->
     <div class="search-section">
-      <div class="search-label">Enter Stock Symbols</div>
+      <div id="tech-search-label" class="search-label">Terminal — Signal Execution Target</div>
+      <div id="val-search-label" class="search-label" style="display:none">Terminal — Fundamental Valuation Engine</div>
+
+      <div class="mode-switcher">
+        <button class="mode-btn active" id="mode-tech" onclick="switchMode('tech')">Technical Analysis</button>
+        <button class="mode-btn" id="mode-val" onclick="switchMode('val')">Valuation Analysis</button>
+      </div>
+
       <div class="search-wrap">
         <div class="search-input-wrap">
-          <input class="search-input" id="symbolInput" type="text" placeholder="ASHOKLEY, HPCL, MOTHERSON, TCS ..."
+          <input class="search-input" id="symbolInput" type="text" placeholder="RELIANCE, TCS, HDFCBANK, ASHOKLEY ..."
             autocomplete="off" spellcheck="false" oninput="toggleClear()">
           <button class="clear-btn" id="clearBtn" onclick="clearSearch()" title="Clear">&#x2715;</button>
         </div>
-        <button class="search-btn" id="analyzeBtn" onclick="analyze()">
-          Analyze →
+        <button class="search-btn" id="analyzeBtn" onclick="handleSearch()">
+          Run Engine
         </button>
         <button class="search-btn" id="stopBtn" onclick="stopAnalysis()" style="display:none; background:var(--red);">
           Stop
@@ -1631,6 +1887,35 @@
         <div class="recent-label">Recent Searches</div>
         <div class="recent-pills" id="recentPills"></div>
       </div>
+
+
+      <!-- Recent Valuation Searches -->
+      <div id="val-recent-section" style="display:none; margin-top:24px;">
+        <div class="recent-label">Recent Valuation Targets</div>
+        <div id="val-recent-pills" class="recent-pills"></div>
+      </div>
+      <!-- Valuation Actions -->
+      <div id="valuation-actions" class="ranking-actions" style="display:none; margin-top:24px; gap:12px;">
+
+        <button class="download-csv-btn" onclick="downloadValuationCSV()" title="Download Valuation CSV"
+          style="border-color: var(--green); color: var(--green);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Excel (CSV)
+        </button>
+        <button class="download-csv-btn" id="val-pdf-btn" onclick="downloadValuationPDF()" title="Download PDF Report"
+          style="border-color: var(--teal); color: var(--teal);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+          </svg>
+          Full Report (PDF)
+        </button>
+        <button class="ranking-clear" onclick="clearValuations()">Clear Result</button>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -1650,6 +1935,53 @@
 
     <!-- Results -->
     <div class="results" id="results"></div>
+
+    <!-- Valuation Results Container -->
+    <div id="valuation-results"></div>
+
+    <!-- Valuation Ranking Table -->
+    <div class="ranking-section" id="valRankingSection" style="display:none">
+      <div class="ranking-header">
+        <div>
+          <div class="ranking-title">Fundamental Valuation Rankings</div>
+          <div class="ranking-sub">
+            <span style="color:var(--text-faint)">Ranked by Composite Score (0-100) — Highest value margin of safety first</span>
+          </div>
+        </div>
+        <div class="ranking-actions">
+          <button class="download-csv-btn" onclick="downloadValuationCSV()" title="Download CSV">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Excel
+          </button>
+          <button class="ranking-clear" onclick="clearValuations()">Clear all</button>
+        </div>
+      </div>
+      <div class="ranking-table-wrap">
+        <table class="ranking-table">
+          <thead>
+            <tr>
+              <th style="text-align:left">Rank</th>
+              <th style="text-align:left">Symbol</th>
+              <th style="text-align:left">Company</th>
+              <th style="text-align:left">Verdict</th>
+              <th>Score</th>
+              <th>PE Ratio</th>
+              <th>PEG</th>
+              <th>P/B</th>
+              <th>ROE</th>
+              <th>Div Yield</th>
+              <th>D/E</th>
+              <th>Report</th>
+            </tr>
+          </thead>
+          <tbody id="valRankingBody"></tbody>
+        </table>
+      </div>
+    </div>
 
     <!-- ── Ranking Table ─────────────────────────────────────────────────── -->
     <div class="ranking-section" id="rankingSection" style="display:none">
@@ -1724,6 +2056,366 @@
 
   <script>
     const API = "";   // empty = same origin
+    let currentMode = 'tech';
+    let allValuations = [];
+    let allResults = [];      // For Technical ranking
+    let abortController = null;
+    let selectedRange = "3y";
+    let customStartDate = null;
+    let customEndDate = null;
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('mode-tech').classList.toggle('active', mode === 'tech');
+      document.getElementById('mode-val').classList.toggle('active', mode === 'val');
+      document.getElementById('tech-search-label').style.display = mode === 'tech' ? 'flex' : 'none';
+      document.getElementById('val-search-label').style.display = mode === 'val' ? 'flex' : 'none';
+
+      const dateControls = document.querySelector('.date-range-row');
+      if (dateControls) dateControls.style.display = mode === 'tech' ? 'flex' : 'none';
+
+      const recentSection = document.getElementById('recentSection');
+      if (recentSection) recentSection.style.display = mode === 'tech' ? 'block' : 'none';
+
+      const rankingSection = document.getElementById('rankingSection');
+      if (rankingSection) rankingSection.style.display = mode === 'tech' ? 'block' : 'none';
+
+      const valActions = document.getElementById('valuation-actions');
+      const valRecent = document.getElementById('val-recent-section');
+      const valRankingSection = document.getElementById('valRankingSection');
+      if (valActions) valActions.style.display = mode === 'val' ? (allValuations.length ? 'flex' : 'none') : 'none';
+      if (valRecent) valRecent.style.display = mode === 'val' ? 'block' : 'none';
+      if (valRankingSection) valRankingSection.style.display = mode === 'val' ? (allValuations.length ? 'block' : 'none') : 'none';
+
+      // Clear results when switching
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('valuation-results').innerHTML = '';
+      document.getElementById('emptyState').style.display = 'block';
+
+      if (mode === 'val') loadValuationHistory();
+    }
+
+
+    function clearValuations() {
+      allValuations = [];
+      document.getElementById('valuation-results').innerHTML = '';
+      document.getElementById('valRankingSection').style.display = 'none';
+      document.getElementById('valuation-actions').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'block';
+    }
+
+    async function handleSearch() {
+      if (currentMode === 'tech') {
+        await analyze();
+      } else {
+        await analyzeValuation();
+      }
+    }
+
+    async function analyzeValuation() {
+      const input = document.getElementById('symbolInput');
+      const tickerStr = input.value.trim();
+      if (!tickerStr) return;
+
+      const resultsNode = document.getElementById('valuation-results');
+      const emptyState = document.getElementById('emptyState');
+      const errorNode = document.getElementById('errorBlock');
+
+      resultsNode.innerHTML = '';
+      errorNode.innerHTML = '';
+      emptyState.style.display = 'none';
+      setLoading(true);
+
+      try {
+        const res = await fetch('/api/valuation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ticker: tickerStr })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || 'Valuation failed');
+        }
+
+        const data = await res.json();
+        // data is now a List[ValuationResponse]
+        allValuations = [...allValuations, ...data];
+        saveValuationToHistory(tickerStr);
+        document.getElementById('valuation-actions').style.display = 'flex';
+        renderValRanking();
+
+        data.forEach((v, idx) => {
+          setTimeout(() => renderValuation(v), idx * 100);
+        });
+      } catch (err) {
+        showError(err.message);
+        emptyState.style.display = 'block';
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function getVerdColor(color) {
+      const map = {
+        'dark_green': '#10b981',
+        'green': '#34d399',
+        'yellow': '#fbbf24',
+        'orange': '#fb923c',
+        'red': '#f87171',
+        'grey': '#6b7280'
+      };
+      return map[color] || '#6b7280';
+    }
+
+    function renderValuation(v) {
+      const container = document.getElementById('valuation-results');
+      const scoreColor = v.overall_verdict.valuation_score > 70 ? 'var(--green)' :
+        v.overall_verdict.valuation_score > 40 ? 'var(--gold)' : 'var(--red)';
+
+      const div = document.createElement('div');
+      div.className = 'val-card card-enter';
+      div.innerHTML = `
+            <div class="val-header">
+                <div class="val-title-group">
+                    <h2>${v.ticker}</h2>
+                    <p>${v.company_name} • ${v.sector || 'N/A'}</p>
+                </div>
+                <div class="val-score-circle" style="border-color: ${scoreColor}">
+                    <div class="val-score-num" style="color: ${scoreColor}">${v.overall_verdict.valuation_score}</div>
+                    <div class="val-score-label">Score</div>
+                </div>
+            </div>
+
+            <div class="val-summary-box">
+                <div class="val-verdict-banner">
+                    <div class="val-verdict-pill" style="background: ${scoreColor}22; color: ${scoreColor}; border: 1px solid ${scoreColor}44">
+                        ${v.overall_verdict.label}
+                    </div>
+                </div>
+                <p class="val-summary-text">${v.overall_verdict.summary}</p>
+            </div>
+
+            <div class="val-metrics-grid">
+                ${v.metrics.map(m => `
+                    <div class="val-metric-item">
+                        <div class="val-m-header">
+                            <span class="val-m-name">${m.metric_name}</span>
+                            <span class="val-m-verdict" style="color: ${getVerdColor(m.verdict_color)}">${m.verdict}</span>
+                        </div>
+                        <div class="val-m-body">
+                            <span class="val-m-value">${m.value !== null ? m.value : 'N/A'}</span>
+                            <span class="val-m-unit">${m.unit}</span>
+                        </div>
+                        <p class="val-m-context">${m.threshold_context}</p>
+                    </div>
+                `).join('')}
+            </div>
+
+            <div class="val-factors-section">
+                <div class="val-factor-group">
+                    <h3 style="color: var(--green)">Positive Factors</h3>
+                    <ul class="val-factor-list pos-factors">
+                        ${v.positive_factors.map(f => `<li>${f}</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="val-factor-group">
+                    <h3 style="color: var(--red)">Risk Factors</h3>
+                    <ul class="val-factor-list risk-factors">
+                        ${v.risk_flags.map(f => `<li>${f}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+      container.appendChild(div);
+      div.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderValRanking() {
+      const section = document.getElementById("valRankingSection");
+      const tbody = document.getElementById("valRankingBody");
+      if (!allValuations.length) { section.style.display = "none"; return; }
+      section.style.display = "block";
+
+      const sorted = [...allValuations].sort((a, b) => {
+        return b.overall_verdict.valuation_score - a.overall_verdict.valuation_score;
+      });
+
+      tbody.innerHTML = sorted.map((r, i) => {
+        const scoreColor = r.overall_verdict.valuation_score > 70 ? 'var(--green)' :
+                           r.overall_verdict.valuation_score > 40 ? 'var(--gold)' : 'var(--red)';
+        
+        let m = {};
+        r.metrics.forEach(metric => { m[metric.metric_code] = metric; });
+
+        const formatVal = (mObj) => (mObj && mObj.value !== null) ? `${mObj.value}${mObj.unit !== "x" && mObj.unit !== "ratio" ? mObj.unit : ""}${mObj.unit === "x" ? "x" : ""}` : "N/A";
+        
+        const rankClr = scoreColor;
+        const medal = `<span class="rank-badge" style="color:${rankClr}">${i + 1}</span>`;
+
+        return `<tr onclick="document.body.scrollIntoView({ behavior: 'smooth' }); setTimeout(() => document.querySelectorAll('.val-card')[${allValuations.findIndex(val => val.ticker === r.ticker)}].scrollIntoView({behavior: 'smooth', block: 'center'}), 100);">
+      <td>${medal}</td>
+      <td><span class="rank-sym">${r.ticker}</span></td>
+      <td><span style="font-size:10px;color:var(--text-dim)">${r.company_name}</span></td>
+      <td><span class="rank-signal" style="color:${scoreColor}; border:1px solid ${scoreColor}44; padding:3px 8px; border-radius:3px; background:${scoreColor}22">${r.overall_verdict.label}</span></td>
+      <td style="text-align:right"><span style="font-size:14px;font-weight:700;color:${scoreColor}">${r.overall_verdict.valuation_score}/100</span></td>
+      <td style="text-align:right;color:${getVerdColor(m.pe_ratio?.verdict_color)}">${formatVal(m.pe_ratio)}</td>
+      <td style="text-align:right;color:${getVerdColor(m.peg_ratio?.verdict_color)}">${formatVal(m.peg_ratio)}</td>
+      <td style="text-align:right;color:${getVerdColor(m.pb_ratio?.verdict_color)}">${formatVal(m.pb_ratio)}</td>
+      <td style="text-align:right;color:${getVerdColor(m.roe?.verdict_color)}">${formatVal(m.roe)}</td>
+      <td style="text-align:right;color:${getVerdColor(m.dividend_yield?.verdict_color)}">${formatVal(m.dividend_yield)}</td>
+      <td style="text-align:right;color:${getVerdColor(m.debt_to_equity?.verdict_color)}">${formatVal(m.debt_to_equity)}</td>
+      <td style="text-align:right">
+        <button id="val-pdf-btn-${r.ticker}" onclick="event.stopPropagation(); downloadSingleValuationPDF('${r.ticker}', 'val-pdf-btn-${r.ticker}')"
+            style="background:transparent;border:1px solid var(--border);
+            color:var(--text-dim);padding:3px 8px;border-radius:3px;
+            font-family:var(--font-mono);font-size:9px;cursor:pointer"
+            onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+            PDF
+        </button>
+      </td>
+    </tr>`;
+      }).join("");
+    }
+
+    function downloadValuationCSV() {
+      if (!allValuations.length) return;
+
+      const headers = [
+        "Ticker", "Company", "Price", "Sector", "Industry", "Score", "Verdict",
+        "PE Ratio", "PB Ratio", "PS Ratio", "EV/EBITDA", "PEG", "Yield%", "ROE%", "FCF Yield%", "D/E"
+      ];
+
+      const rows = allValuations.map(v => {
+        const m = {};
+        v.metrics.forEach(metric => { m[metric.metric_code] = metric.value; });
+        return [
+          v.ticker, v.company_name, v.current_price, v.sector, v.industry,
+          v.overall_verdict.valuation_score, v.overall_verdict.label,
+          m.pe_ratio, m.pb_ratio, m.ps_ratio, m.ev_ebitda, m.peg_ratio,
+          m.dividend_yield, m.roe, m.fcf_yield, m.debt_to_equity
+        ].map(val => `"${String(val ?? 'N/A').replace(/"/g, '""')}"`).join(",");
+      });
+
+      const BOM = "\uFEFF";
+      const csv = BOM + [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Stock_Valuations_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    async function downloadValuationPDF() {
+      if (!allValuations.length) return;
+      const btn = document.getElementById('val-pdf-btn');
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = 'Generating PDF...';
+      btn.disabled = true;
+
+      try {
+        const symbols = allValuations.map(v => v.ticker).join(",");
+        const res = await fetch('/api/valuation/download_pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ticker: symbols })
+        });
+
+        if (!res.ok) throw new Error('PDF Generation failed');
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Valuation_Report_${new Date().toISOString().slice(0, 10)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+      }
+    }
+
+    async function downloadSingleValuationPDF(symbol, btnId) {
+      const btn = document.getElementById(btnId);
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/valuation/download_pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ticker: symbol })
+        });
+
+        if (!res.ok) throw new Error('PDF Generation failed');
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Valuation_Report_${symbol}_${new Date().toISOString().slice(0, 10)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+      }
+    }
+
+    function saveValuationToHistory(str) {
+      let hist = JSON.parse(localStorage.getItem('val_history') || '[]');
+      str.split(',').forEach(s => {
+        s = s.trim().toUpperCase();
+        if (s && !hist.includes(s)) hist.unshift(s);
+      });
+      localStorage.setItem('val_history', JSON.stringify(hist.slice(0, 15)));
+      loadValuationHistory();
+    }
+
+    function loadValuationHistory() {
+      const hist = JSON.parse(localStorage.getItem('val_history') || '[]');
+      const container = document.getElementById('val-recent-pills');
+      if (!hist.length) {
+        document.getElementById('val-recent-section').style.display = 'none';
+        return;
+      }
+      document.getElementById('val-recent-section').style.display = 'block';
+      container.innerHTML = hist.map(s => `
+            <div class="recent-pill" onclick="fillSearchAndVal('${s}')">
+                <span>${s}</span>
+            </div>
+        `).join('');
+    }
+
+    function fillSearchAndVal(sym) {
+      switchMode('val');
+      const inp = document.getElementById('symbolInput');
+      const current = inp.value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+
+      if (!current.includes(sym.toUpperCase())) {
+        current.push(sym.toUpperCase());
+      }
+
+      inp.value = current.join(", ");
+      toggleClear();
+      // Optional: Focus input after adding
+      inp.focus();
+    }
 
 
 
@@ -1779,9 +2471,6 @@
       closeDateModal();
     }
 
-    let customStartDate = null;
-    let customEndDate = null;
-    let abortController = null;
 
     function stopAnalysis() {
       if (abortController) {
@@ -1866,7 +2555,6 @@
     }
 
     // ── Date range selector ───────────────────────────────────────────────────
-    let selectedRange = "3y";   // default 3 years
 
     function setRange(range) {
       selectedRange = range;
@@ -1890,8 +2578,9 @@
       await checkHealth();
       await loadModels();
       await loadHistory();
+      loadValuationHistory();
       document.getElementById("symbolInput").addEventListener("keydown", e => {
-        if (e.key === "Enter") analyze();
+        if (e.key === "Enter") handleSearch();
       });
     }
 
@@ -1905,12 +2594,12 @@
           const sorted = [...d.models].sort((a, b) => b.acc - a.acc);
           const bestModelId = sorted[0].id;
 
-          sel.innerHTML = d.models.map(m => 
+          sel.innerHTML = d.models.map(m =>
             `<option value="${m.id}" ${m.id === bestModelId ? 'selected' : ''}>
               ${m.name}
             </option>`
           ).join("");
-          
+
           window.MODELS_INFO = d.models; // Store for badge updates
           updateModelBadge();
         }
@@ -1923,9 +2612,9 @@
       const sel = document.getElementById("modelSelect");
       const modelId = sel.value;
       const status = document.getElementById("modelStatus");
-      
+
       if (!window.MODELS_INFO) return;
-      
+
       const m = window.MODELS_INFO.find(x => x.id === modelId);
       if (m) {
         status.innerHTML = `Model: ${m.name} &nbsp;·&nbsp; <span style="color:var(--gold)">${m.acc.toFixed(1)}% Acc</span>`;
@@ -1934,7 +2623,7 @@
 
     async function checkHealth() {
       try {
-        const r = await fetch(`${API}/api/health`);
+        const r = await fetch(`/api/health`);
         const d = await r.json();
         const el = document.getElementById("modelStatus");
         if (d.model_loaded) {
@@ -1951,7 +2640,7 @@
     // ── History ───────────────────────────────────────────────────────────────────
     async function loadHistory() {
       try {
-        const r = await fetch(`${API}/api/history`);
+        const r = await fetch(`/api/history`);
         const d = await r.json();
         renderHistory(d.history || []);
       } catch (e) { }
@@ -2139,8 +2828,8 @@
               rankBtn.style.color = "var(--text-dim)";
               rankBtn.style.opacity = "1";
               rankBtn.style.cursor = "pointer";
-              rankBtn.onmouseover = function() { this.style.borderColor='var(--teal)'; this.style.color='var(--teal)'; };
-              rankBtn.onmouseout = function() { this.style.borderColor='var(--border)'; this.style.color='var(--text-dim)'; };
+              rankBtn.onmouseover = function () { this.style.borderColor = 'var(--teal)'; this.style.color = 'var(--teal)'; };
+              rankBtn.onmouseout = function () { this.style.borderColor = 'var(--border)'; this.style.color = 'var(--text-dim)'; };
               rankBtn.onclick = (e) => { e.stopPropagation(); downloadPDF(symbol); };
             }
           } else if (data.status === "error") {
@@ -2151,7 +2840,7 @@
             if (rankBtn) rankBtn.innerHTML = "Error";
           }
         } catch (e) {
-            console.error("Polling error for", symbol, e);
+          console.error("Polling error for", symbol, e);
         }
       }, 2000);
     }
@@ -2469,7 +3158,7 @@
     }
 
     // ── Ranking Table ─────────────────────────────────────────────────────────────
-    let allResults = [];
+    // allResults declared at top
 
     function updateRanking(newResults) {
       // Merge new results into allResults (replace if same symbol)
@@ -2567,13 +3256,13 @@
       <td style="color:var(--green)">Rs.${r.target_1m}</td>
       <td style="text-align:center">
         ${r.beta != null ? `<span style="color:${r.beta_regime === 'HIGH' ? 'var(--red)' :
-              r.beta_regime === 'LOW' ? 'var(--teal)' : 'var(--text-dim)'
+            r.beta_regime === 'LOW' ? 'var(--teal)' : 'var(--text-dim)'
             };font-size:11px">${r.beta?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
         <br><span style="font-size:8px;color:var(--text-faint)">${r.beta_regime || ''}</span>
       </td>
       <td style="text-align:center">
         ${r.zscore_20 != null ? `<span style="color:${Math.abs(r.zscore_20) > 2 ? 'var(--red)' :
-              Math.abs(r.zscore_20) > 1 ? 'var(--gold)' : 'var(--green)'
+            Math.abs(r.zscore_20) > 1 ? 'var(--gold)' : 'var(--green)'
             };font-size:11px">${r.zscore_20?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
       </td>
       <td style="color:var(--gold)">${r.model_acc?.toFixed(1)}%</td>

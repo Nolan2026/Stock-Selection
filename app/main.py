@@ -28,11 +28,15 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from app.routers import valuation_router
+
 app = FastAPI(
     title="NSE Stock Analysis API",
     description="EMA gap analysis + ML signal generation for NSE stocks",
     version="1.0.0"
 )
+
+app.include_router(valuation_router.router)
 
 app.add_middleware(
     CORSMiddleware,
