@@ -34,3 +34,12 @@ test_valuation.py
 .idea/
 .DS_Store
 Thumbs.db
+
+# Temporary Data
+temp*.json
+info.json
+
+# Image Exports
+*.jpg
+*.jpeg
+*.png

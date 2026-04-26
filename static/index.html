@@ -8,6 +8,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap"
     rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     :root {
       --bg: #080c14;
@@ -538,6 +539,27 @@
     }
 
     /* ── Loading ──────────────────────────────────────────────────────────── */
+    .loading-progress-wrap {
+      width: 200px;
+      height: 2px;
+      background: var(--border);
+      margin: 15px auto 0;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .loading-progress-bar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0%;
+      background: var(--teal);
+      box-shadow: 0 0 10px var(--teal);
+      transition: width 0.3s ease;
+    }
+
     .loading {
       display: none;
       text-align: center;
@@ -1774,6 +1796,85 @@
       gap: 8px;
       align-items: center
     }
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--border);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-dim);
+      min-width: 28px;
+      height: 20px;
+      padding: 0 4px;
+    }
+
+    .rank-sym-link {
+      color: var(--teal);
+      text-decoration: none;
+      font-weight: 700;
+      transition: .15s;
+    }
+
+    .rank-sym-link:hover {
+      text-decoration: underline;
+      color: #fff;
+    }
+
+    .sector-link {
+      color: var(--text-faint);
+      text-decoration: none;
+      font-size: 10px;
+      transition: .15s;
+    }
+
+    .sector-link:hover {
+      color: var(--gold);
+    }
+
+    .momentum-score-high { color: var(--green); font-weight: 800; }
+    .momentum-score-mid { color: var(--gold); font-weight: 700; }
+    .momentum-score-low { color: var(--red); font-weight: 600; }
+    
+    .momentum-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .momentum-status-pill {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .status-ema-above { background: rgba(52, 211, 153, 0.1); color: var(--green); border: 1px solid rgba(52, 211, 153, 0.2); }
+    .status-ema-below { background: rgba(248, 113, 113, 0.1); color: var(--red); border: 1px solid rgba(248, 113, 113, 0.2); }
+
+    .watchlist-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-faint);
+      padding: 4px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .watchlist-btn:hover { border-color: var(--teal); color: var(--teal); }
+    .watchlist-btn.active { background: var(--teal); color: var(--bg); border-color: var(--teal); }
+
+    .range-pills#index-pills { flex: 1; }
+    
+    .ranking-section#momentumRankingSection {
+      margin-top: 40px;
+    }
   </style>
 </head>
 
@@ -1821,6 +1922,7 @@
       <div class="mode-switcher">
         <button class="mode-btn active" id="mode-tech" onclick="switchMode('tech')">Technical Analysis</button>
         <button class="mode-btn" id="mode-val" onclick="switchMode('val')">Valuation Analysis</button>
+        <button class="mode-btn" id="mode-momentum" onclick="switchMode('momentum')">Momentum Scanner</button>
       </div>
 
       <div class="search-wrap">
@@ -1838,7 +1940,7 @@
       </div>
 
       <!-- Date range selector -->
-      <div class="date-range-row">
+      <div id="tech-date-row" class="date-range-row">
         <span class="date-range-label">Data range</span>
         <div class="range-pills">
           <button class="range-pill" onclick="setRange('6mo')" data-range="6mo">6 Mo</button>
@@ -1857,6 +1959,29 @@
           </button>
         </div>
         <span class="active-range-display" id="activeRangeDisplay"></span>
+      </div>
+
+      <!-- Momentum Universe & Date Selector -->
+      <div id="momentum-universe-row" class="date-range-row" style="display:none; justify-content: space-between; align-items: center;">
+        <div class="range-pills" id="index-pills">
+          <!-- Indices pills will be loaded here -->
+        </div>
+        <div class="range-pills">
+          <span class="date-range-label" style="margin-right:8px">Period:</span>
+          <button class="range-pill" onclick="setMomentumRange('1m')">1M</button>
+          <button class="range-pill" onclick="setMomentumRange('3m')">3M</button>
+          <button class="range-pill" onclick="setMomentumRange('6m')">6M</button>
+          <button class="range-pill active" id="mom-range-1y" onclick="setMomentumRange('1y')">1Y</button>
+          <button class="range-pill" onclick="setMomentumRange('2y')">2Y</button>
+          <button class="range-pill" onclick="setMomentumRange('3y')">3Y</button>
+          <button class="range-pill" onclick="openMomentumDateModal()">Custom</button>
+        </div>
+      </div>
+
+      <!-- Momentum Watchlist -->
+      <div id="momentum-watchlist-row" class="recent-section" style="display:none">
+        <div class="recent-label">Quick Access Watchlist</div>
+        <div class="recent-pills" id="momentum-watchlist-pills"></div>
       </div>
 
       <!-- Custom date range modal -->
@@ -1922,6 +2047,10 @@
     <div class="loading" id="loading">
       <div class="spinner"></div>
       <div class="loading-text">Fetching &amp; Analyzing</div>
+      <div id="loading-eta" style="font-size: 10px; color: var(--teal); opacity: 0.8; margin-top: 5px; font-family: var(--font-mono); letter-spacing: 1px;"></div>
+      <div class="loading-progress-wrap">
+        <div class="loading-progress-bar" id="loadingBar"></div>
+      </div>
       <div class="loading-steps">
         <div class="loading-step" id="step1">→ Connecting to Yahoo Finance...</div>
         <div class="loading-step" id="step2">→ Engineering 40+ indicators...</div>
@@ -1936,6 +2065,67 @@
     <!-- Results -->
     <div class="results" id="results"></div>
 
+    <!-- Momentum Results Container -->
+    <div id="momentum-results-container"></div>
+
+    <!-- Momentum Ranking Table -->
+    <div class="ranking-section" id="momentumRankingSection" style="display:none">
+      <div class="ranking-header">
+        <div>
+          <div class="ranking-title">Momentum Scan Rankings</div>
+          <div class="ranking-sub">
+            <span style="color:var(--green)">Strong Momentum (>70)</span>
+            <span style="color:var(--text-faint)"> → </span>
+            <span style="color:var(--gold)">Moderate (>40)</span>
+            <span style="color:var(--text-faint)"> → </span>
+            <span style="color:var(--red)">Weak (<40)</span>
+            <span style="color:var(--text-faint)"> · Weighted by Return (60%), Volume (20%), EMAs (20%)</span>
+          </div>
+        </div>
+        <div class="ranking-actions" style="display: flex; gap: 8px;">
+          <button class="download-csv-btn" onclick="downloadRankingImage('momentumRankingSection', 'Momentum Scan Rankings ')" title="Download Image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            Image
+          </button>
+          <button class="download-csv-btn" onclick="exportMomentumCSV()" title="Download CSV">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="22" x2="12" y2="10" />
+            </svg>
+            Export CSV
+          </button>
+        </div>
+      </div>
+      <div class="ranking-table-wrap">
+        <table class="ranking-table">
+          <thead>
+            <tr>
+              <th style="text-align:left">Rank</th>
+              <th style="text-align:left">Stock</th>
+              <th style="text-align:left">Sector</th>
+              <th style="text-align:right">Score</th>
+              <th style="text-align:right">Price</th>
+              <th style="text-align:right">1M Ret%</th>
+              <th style="text-align:right">3M Ret%</th>
+              <th style="text-align:right">6M Ret%</th>
+              <th style="text-align:right">1Y Ret%</th>
+              <th style="text-align:right">Daily Ret</th>
+              <th style="text-align:right">Vol Trend</th>
+              <th style="text-align:center">EMA 50</th>
+              <th style="text-align:center">EMA 200</th>
+              <th style="text-align:center">Watch</th>
+            </tr>
+          </thead>
+          <tbody id="momentumRankingBody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Valuation Results Container -->
     <div id="valuation-results"></div>
 
@@ -1948,7 +2138,15 @@
             <span style="color:var(--text-faint)">Ranked by Composite Score (0-100) — Highest value margin of safety first</span>
           </div>
         </div>
-        <div class="ranking-actions">
+        <div class="ranking-actions" style="display: flex; gap: 8px;">
+          <button class="download-csv-btn" onclick="downloadRankingImage('valRankingSection', 'Fundamental Valuation Rankings ')" title="Download Image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            Image
+          </button>
           <button class="download-csv-btn" onclick="downloadValuationCSV()" title="Download CSV">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
@@ -1999,7 +2197,15 @@
             <span style="color:var(--text-faint)"> · then by Strength 5→1 · then Score · then ML Pred</span>
           </div>
         </div>
-        <div class="ranking-actions">
+        <div class="ranking-actions" style="display: flex; gap: 8px;">
+          <button class="download-csv-btn" onclick="downloadRankingImage('rankingSection', 'Stock Rankings ')" title="Download Image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            Image
+          </button>
           <button class="download-csv-btn" onclick="downloadRankingCSV()" title="Download CSV">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
@@ -2059,6 +2265,10 @@
     let currentMode = 'tech';
     let allValuations = [];
     let allResults = [];      // For Technical ranking
+    let momentumResults = [];
+    let momentumRange = '1y';
+    let momentumWatchlist = [];
+    let masterData = { indices: {}, stocks: [] };
     let abortController = null;
     let selectedRange = "3y";
     let customStartDate = null;
@@ -2068,6 +2278,7 @@
       currentMode = mode;
       document.getElementById('mode-tech').classList.toggle('active', mode === 'tech');
       document.getElementById('mode-val').classList.toggle('active', mode === 'val');
+      document.getElementById('mode-momentum').classList.toggle('active', mode === 'momentum');
       document.getElementById('tech-search-label').style.display = mode === 'tech' ? 'flex' : 'none';
       document.getElementById('val-search-label').style.display = mode === 'val' ? 'flex' : 'none';
 
@@ -2083,16 +2294,36 @@
       const valActions = document.getElementById('valuation-actions');
       const valRecent = document.getElementById('val-recent-section');
       const valRankingSection = document.getElementById('valRankingSection');
+      const momUniverseRow = document.getElementById('momentum-universe-row');
+      const momWatchlistRow = document.getElementById('momentum-watchlist-row');
+      const momRankingSection = document.getElementById('momentumRankingSection');
+      const techDateRow = document.getElementById('tech-date-row');
+      const techSearchLabel = document.getElementById('tech-search-label');
+      const valSearchLabel = document.getElementById('val-search-label');
+
       if (valActions) valActions.style.display = mode === 'val' ? (allValuations.length ? 'flex' : 'none') : 'none';
       if (valRecent) valRecent.style.display = mode === 'val' ? 'block' : 'none';
       if (valRankingSection) valRankingSection.style.display = mode === 'val' ? (allValuations.length ? 'block' : 'none') : 'none';
+      
+      if (momUniverseRow) momUniverseRow.style.display = mode === 'momentum' ? 'flex' : 'none';
+      if (momWatchlistRow) momWatchlistRow.style.display = mode === 'momentum' ? 'block' : 'none';
+      if (momRankingSection) momRankingSection.style.display = mode === 'momentum' ? (momentumResults.length ? 'block' : 'none') : 'none';
+      
+      if (techDateRow) techDateRow.style.display = mode === 'tech' ? 'flex' : 'none';
+      if (techSearchLabel) techSearchLabel.style.display = mode === 'tech' ? 'flex' : 'none';
+      if (valSearchLabel) valSearchLabel.style.display = mode === 'val' ? 'flex' : 'none';
 
       // Clear results when switching
       document.getElementById('results').innerHTML = '';
       document.getElementById('valuation-results').innerHTML = '';
+      document.getElementById('momentum-results-container').innerHTML = '';
       document.getElementById('emptyState').style.display = 'block';
 
       if (mode === 'val') loadValuationHistory();
+      if (mode === 'momentum') {
+          loadMomentumMaster();
+          loadMomentumWatchlist();
+      }
     }
 
 
@@ -2107,8 +2338,10 @@
     async function handleSearch() {
       if (currentMode === 'tech') {
         await analyze();
-      } else {
+      } else if (currentMode === 'val') {
         await analyzeValuation();
+      } else {
+        await scanMomentum();
       }
     }
 
@@ -2125,6 +2358,15 @@
       errorNode.innerHTML = '';
       emptyState.style.display = 'none';
       setLoading(true);
+      
+      const etaEl = document.getElementById('loading-eta');
+      const bar = document.getElementById('loadingBar');
+      if (etaEl) etaEl.innerText = `Analyzing fundamentals...`;
+      if (bar) {
+        bar.style.width = '0%';
+        setTimeout(() => bar.style.width = '90%', 100);
+        bar.style.transition = `width 5s linear`;
+      }
 
       try {
         const res = await fetch('/api/valuation', {
@@ -2694,6 +2936,18 @@
 
       setLoading(true);
       clearErrors();
+      
+      const n = symbols.length;
+      const eta = Math.ceil(n * 0.5 + 3);
+      const etaEl = document.getElementById('loading-eta');
+      const bar = document.getElementById('loadingBar');
+      if (etaEl) etaEl.innerText = `Analyzing ${n} stocks · ETA ~${eta}s`;
+      if (bar) {
+        bar.style.width = '0%';
+        setTimeout(() => bar.style.width = '90%', 100);
+        bar.style.transition = `width ${eta}s linear`;
+      }
+
       document.getElementById("results").innerHTML = "";
       document.getElementById("emptyState").style.display = "none";
 
@@ -3068,7 +3322,27 @@
     }
 
     function setLoading(v) {
-      document.getElementById("loading").classList.toggle("active", v);
+      const loadEl = document.getElementById("loading");
+      const bar = document.getElementById("loadingBar");
+      const eta = document.getElementById("loading-eta");
+      
+      if (v) {
+        if (bar) {
+          bar.style.transition = 'none';
+          bar.style.width = '0%';
+        }
+        loadEl.classList.add("active");
+      } else {
+        if (bar) {
+          bar.style.transition = 'width 0.3s ease';
+          bar.style.width = '100%';
+        }
+        setTimeout(() => {
+          loadEl.classList.remove("active");
+          if (eta) eta.innerText = "";
+        }, 500);
+      }
+
       document.getElementById("analyzeBtn").style.display = v ? "none" : "";
       const stopBtn = document.getElementById("stopBtn");
       if (stopBtn) stopBtn.style.display = v ? "" : "none";
@@ -3279,6 +3553,305 @@
     function clearRanking() {
       allResults = [];
       renderRanking();
+    }
+
+    // ── Momentum Scanner Logic ──────────────────────────────────────────────────
+    async function loadMomentumMaster() {
+      if (masterData.stocks.length) return;
+      try {
+        const res = await fetch('/api/momentum/master');
+        masterData = await res.json();
+        renderIndexPills();
+      } catch (err) {
+        console.error("Failed to load momentum master", err);
+      }
+    }
+
+    function renderIndexPills() {
+      const container = document.getElementById('index-pills');
+      if (!container) return;
+
+      let html = '';
+      const availableIndices = Object.keys(masterData.indices);
+      
+      availableIndices.forEach(name => {
+          const symbols = masterData.indices[name];
+          const count = symbols ? symbols.length : 0;
+          const displayCount = count > 0 ? ` · ${count}` : '';
+          html += `<button class="range-pill" onclick="scanIndex('${name}')">${name}${displayCount}</button>`;
+      });
+      container.innerHTML = html;
+    }
+
+    async function scanIndex(indexName) {
+      // Deactivate other pills
+      document.querySelectorAll('#index-pills .range-pill').forEach(p => {
+        p.classList.toggle('active', p.innerText.includes(indexName));
+      });
+
+      try {
+          setLoading(true);
+          const res = await fetch(`/api/momentum/index/${encodeURIComponent(indexName)}`);
+          if (!res.ok) throw new Error("Failed to fetch index constituents");
+          const data = await res.json();
+          masterData.indices[indexName] = data.symbols;
+          renderIndexPills(); // Refresh counts
+          await scanMomentum(data.symbols);
+      } catch (err) {
+          showError(err.message);
+          setLoading(false);
+      }
+    }
+
+    function setMomentumRange(period) {
+      momentumRange = period;
+      document.querySelectorAll('#momentum-universe-row .range-pill').forEach(p => {
+        // Compare case insensitively
+        const btnText = p.innerText.trim().toUpperCase();
+        const target = period.toUpperCase();
+        p.classList.toggle('active', btnText === target || (btnText === 'CUSTOM' && period === 'custom'));
+      });
+    }
+
+    async function scanMomentum(customSymbols = null) {
+      const input = document.getElementById('symbolInput');
+      let symbols = customSymbols || input.value.split(/[,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+
+      if (!symbols.length) {
+        showError("Please enter symbols or select an index");
+        return;
+      }
+
+      setLoading(true);
+      clearErrors();
+      
+      // Calculate and display ETA
+      const n = symbols.length;
+      const etaSec = Math.ceil(n * 0.15 + 2); // Roughly 0.15s per symbol + overhead
+      const etaMsg = n > 1 ? `Estimating ${n} targets · ~${etaSec}s remaining` : `Processing single target...`;
+      const etaEl = document.getElementById('loading-eta');
+      const bar = document.getElementById('loadingBar');
+      if (etaEl) etaEl.innerText = etaMsg;
+      if (bar) {
+        bar.style.width = '0%';
+        setTimeout(() => bar.style.width = '90%', 100);
+        bar.style.transition = `width ${etaSec}s linear`;
+      }
+
+      document.getElementById('momentumRankingSection').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'none';
+
+      // To calculate rolling returns (1M, 3M, 6M, 1Y), we need at least 1 year of data.
+      // If the user selects a longer period (2Y, 3Y), we fetch that.
+      const end = new Date();
+      const fetchStart = new Date(end);
+      let fetchPeriod = momentumRange;
+      
+      if (['1m', '3m', '6m', '1y'].includes(momentumRange)) {
+          // Fetch 400 days to ensure we have enough for 1Y rolling return (252 trading days)
+          fetchStart.setDate(end.getDate() - 400);
+      } else if (momentumRange === '2y') {
+          fetchStart.setFullYear(end.getFullYear() - 2);
+          fetchStart.setDate(fetchStart.getDate() - 20);
+      } else if (momentumRange === '3y') {
+          fetchStart.setFullYear(end.getFullYear() - 3);
+          fetchStart.setDate(fetchStart.getDate() - 20);
+      } else if (momentumRange === 'custom' && customStartDate) {
+          fetchStart.setTime(new Date(customStartDate).getTime());
+      }
+
+      let scanEndDate = end;
+      if (momentumRange === 'custom' && customEndDate) {
+          scanEndDate = new Date(customEndDate);
+      }
+
+      const tomorrow = new Date(scanEndDate);
+      tomorrow.setDate(scanEndDate.getDate() + 1);
+
+      const fmt = d => d.toISOString().split('T')[0];
+
+      try {
+        const res = await fetch('/api/momentum/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            symbols: symbols,
+            start_date: fmt(fetchStart),
+            end_date: fmt(tomorrow),
+            period: momentumRange
+          })
+        });
+
+        if (!res.ok) throw new Error("Scan failed");
+
+        momentumResults = await res.json();
+        if (etaEl) etaEl.innerText = ""; // Clear ETA on success
+        
+        // Highlight active column if needed
+        // (Removed dynamic header update to keep it simple)
+
+        renderMomentumResults();
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function renderMomentumResults() {
+      const tbody = document.getElementById('momentumRankingBody');
+      const section = document.getElementById('momentumRankingSection');
+      if (!momentumResults.length) {
+        section.style.display = 'none';
+        return;
+      }
+      section.style.display = 'block';
+
+      tbody.innerHTML = momentumResults.map((r, i) => {
+        const scoreClass = r.momentum_score > 70 ? 'momentum-score-high' : r.momentum_score > 40 ? 'momentum-score-mid' : 'momentum-score-low';
+        const isWatched = momentumWatchlist.includes(r.symbol);
+        
+        // External URLs
+        const tvUrl = `https://in.tradingview.com/chart/?symbol=NSE:${r.symbol}`;
+        const screenerUrl = `https://www.screener.in/company/${r.symbol}/`;
+
+        return `
+                <tr>
+                    <td><span class="rank-badge">${i + 1}</span></td>
+                    <td><a href="${tvUrl}" target="_blank" class="rank-sym-link">${r.symbol}</a></td>
+                    <td><a href="${screenerUrl}" target="_blank" class="sector-link">${r.sector}</a></td>
+                    <td style="text-align:right" class="${scoreClass}">${r.momentum_score}</td>
+                    <td style="text-align:right">Rs.${r.current_close}</td>
+                    <td style="text-align:right; font-weight:${momentumRange === '1m' ? '700' : '400'}; color:${r.return_1m > 0 ? 'var(--green)' : 'var(--red)'}">${r.return_1m !== null ? r.return_1m + '%' : '-'}</td>
+                    <td style="text-align:right; font-weight:${momentumRange === '3m' ? '700' : '400'}; color:${r.return_3m > 0 ? 'var(--green)' : 'var(--red)'}">${r.return_3m !== null ? r.return_3m + '%' : '-'}</td>
+                    <td style="text-align:right; font-weight:${momentumRange === '6m' ? '700' : '400'}; color:${r.return_6m > 0 ? 'var(--green)' : 'var(--red)'}">${r.return_6m !== null ? r.return_6m + '%' : '-'}</td>
+                    <td style="text-align:right; font-weight:${momentumRange === '1y' ? '700' : '400'}; color:${r.return_1y > 0 ? 'var(--green)' : 'var(--red)'}">${r.return_1y !== null ? r.return_1y + '%' : '-'}</td>
+                    <td style="text-align:right; color:${r.daily_return > 0 ? 'var(--green)' : 'var(--red)'}">${r.daily_return}%</td>
+                    <td style="text-align:right">${r.volume_trend}x</td>
+                    <td style="text-align:center"><span class="momentum-status-pill ${r.is_above_ema50 ? 'status-ema-above' : 'status-ema-below'}">${r.is_above_ema50 ? 'Above' : 'Below'}</span></td>
+                    <td style="text-align:center"><span class="momentum-status-pill ${r.is_above_ema200 ? 'status-ema-above' : 'status-ema-below'}">${r.is_above_ema200 ? 'Above' : 'Below'}</span></td>
+                    <td style="text-align:center">
+                        <button class="watchlist-btn ${isWatched ? 'active' : ''}" onclick="toggleMomentumWatchlist('${r.symbol}')">
+                            ${isWatched ? '★' : '☆'}
+                        </button>
+                    </td>
+                </tr>
+            `;
+      }).join('');
+    }
+
+    function loadMomentumWatchlist() {
+      momentumWatchlist = JSON.parse(localStorage.getItem('momentum_watchlist') || '[]');
+      renderMomentumWatchlist();
+    }
+
+    function toggleMomentumWatchlist(symbol) {
+      symbol = symbol.toUpperCase();
+      if (momentumWatchlist.includes(symbol)) {
+        momentumWatchlist = momentumWatchlist.filter(s => s !== symbol);
+      } else {
+        momentumWatchlist.push(symbol);
+      }
+      localStorage.setItem('momentum_watchlist', JSON.stringify(momentumWatchlist));
+      renderMomentumWatchlist();
+      if (currentMode === 'momentum') renderMomentumResults();
+    }
+
+    function renderMomentumWatchlist() {
+      const container = document.getElementById('momentum-watchlist-pills');
+      if (!container) return;
+      if (!momentumWatchlist.length) {
+        document.getElementById('momentum-watchlist-row').style.display = 'none';
+        return;
+      }
+      document.getElementById('momentum-watchlist-row').style.display = 'block';
+      container.innerHTML = momentumWatchlist.map(s => `
+            <div class="recent-pill" onclick="fillSearchAndScan('${s}')">
+                <span>${s}</span>
+                <span class="pill-del" onclick="event.stopPropagation();toggleMomentumWatchlist('${s}')">×</span>
+            </div>
+        `).join('');
+    }
+
+    function fillSearchAndScan(sym) {
+      document.getElementById('symbolInput').value = sym;
+      scanMomentum();
+    }
+
+    function exportMomentumCSV() {
+      if (!momentumResults.length) return;
+      const headers = ["Rank", "Symbol", "Sector", "Score", "Price", "1M Ret%", "3M Ret%", "6M Ret%", "1Y Ret%", "Daily Ret", "Vol Trend", "Above EMA50", "Above EMA200"];
+      const rows = momentumResults.map((r, i) => [
+        i + 1, r.symbol, r.sector, r.momentum_score, r.current_close, r.return_1m, r.return_3m, r.return_6m, r.return_1y, r.daily_return, r.volume_trend, r.is_above_ema50, r.is_above_ema200
+      ]);
+
+      const csvContent = "\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Momentum_Scan_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function openMomentumDateModal() {
+      openDateModal();
+    }
+
+    async function downloadRankingImage(sectionId, rankingName) {
+      const section = document.getElementById(sectionId);
+      if (!section || section.style.display === 'none') return;
+
+      const actions = section.querySelector('.ranking-actions');
+      const originalDisplay = actions ? actions.style.display : '';
+      if (actions) actions.style.display = 'none';
+
+      const tableWrap = section.querySelector('.ranking-table-wrap');
+      const table = section.querySelector('.ranking-table');
+      let origOverflow = '';
+      let origWidth = '';
+      let origMaxWidth = '';
+      
+      if (tableWrap && table) {
+          origOverflow = tableWrap.style.overflowX;
+          origWidth = section.style.width;
+          origMaxWidth = section.style.maxWidth;
+          
+          tableWrap.style.overflowX = 'visible';
+          section.style.width = Math.max(table.scrollWidth + 40, section.offsetWidth) + 'px';
+          section.style.maxWidth = 'none';
+      }
+
+      try {
+        const canvas = await html2canvas(section, {
+          backgroundColor: '#080c14',
+          scale: 2,
+          windowWidth: section.scrollWidth + 100
+        });
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        const link = document.createElement('a');
+        
+        const dateStr = new Date().toISOString().slice(0, 10);
+        link.download = `${rankingName}${dateStr}.jpg`;
+        link.href = dataUrl;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        console.error('Error generating image', err);
+        alert('Failed to generate image');
+      } finally {
+        if (actions) actions.style.display = originalDisplay;
+        if (tableWrap && table) {
+            tableWrap.style.overflowX = origOverflow;
+            section.style.width = origWidth;
+            section.style.maxWidth = origMaxWidth;
+        }
+      }
     }
 
     // ── Boot ──────────────────────────────────────────────────────────────────────

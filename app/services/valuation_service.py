@@ -86,6 +86,11 @@ def calculate_pe(info: Dict[str, Any]) -> Dict[str, Any]:
 
 def calculate_pb(info: Dict[str, Any]) -> Dict[str, Any]:
     val = info.get("priceToBook")
+    if val is None:
+        price = info.get("currentPrice") or info.get("regularMarketPrice")
+        bv = info.get("bookValue")
+        if price and bv and bv != 0:
+            val = price / bv
     if val is None: return _unavailable("PB Ratio", "pb_ratio", "x")
     
     if val > 10:
@@ -126,7 +131,12 @@ def calculate_ev_ebitda(info: Dict[str, Any]) -> Dict[str, Any]:
     return _metric("EV/EBITDA", "ev_ebitda", val, "x", verdict, ctx, val)
 
 def calculate_peg(info: Dict[str, Any]) -> Dict[str, Any]:
-    val = info.get("pegRatio")
+    val = info.get("pegRatio") or info.get("trailingPegRatio")
+    if val is None:
+        pe = info.get("trailingPE") or info.get("forwardPE")
+        growth = info.get("earningsGrowth")
+        if pe and growth and growth > 0:
+            val = pe / (growth * 100)
     if val is None: return _unavailable("PEG Ratio", "peg_ratio", "x")
     
     if val > 2:
@@ -169,6 +179,11 @@ def calculate_dividend_yield(info: Dict[str, Any]) -> Dict[str, Any]:
 
 def calculate_roe(info: Dict[str, Any]) -> Dict[str, Any]:
     val = info.get("returnOnEquity")
+    if val is None:
+        eps = info.get("trailingEps")
+        bv = info.get("bookValue")
+        if eps is not None and bv and bv != 0:
+            val = eps / bv
     if val is not None: val = val * 100
     if val is None: return _unavailable("ROE", "roe", "%")
     
@@ -206,6 +221,14 @@ def calculate_fcf_yield(info: Dict[str, Any]) -> Dict[str, Any]:
 
 def calculate_debt_equity(info: Dict[str, Any]) -> Dict[str, Any]:
     val = info.get("debtToEquity")
+    if val is None:
+        td = info.get("totalDebt")
+        shares = info.get("sharesOutstanding")
+        bv = info.get("bookValue")
+        if td is not None and shares and bv:
+            total_equity = shares * bv
+            if total_equity > 0:
+                val = (td / total_equity) * 100
     if val is not None: val = val / 100 # yfinance usually gives 0-100+ for D/E
     if val is None: return _unavailable("Debt to Equity", "debt_to_equity", "ratio")
     

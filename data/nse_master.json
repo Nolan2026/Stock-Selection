@@ -1,0 +1,24 @@
+{
+  "indices": {
+    "NIFTY 50": ["RELIANCE", "TCS", "HDFCBANK", "ICICIBANK", "INFY", "BHARTIARTL", "ITC", "SBIN", "LICI", "LT"],
+    "NIFTY 100": ["RELIANCE", "TCS", "HDFCBANK", "ICICIBANK", "INFY", "BHARTIARTL", "ITC", "SBIN", "LICI", "LT", "ZOMATO", "TRENT"],
+    "NIFTY 500": ["RELIANCE", "TCS", "HDFCBANK", "ICICIBANK", "INFY", "BHARTIARTL", "ITC", "SBIN", "LICI", "LT", "ZOMATO", "TRENT", "SUZLON", "PAYTM"],
+    "SENSEX": ["RELIANCE", "TCS", "HDFCBANK", "ICICIBANK", "INFY", "BHARTIARTL", "ITC", "SBIN", "LT", "M&M"]
+  },
+  "stocks": [
+    {"symbol": "RELIANCE", "name": "Reliance Industries", "sector": "Energy"},
+    {"symbol": "TCS", "name": "Tata Consultancy Services", "sector": "IT"},
+    {"symbol": "HDFCBANK", "name": "HDFC Bank", "sector": "Financial Services"},
+    {"symbol": "ICICIBANK", "name": "ICICI Bank", "sector": "Financial Services"},
+    {"symbol": "INFY", "name": "Infosys", "sector": "IT"},
+    {"symbol": "BHARTIARTL", "name": "Bharti Airtel", "sector": "Telecommunications"},
+    {"symbol": "ITC", "name": "ITC Limited", "sector": "Consumer Goods"},
+    {"symbol": "SBIN", "name": "State Bank of India", "sector": "Financial Services"},
+    {"symbol": "LICI", "name": "LIC of India", "sector": "Insurance"},
+    {"symbol": "LT", "name": "Larsen & Toubro", "sector": "Construction"},
+    {"symbol": "ZOMATO", "name": "Zomato Ltd", "sector": "Consumer Services"},
+    {"symbol": "TRENT", "name": "Trent Ltd", "sector": "Retail"},
+    {"symbol": "SUZLON", "name": "Suzlon Energy", "sector": "Energy"},
+    {"symbol": "PAYTM", "name": "One 97 Communications", "sector": "Financial Services"}
+  ]
+}
