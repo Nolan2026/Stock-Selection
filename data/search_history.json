@@ -1,122 +1,122 @@
 [
   {
-    "symbol": "MOCAPITAL",
-    "name": "MOCAPITAL",
+    "symbol": "J&KBANK",
+    "name": "J&KBANK",
+    "signal": "STRONG BUY",
+    "searched_at": "2026-04-29T21:15:54.551595"
+  },
+  {
+    "symbol": "GHCLTEXTIL",
+    "name": "GHCLTEXTIL",
     "signal": "BUY",
-    "searched_at": "2026-04-26T18:00:15.353784"
+    "searched_at": "2026-04-29T21:15:49.753906"
   },
   {
-    "symbol": "TARIL",
-    "name": "TARIL",
-    "signal": "WATCH",
-    "searched_at": "2026-04-26T18:00:14.413998"
-  },
-  {
-    "symbol": "GREENPOWER",
-    "name": "GREENPOWER",
+    "symbol": "AEROFLEX",
+    "name": "AEROFLEX",
     "signal": "BUY",
-    "searched_at": "2026-04-26T18:00:13.378155"
+    "searched_at": "2026-04-29T21:15:46.235568"
   },
   {
-    "symbol": "JMFINANCIL",
-    "name": "JMFINANCIL",
-    "signal": "WATCH",
-    "searched_at": "2026-04-26T18:00:12.167768"
+    "symbol": "UNIVASTU",
+    "name": "UNIVASTU",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T21:15:14.915351"
+  },
+  {
+    "symbol": "GESHIP",
+    "name": "GESHIP",
+    "signal": "STRONG BUY",
+    "searched_at": "2026-04-29T21:15:12.529860"
+  },
+  {
+    "symbol": "TDPOWERSYS",
+    "name": "TDPOWERSYS",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T21:15:09.672372"
+  },
+  {
+    "symbol": "KRONOX",
+    "name": "KRONOX",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T21:06:15.624181"
+  },
+  {
+    "symbol": "SHREYANIND",
+    "name": "SHREYANIND",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T21:06:14.117348"
+  },
+  {
+    "symbol": "KSOLVES",
+    "name": "KSOLVES",
+    "signal": "STRONG BUY",
+    "searched_at": "2026-04-29T21:06:06.117428"
+  },
+  {
+    "symbol": "ASAHISONG",
+    "name": "ASAHISONG",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T21:06:03.559485"
+  },
+  {
+    "symbol": "SSWL",
+    "name": "SSWL",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T21:05:06.159975"
+  },
+  {
+    "symbol": "BALUFORGE",
+    "name": "BALUFORGE",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T21:02:11.351169"
+  },
+  {
+    "symbol": "VEDL",
+    "name": "VEDL",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T20:59:59.302483"
+  },
+  {
+    "symbol": "SMSPHARMA",
+    "name": "SMSPHARMA",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T20:59:54.524396"
+  },
+  {
+    "symbol": "CENTEXT",
+    "name": "CENTEXT",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T20:59:52.576711"
+  },
+  {
+    "symbol": "VINEETLAB",
+    "name": "VINEETLAB",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T20:59:50.665128"
   },
   {
     "symbol": "CHENNPETRO",
     "name": "CHENNPETRO",
     "signal": "STRONG BUY",
-    "searched_at": "2026-04-26T18:00:11.174536"
-  },
-  {
-    "symbol": "BANDHANBNK",
-    "name": "BANDHANBNK",
-    "signal": "WATCH",
-    "searched_at": "2026-04-26T18:00:09.839462"
+    "searched_at": "2026-04-29T20:59:46.894667"
   },
   {
     "symbol": "RBLBANK",
     "name": "RBLBANK",
-    "signal": "BUY",
-    "searched_at": "2026-04-26T18:00:08.809678"
-  },
-  {
-    "symbol": "METALIETF",
-    "name": "METALIETF",
-    "signal": "BUY",
-    "searched_at": "2026-04-26T18:00:07.818047"
-  },
-  {
-    "symbol": "TTML",
-    "name": "TTML",
-    "signal": "WATCH",
-    "searched_at": "2026-04-26T18:00:06.936295"
-  },
-  {
-    "symbol": "RTNPOWER",
-    "name": "RTNPOWER",
-    "signal": "BUY",
-    "searched_at": "2026-04-26T18:00:05.164868"
-  },
-  {
-    "symbol": "POLYPLEX",
-    "name": "POLYPLEX",
-    "signal": "BUY",
-    "searched_at": "2026-04-26T17:23:55.436766"
-  },
-  {
-    "symbol": "PVP",
-    "name": "PVP",
-    "signal": "WATCH",
-    "searched_at": "2026-04-26T17:23:53.591488"
-  },
-  {
-    "symbol": "SILVERTUC",
-    "name": "SILVERTUC",
-    "signal": "WATCH",
-    "searched_at": "2026-04-26T17:23:52.253893"
-  },
-  {
-    "symbol": "ORTEL",
-    "name": "ORTEL",
-    "signal": "WATCH",
-    "searched_at": "2026-04-26T17:23:49.591047"
-  },
-  {
-    "symbol": "LOKESHMACH",
-    "name": "LOKESHMACH",
-    "signal": "BUY",
-    "searched_at": "2026-04-26T17:23:48.146821"
-  },
-  {
-    "symbol": "HINDCOMPOS",
-    "name": "HINDCOMPOS",
-    "signal": "BUY",
-    "searched_at": "2026-04-26T17:23:46.870963"
-  },
-  {
-    "symbol": "KANPRPLA",
-    "name": "KANPRPLA",
-    "signal": "BUY",
-    "searched_at": "2026-04-26T17:23:45.540254"
-  },
-  {
-    "symbol": "SAILIFE",
-    "name": "SAILIFE",
-    "signal": "BUY",
-    "searched_at": "2026-04-23T21:31:57.298741"
-  },
-  {
-    "symbol": "GRWRHITECH",
-    "name": "GRWRHITECH",
     "signal": "STRONG BUY",
-    "searched_at": "2026-04-23T21:31:56.379818"
+    "searched_at": "2026-04-29T20:59:44.157387"
   },
   {
-    "symbol": "MMP",
-    "name": "MMP",
-    "signal": "WATCH",
-    "searched_at": "2026-04-23T21:31:54.411934"
+    "symbol": "MEGASTAR",
+    "name": "MEGASTAR",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T20:59:41.127875"
+  },
+  {
+    "symbol": "PANSARI",
+    "name": "PANSARI",
+    "signal": "BUY",
+    "searched_at": "2026-04-29T20:59:38.295886"
   }
 ]

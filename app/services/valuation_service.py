@@ -362,14 +362,15 @@ def create_valuation_pdf(stocks: List[Dict[str, Any]], filename: str) -> str:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib import colors
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, KeepTogether
         from reportlab.lib.units import inch
     except ImportError:
         logger.error("ReportLab not found.")
         return ""
 
     try:
-        doc = SimpleDocTemplate(filename, pagesize=A4, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+        # Standard margins for A4 - Large bottom margin to avoid footer conflicts
+        doc = SimpleDocTemplate(filename, pagesize=A4, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=70)
         styles = getSampleStyleSheet()
     
         title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=18, spaceAfter=4, textColor=colors.HexColor("#FF6700"))
@@ -380,7 +381,7 @@ def create_valuation_pdf(stocks: List[Dict[str, Any]], filename: str) -> str:
     
         elements = []
     
-        for stock in stocks:
+        for i, stock in enumerate(stocks):
             elements.append(Paragraph(f"{stock['ticker']} Valuation Analysis", title_style))
             elements.append(Paragraph(f"{stock['company_name']} • {stock.get('sector', 'N/A')} • {stock.get('industry', 'N/A')}", sub_style))
             
@@ -418,11 +419,11 @@ def create_valuation_pdf(stocks: List[Dict[str, Any]], filename: str) -> str:
                 ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
                 ('GRID', (0,0), (-1,-1), 1, colors.HexColor("#334155")), 
                 ('VALIGN', (0,0), (-1,-1), 'TOP'),
-                ('TOPPADDING', (0,1), (-1,-1), 6),
-                ('BOTTOMPADDING', (0,1), (-1,-1), 6),
+                ('TOPPADDING', (0,1), (-1,-1), 4),
+                ('BOTTOMPADDING', (0,1), (-1,-1), 4),
             ]))
             elements.append(t)
-            elements.append(Spacer(1, 0.15*inch))
+            elements.append(Spacer(1, 0.05*inch))
     
             pos_title = Paragraph("<font color='#1a6644'><b>Positive Factors:</b></font>", ParagraphStyle('P', parent=styles['Normal'], fontSize=10))
             risk_title = Paragraph("<font color='#6b1a1a'><b>Risk Factors:</b></font>", ParagraphStyle('R', parent=styles['Normal'], fontSize=10))
@@ -434,14 +435,17 @@ def create_valuation_pdf(stocks: List[Dict[str, Any]], filename: str) -> str:
             ft = Table(factor_data, colWidths=[3.4*inch, 3.4*inch])
             ft.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP'), ('LEFTPADDING', (0,0), (-1,-1), 0), ('BOTTOMPADDING', (0,0), (-1,0), 0), ('TOPPADDING', (0,1), (-1,1), 4)]))
             elements.append(ft)
-            elements.append(PageBreak())
+            
+            if i < len(stocks) - 1:
+                elements.append(PageBreak())
     
         def draw_header_footer(canvas, doc):
             canvas.saveState()
             footer_text = f"Analysis generated on {datetime.now().strftime('%Y-%m-%d')} by NSE Signal Terminal."
             canvas.setFont('Helvetica-Oblique', 8)
             canvas.setFillColor(colors.grey)
-            canvas.drawString(40, 30, footer_text)
+            # Move footer up to avoid bottomMargin conflict
+            canvas.drawString(40, 45, footer_text)
             canvas.setFont('Helvetica-Bold', 8)
             canvas.setFillColor(colors.HexColor("#4a9fd4"))
             canvas.drawString(40, A4[1] - 30, "NSE SIGNAL TERMINAL — FUNDAMENTAL RESEARCH")
@@ -456,3 +460,259 @@ def create_valuation_pdf(stocks: List[Dict[str, Any]], filename: str) -> str:
         return ""
     
     return filename
+
+def create_master_pdf(tech_data, mom_data, val_data, filename: str) -> str:
+    """Generate a comprehensive master report PDF."""
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+        from reportlab.lib.units import inch
+        from xml.sax.saxutils import escape
+    except ImportError:
+        return ""
+
+    try:
+        doc = SimpleDocTemplate(filename, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=40)
+        styles = getSampleStyleSheet()
+        
+        main_title = ParagraphStyle('MainTitle', parent=styles['Heading1'], fontSize=24, spaceAfter=20, textColor=colors.HexColor("#4a9fd4"), alignment=1)
+        sec_title = ParagraphStyle('SecTitle', parent=styles['Heading2'], fontSize=16, spaceBefore=20, spaceAfter=10, textColor=colors.HexColor("#334155"))
+        table_header = ParagraphStyle('THeader', parent=styles['Normal'], fontSize=8, fontWeight='bold', textColor=colors.white)
+        table_cell = ParagraphStyle('TCell', parent=styles['Normal'], fontSize=8)
+        
+        elements = []
+        
+        # Cover Page
+        elements.append(Spacer(1, 2*inch))
+        elements.append(Paragraph("COMPREHENSIVE STOCK ANALYSIS REPORT", main_title))
+        elements.append(Paragraph(f"Generated on {datetime.now().strftime('%B %d, %Y')}", ParagraphStyle('Date', parent=styles['Normal'], alignment=1, fontSize=12, textColor=colors.grey)))
+        elements.append(Spacer(1, 4*inch))
+        elements.append(Paragraph("NSE SIGNAL TERMINAL", ParagraphStyle('Brand', parent=styles['Normal'], alignment=1, fontSize=10, textColor=colors.HexColor("#4a9fd4"))))
+        elements.append(PageBreak())
+        
+        # 1. Technical Analysis Rankings
+        elements.append(Paragraph("1. Technical Analysis Rankings", sec_title))
+        if not tech_data:
+            elements.append(Paragraph("No technical analysis data available.", styles['Normal']))
+        else:
+            # Sort by Signal Tier -> Strength -> Score
+            def tech_sort_key(r):
+                sig = r.get('signal', 'AVOID')
+                tier = 4 if 'STRONG BUY' in sig else (3 if 'BUY' in sig else (2 if 'WATCH' in sig else 1))
+                return (tier, r.get('strength', 0), r.get('score', 0))
+            
+            tech_data_sorted = sorted(tech_data, key=tech_sort_key, reverse=True)
+            
+            t_data = [[
+                Paragraph("<b>Rank</b>", table_header),
+                Paragraph("<b>Stock</b>", table_header),
+                Paragraph("<b>Score</b>", table_header),
+                Paragraph("<b>Price</b>", table_header),
+                Paragraph("<b>Beta</b>", table_header),
+                Paragraph("<b>Target</b>", table_header),
+                Paragraph("<b>Stop Loss</b>", table_header),
+                Paragraph("<b>Signal</b>", table_header)
+            ]]
+            for i, row in enumerate(tech_data_sorted[:20]): # Limit to top 20
+                t_data.append([
+                    Paragraph(str(i+1), table_cell),
+                    Paragraph(row.get('symbol', 'N/A'), table_cell),
+                    Paragraph(str(row.get('score', 'N/A')), table_cell),
+                    Paragraph(str(row.get('price', 'N/A')), table_cell),
+                    Paragraph(str(row.get('beta', 'N/A')), table_cell),
+                    Paragraph(str(row.get('target', 'N/A')), table_cell),
+                    Paragraph(str(row.get('stop_loss', 'N/A')), table_cell),
+                    Paragraph(row.get('signal', 'N/A'), table_cell)
+                ])
+            
+            t = Table(t_data, colWidths=[0.5*inch, 1.0*inch, 0.6*inch, 0.8*inch, 0.6*inch, 0.9*inch, 0.9*inch, 1.2*inch])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1e293b")),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ]))
+            elements.append(t)
+        
+        elements.append(PageBreak())
+        
+        # 2. Momentum Scanner Rankings
+        elements.append(Paragraph("2. Momentum Scanner Rankings", sec_title))
+        if not mom_data:
+            elements.append(Paragraph("No momentum data available.", styles['Normal']))
+        else:
+            # Sort by Momentum Score
+            mom_data_sorted = sorted(mom_data, key=lambda x: x.get('momentum_score', 0), reverse=True)
+            
+            m_data = [[
+                Paragraph("<b>Rank</b>", table_header),
+                Paragraph("<b>Stock</b>", table_header),
+                Paragraph("<b>Score</b>", table_header),
+                Paragraph("<b>Price</b>", table_header),
+                Paragraph("<b>1M Ret%</b>", table_header),
+                Paragraph("<b>3M Ret%</b>", table_header),
+                Paragraph("<b>Vol Trend</b>", table_header)
+            ]]
+            for i, row in enumerate(mom_data_sorted[:20]):
+                m_data.append([
+                    Paragraph(str(i+1), table_cell),
+                    Paragraph(row.get('symbol', 'N/A'), table_cell),
+                    Paragraph(str(row.get('momentum_score', 'N/A')), table_cell),
+                    Paragraph(str(row.get('current_close', 'N/A')), table_cell),
+                    Paragraph(f"{row.get('return_1m', 'N/A')}%", table_cell),
+                    Paragraph(f"{row.get('return_3m', 'N/A')}%", table_cell),
+                    Paragraph(f"{row.get('volume_trend', 'N/A')}x", table_cell)
+                ])
+            
+            t = Table(m_data, colWidths=[0.6*inch, 1.2*inch, 0.8*inch, 1.0*inch, 1.0*inch, 1.0*inch, 1.0*inch])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#0f172a")),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ]))
+            elements.append(t)
+            
+        elements.append(PageBreak())
+        
+        # 3. Fundamental Valuation Rankings
+        elements.append(Paragraph("3. Fundamental Valuation Rankings", sec_title))
+        if not val_data:
+            elements.append(Paragraph("No valuation data available.", styles['Normal']))
+        else:
+            # Sort by Valuation Score
+            val_data_sorted = sorted(val_data, key=lambda x: x.get('overall_verdict', {}).get('valuation_score', 0), reverse=True)
+            
+            v_data = [[
+                Paragraph("<b>Rank</b>", table_header),
+                Paragraph("<b>Symbol</b>", table_header),
+                Paragraph("<b>Verdict</b>", table_header),
+                Paragraph("<b>Score</b>", table_header),
+                Paragraph("<b>PE</b>", table_header),
+                Paragraph("<b>ROE%</b>", table_header),
+                Paragraph("<b>D/E</b>", table_header)
+            ]]
+            for i, row in enumerate(val_data_sorted[:20]):
+                metrics = row.get('metrics', [])
+                pe = next((m.get('value') for m in metrics if m.get('metric_code') == 'pe_ratio'), 'N/A')
+                roe = next((m.get('value') for m in metrics if m.get('metric_code') == 'roe'), 'N/A')
+                de = next((m.get('value') for m in metrics if m.get('metric_code') == 'debt_to_equity'), 'N/A')
+                
+                v_data.append([
+                    Paragraph(str(i+1), table_cell),
+                    Paragraph(row.get('ticker', 'N/A'), table_cell),
+                    Paragraph(row.get('overall_verdict', {}).get('label', 'N/A'), table_cell),
+                    Paragraph(str(row.get('overall_verdict', {}).get('valuation_score', 'N/A')), table_cell),
+                    Paragraph(str(pe), table_cell),
+                    Paragraph(str(roe), table_cell),
+                    Paragraph(str(de), table_cell)
+                ])
+            
+            t = Table(v_data, colWidths=[0.6*inch, 1*inch, 2*inch, 0.8*inch, 0.8*inch, 0.8*inch, 0.8*inch])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1e293b")),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ]))
+            elements.append(t)
+            
+        # 4. Detailed Valuation Sheets (Full Detail - One per page)
+        if val_data:
+            elements.append(PageBreak())
+            elements.append(Paragraph("4. Detailed Valuation Analysis", sec_title))
+            elements.append(Spacer(1, 0.2*inch))
+            
+            # Use same styles as single report for consistency
+            v_title_style = ParagraphStyle('VTitle', parent=styles['Heading1'], fontSize=18, spaceAfter=4, textColor=colors.HexColor("#FF6700"))
+            v_sub_style = ParagraphStyle('VSub', parent=styles['Normal'], fontSize=9, textColor=colors.grey, spaceAfter=12)
+            v_score_style = ParagraphStyle('VScore', parent=styles['Italic'], fontSize=14, fontWeight='bold', spaceAfter=8)
+            v_summary_style = ParagraphStyle('VSummary', parent=styles['Normal'], fontSize=9, leading=13, spaceAfter=12, textColor=colors.HexColor("#6D7B8D"))
+            v_metric_ctx_style = ParagraphStyle('VMetricCtx', parent=styles['Normal'], fontSize=9, leading=11, textColor=colors.HexColor("#25383C"))
+            v_fact_style = ParagraphStyle('VFact', parent=styles['Normal'], fontSize=9, leading=11, textColor=colors.HexColor("#2C3E50"))
+            
+            for i, stock in enumerate(val_data):
+                try:
+                    # Page break before each stock detailed sheet (except the first one if it follows the section header)
+                    if i > 0:
+                        elements.append(PageBreak())
+                    
+                    ticker = stock.get('ticker', 'N/A')
+                    name = stock.get('company_name', 'N/A')
+                    sector = stock.get('sector', 'N/A')
+                    industry = stock.get('industry', 'N/A')
+                    overall = stock.get('overall_verdict', {})
+                    score = overall.get('valuation_score', 0)
+                    label = escape(overall.get('label', 'N/A'))
+                    summary = escape(overall.get('summary', 'No valuation summary available.'))
+                    
+                    elements.append(Paragraph(f"{ticker} Valuation Analysis", v_title_style))
+                    elements.append(Paragraph(f"{escape(name)} • {escape(sector)} • {escape(industry)}", v_sub_style))
+                    
+                    score_color_hex = "#1a6644" if score > 70 else ("#FF8C00" if score > 40 else "#DC143C")
+                    elements.append(Paragraph(f"Composite Score: <font color='{score_color_hex}'>{score}/100</font> &nbsp;&nbsp;&nbsp; <b>Verdict: <font color='{score_color_hex}'>{label}</font></b>", v_score_style))
+                    elements.append(Paragraph(summary, v_summary_style))
+                    
+                    # Metrics Table
+                    det_data = [[
+                        Paragraph("<b>Metric</b>", ParagraphStyle('H', parent=v_metric_ctx_style, textColor=colors.HexColor("#007BA7"))),
+                        Paragraph("<b>Value</b>", ParagraphStyle('H', parent=v_metric_ctx_style, textColor=colors.HexColor("#007BA7"))),
+                        Paragraph("<b>Verdict</b>", ParagraphStyle('H', parent=v_metric_ctx_style, textColor=colors.HexColor("#007BA7"))),
+                        Paragraph("<b>Threshold Context</b>", ParagraphStyle('H', parent=v_metric_ctx_style, textColor=colors.HexColor("#007BA7")))
+                    ]]
+                    
+                    for m in stock.get('metrics', []):
+                        val_str = f"{m.get('value', 'N/A')}{m.get('unit', '')}" if m.get('value') is not None else "N/A"
+                        v_color = m.get('verdict_color', 'grey')
+                        hex_color = "#1a6644" if v_color == 'green' else ("#fbbf24" if v_color == 'yellow' else ("#f87171" if v_color == 'red' else "#64748b"))
+                        
+                        det_data.append([
+                            Paragraph(m.get('metric_name', 'N/A'), v_metric_ctx_style),
+                            Paragraph(f"<b>{val_str}</b>", ParagraphStyle('VVal', parent=v_metric_ctx_style, textColor=colors.HexColor(hex_color))),
+                            Paragraph(f"<b>{m.get('verdict', 'N/A')}</b>", ParagraphStyle('VVer', parent=v_metric_ctx_style, textColor=colors.HexColor(hex_color), fontSize=8.5)),
+                            Paragraph(m.get('threshold_context', 'N/A'), v_metric_ctx_style)
+                        ])
+                    
+                    dt = Table(det_data, colWidths=[1.1*inch, 0.7*inch, 1.5*inch, 3.6*inch])
+                    dt.setStyle(TableStyle([
+                        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#EBF4FA")),
+                        ('GRID', (0,0), (-1,-1), 1, colors.HexColor("#334155")), 
+                        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                        ('TOPPADDING', (0,1), (-1,-1), 4),
+                        ('BOTTOMPADDING', (0,1), (-1,-1), 4),
+                    ]))
+                    elements.append(dt)
+                    elements.append(Spacer(1, 0.15*inch))
+                    
+                    # Positive and Risk Factors
+                    pos_title = Paragraph("<font color='#1a6644'><b>Positive Factors:</b></font>", ParagraphStyle('P', parent=styles['Normal'], fontSize=10))
+                    risk_title = Paragraph("<font color='#6b1a1a'><b>Risk Factors:</b></font>", ParagraphStyle('R', parent=styles['Normal'], fontSize=10))
+                    pos_txt = "<br/>".join([f"• {escape(f)}" for f in stock.get('positive_factors', [])])
+                    risk_txt = "<br/>".join([f"• {escape(f)}" for f in stock.get('risk_flags', [])])
+                    
+                    factor_data = [[pos_title, risk_title], [Paragraph(pos_txt, v_fact_style), Paragraph(risk_txt, v_fact_style)]]
+                    ft = Table(factor_data, colWidths=[3.4*inch, 3.4*inch])
+                    ft.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP'), ('LEFTPADDING', (0,0), (-1,-1), 0), ('BOTTOMPADDING', (0,0), (-1,0), 0), ('TOPPADDING', (0,1), (-1,1), 4)]))
+                    elements.append(ft)
+
+                except Exception as e:
+                    logger.warning(f"Skipping detailed sheet for {stock.get('ticker')}: {e}")
+                    continue
+                
+        def draw_header_footer(canvas, doc):
+            canvas.saveState()
+            canvas.setFont('Helvetica-Bold', 8)
+            canvas.setFillColor(colors.HexColor("#4a9fd4"))
+            canvas.drawString(40, A4[1] - 30, "NSE SIGNAL TERMINAL — MASTER REPORT")
+            canvas.setFont('Helvetica', 8)
+            canvas.setFillColor(colors.grey)
+            canvas.drawString(40, 30, f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            canvas.drawRightString(A4[0] - 40, 30, f"Page {canvas.getPageNumber()}")
+            canvas.restoreState()
+            
+        doc.build(elements, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
+        time.sleep(0.2) # Small buffer for Windows file handles
+        return filename
+    except Exception as e:
+        logger.error(f"Error building Master PDF: {e}")
+        return ""
+

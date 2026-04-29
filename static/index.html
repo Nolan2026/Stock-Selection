@@ -9,6 +9,7 @@
     href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap"
     rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     :root {
       --bg: #080c14;
@@ -630,7 +631,14 @@
       padding: 14px 18px;
       margin: 12px 0;
       font-size: 12px;
-      color: var(--red)
+      color: var(--red);
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
     /* ── Results grid ─────────────────────────────────────────────────────── */
@@ -1903,7 +1911,19 @@
         <div class="status-dot"></div>
         <span id="modelStatus">Connecting...</span>
       </div>
+      <button id="masterReportBtn" class="download-csv-btn" onclick="downloadMasterPDF()" title="Download Complete Master Report" disabled
+        style="border-color: var(--gold); color: var(--gold); margin-left: 15px; padding: 6px 12px; height: 32px; opacity: 0.5; cursor: not-allowed;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        Master Report (PDF)
+      </button>
     </div>
+
   </div>
 
   <div class="container">
@@ -1976,6 +1996,12 @@
           <button class="range-pill" onclick="setMomentumRange('3y')">3Y</button>
           <button class="range-pill" onclick="openMomentumDateModal()">Custom</button>
         </div>
+      </div>
+
+      <!-- Momentum Recent Scans -->
+      <div id="momentum-recent-row" class="recent-section" style="display:none">
+        <div class="recent-label">Recent Momentum Scans</div>
+        <div class="recent-pills" id="momentum-recent-pills"></div>
       </div>
 
       <!-- Momentum Watchlist -->
@@ -2099,6 +2125,7 @@
             </svg>
             Export CSV
           </button>
+          <button class="ranking-clear" onclick="clearMomentumResults()">Clear all</button>
         </div>
       </div>
       <div class="ranking-table-wrap">
@@ -2115,9 +2142,8 @@
               <th style="text-align:right">6M Ret%</th>
               <th style="text-align:right">1Y Ret%</th>
               <th style="text-align:right">Daily Ret</th>
-              <th style="text-align:right">Vol Trend</th>
-              <th style="text-align:center">EMA 50</th>
               <th style="text-align:center">EMA 200</th>
+              <th style="text-align:right">Vol Trend</th>
               <th style="text-align:center">Watch</th>
             </tr>
           </thead>
@@ -2223,7 +2249,7 @@
             <tr>
               <th style="text-align:left">Rank</th>
               <th style="text-align:left">Symbol</th>
-              <th style="text-align:left">Signal</th>
+              <th>Beta</th>
               <th>Strength</th>
               <th>Score</th>
               <th>ML Pred 5d</th>
@@ -2232,9 +2258,9 @@
               <th>Entry</th>
               <th>Stop</th>
               <th>Target</th>
-              <th>Beta</th>
               <th>Z-Score</th>
               <th>DirAcc</th>
+              <th style="text-align:left">Signal</th>
               <th>PDF</th>
             </tr>
           </thead>
@@ -2279,8 +2305,11 @@
       document.getElementById('mode-tech').classList.toggle('active', mode === 'tech');
       document.getElementById('mode-val').classList.toggle('active', mode === 'val');
       document.getElementById('mode-momentum').classList.toggle('active', mode === 'momentum');
-      document.getElementById('tech-search-label').style.display = mode === 'tech' ? 'flex' : 'none';
-      document.getElementById('val-search-label').style.display = mode === 'val' ? 'flex' : 'none';
+      
+      const techSearchLabel = document.getElementById('tech-search-label');
+      const valSearchLabel = document.getElementById('val-search-label');
+      if (techSearchLabel) techSearchLabel.style.display = mode === 'tech' ? 'flex' : 'none';
+      if (valSearchLabel) valSearchLabel.style.display = mode === 'val' ? 'flex' : 'none';
 
       const dateControls = document.querySelector('.date-range-row');
       if (dateControls) dateControls.style.display = mode === 'tech' ? 'flex' : 'none';
@@ -2288,41 +2317,47 @@
       const recentSection = document.getElementById('recentSection');
       if (recentSection) recentSection.style.display = mode === 'tech' ? 'block' : 'none';
 
-      const rankingSection = document.getElementById('rankingSection');
-      if (rankingSection) rankingSection.style.display = mode === 'tech' ? 'block' : 'none';
-
       const valActions = document.getElementById('valuation-actions');
       const valRecent = document.getElementById('val-recent-section');
-      const valRankingSection = document.getElementById('valRankingSection');
       const momUniverseRow = document.getElementById('momentum-universe-row');
       const momWatchlistRow = document.getElementById('momentum-watchlist-row');
-      const momRankingSection = document.getElementById('momentumRankingSection');
       const techDateRow = document.getElementById('tech-date-row');
-      const techSearchLabel = document.getElementById('tech-search-label');
-      const valSearchLabel = document.getElementById('val-search-label');
 
       if (valActions) valActions.style.display = mode === 'val' ? (allValuations.length ? 'flex' : 'none') : 'none';
       if (valRecent) valRecent.style.display = mode === 'val' ? 'block' : 'none';
-      if (valRankingSection) valRankingSection.style.display = mode === 'val' ? (allValuations.length ? 'block' : 'none') : 'none';
-      
       if (momUniverseRow) momUniverseRow.style.display = mode === 'momentum' ? 'flex' : 'none';
       if (momWatchlistRow) momWatchlistRow.style.display = mode === 'momentum' ? 'block' : 'none';
-      if (momRankingSection) momRankingSection.style.display = mode === 'momentum' ? (momentumResults.length ? 'block' : 'none') : 'none';
-      
       if (techDateRow) techDateRow.style.display = mode === 'tech' ? 'flex' : 'none';
-      if (techSearchLabel) techSearchLabel.style.display = mode === 'tech' ? 'flex' : 'none';
-      if (valSearchLabel) valSearchLabel.style.display = mode === 'val' ? 'flex' : 'none';
 
-      // Clear results when switching
-      document.getElementById('results').innerHTML = '';
-      document.getElementById('valuation-results').innerHTML = '';
-      document.getElementById('momentum-results-container').innerHTML = '';
-      document.getElementById('emptyState').style.display = 'block';
+      // --- RESULTS ISOLATION ---
+      // 1. Technical Analysis Views
+      const techResults = document.getElementById('results');
+      const techRank = document.getElementById('rankingSection');
+      if (techResults) techResults.style.display = mode === 'tech' ? 'grid' : 'none';
+      if (techRank) techRank.style.display = mode === 'tech' ? (allResults.length ? 'block' : 'none') : 'none';
+
+      // 2. Fundamental Valuation Views
+      const valResults = document.getElementById('valuation-results');
+      const valRank = document.getElementById('valRankingSection');
+      if (valResults) valResults.style.display = mode === 'val' ? 'grid' : 'none';
+      if (valRank) valRank.style.display = mode === 'val' ? (allValuations.length ? 'block' : 'none') : 'none';
+
+      // 3. Momentum Scanner Views
+      const momResults = document.getElementById('momentum-results-container');
+      const momRank = document.getElementById('momentumRankingSection');
+      if (momResults) momResults.style.display = mode === 'momentum' ? 'block' : 'none';
+      if (momRank) momRank.style.display = mode === 'momentum' ? (momentumResults.length ? 'block' : 'none') : 'none';
+
+      const hasData = (mode === 'tech' && allResults.length > 0) || 
+                      (mode === 'val' && allValuations.length > 0) || 
+                      (mode === 'momentum' && momentumResults.length > 0);
+      document.getElementById('emptyState').style.display = hasData ? 'none' : 'block';
 
       if (mode === 'val') loadValuationHistory();
       if (mode === 'momentum') {
           loadMomentumMaster();
           loadMomentumWatchlist();
+          loadMomentumHistory();
       }
     }
 
@@ -2333,6 +2368,7 @@
       document.getElementById('valRankingSection').style.display = 'none';
       document.getElementById('valuation-actions').style.display = 'none';
       document.getElementById('emptyState').style.display = 'block';
+      checkMasterButtonStatus();
     }
 
     async function handleSearch() {
@@ -2349,6 +2385,25 @@
       const input = document.getElementById('symbolInput');
       const tickerStr = input.value.trim();
       if (!tickerStr) return;
+
+      let tickers = tickerStr.split(/[,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+      
+      // Eliminate duplicates already in ranking
+      const existing = allValuations.map(v => v.ticker.toUpperCase());
+      const filtered = tickers.filter(t => !existing.includes(t));
+      const skippedCount = tickers.length - filtered.length;
+      
+      if (!filtered.length) {
+          if (skippedCount > 0) {
+              const msg = skippedCount === 1 ? `"${tickers[0]}" already present in rankings.` : `${skippedCount} stocks already present in rankings.`;
+              showStatusMessage(msg, 'info');
+              // Smooth scroll to ranking to show existing data
+              document.getElementById('valRankingSection')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          return;
+      }
+      
+      const processTickers = filtered.join(', ');
 
       const resultsNode = document.getElementById('valuation-results');
       const emptyState = document.getElementById('emptyState');
@@ -2372,7 +2427,7 @@
         const res = await fetch('/api/valuation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ticker: tickerStr })
+          body: JSON.stringify({ ticker: processTickers })
         });
 
         if (!res.ok) {
@@ -2390,6 +2445,7 @@
         data.forEach((v, idx) => {
           setTimeout(() => renderValuation(v), idx * 100);
         });
+        checkMasterButtonStatus();
       } catch (err) {
         showError(err.message);
         emptyState.style.display = 'block';
@@ -2580,7 +2636,7 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       } catch (err) {
-        alert(err.message);
+        showError(err.message);
       } finally {
         btn.innerHTML = originalHtml;
         btn.disabled = false;
@@ -2612,7 +2668,7 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       } catch (err) {
-        alert(err.message);
+        showError(err.message);
       } finally {
         btn.innerHTML = originalHtml;
         btn.disabled = false;
@@ -2684,8 +2740,8 @@
     function applyCustomRange() {
       const start = document.getElementById("startDate").value;
       const end = document.getElementById("endDate").value;
-      if (!start || !end) { alert("Please select both dates"); return; }
-      if (start >= end) { alert("Start date must be before end date"); return; }
+      if (!start || !end) { showError("Please select both dates"); return; }
+      if (start >= end) { showError("Start date must be before end date"); return; }
 
       // Calculate approximate period string for Yahoo Finance
       const ms = new Date(end) - new Date(start);
@@ -2726,7 +2782,7 @@
     // ── Download ranking table as CSV ─────────────────────────────────────────
     function downloadRankingCSV() {
       if (!allResults.length) {
-        alert("No stocks to download — analyze some stocks first");
+        showError("No stocks to download — analyze some stocks first");
         return;
       }
 
@@ -2931,7 +2987,24 @@
       abortController = new AbortController();
 
       const raw = document.getElementById("symbolInput").value;
-      const symbols = raw.split(/[,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+      let symbols = raw.split(/[,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+      
+      // Eliminate duplicates already in ranking
+      const existing = allResults.map(r => r.symbol.toUpperCase());
+      const filtered = symbols.filter(s => !existing.includes(s));
+      const skippedCount = symbols.length - filtered.length;
+      
+      if (!filtered.length) {
+          if (skippedCount > 0) {
+              const msg = skippedCount === 1 ? `"${symbols[0]}" already present in technical rankings.` : `${skippedCount} stocks already present in technical rankings.`;
+              showStatusMessage(msg, 'info');
+              document.getElementById('rankingSection')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          setLoading(false);
+          return;
+      }
+      
+      symbols = filtered; // Proceed with new stocks only
       if (!symbols.length) return;
 
       setLoading(true);
@@ -3011,6 +3084,9 @@
         if (data.results?.length) {
           renderResults(data.results);
           updateRanking(data.results);
+          checkMasterButtonStatus();
+          // Smooth scroll to rankings
+          document.getElementById("rankingSection").scrollIntoView({ behavior: "smooth", block: "start" });
         } else if (!data.errors?.length) {
           document.getElementById("emptyState").style.display = "block";
         }
@@ -3350,7 +3426,46 @@
 
     function showError(msg) {
       const el = document.getElementById("errorBlock");
-      el.innerHTML += `<div class="error-block">⚠ ${msg}</div>`;
+      el.innerHTML += `<div class="error-block card-enter" style="animation: slideDown 0.3s ease-out">⚠ ${msg}</div>`;
+      // Auto-hide after 10 seconds
+      setTimeout(() => {
+        const first = el.querySelector('.error-block');
+        if (first) first.style.opacity = '0';
+        setTimeout(() => { if (first && first.parentNode === el) el.removeChild(first); }, 300);
+      }, 10000);
+    }
+
+    function showSuccess(msg) {
+      const el = document.getElementById("errorBlock");
+      el.innerHTML += `<div class="error-block card-enter" style="border-color: var(--green); color: var(--green); background: rgba(52,211,153,0.1); animation: slideDown 0.3s ease-out">✓ ${msg}</div>`;
+      setTimeout(() => {
+        const first = el.querySelector('.error-block');
+        if (first) first.style.opacity = '0';
+        setTimeout(() => { if (first && first.parentNode === el) el.removeChild(first); }, 300);
+      }, 5000);
+    }
+
+    function checkMasterButtonStatus() {
+      const btn = document.getElementById('masterReportBtn');
+      const hasTech = allResults.length > 0;
+      const hasMom = momentumResults.length > 0;
+      const hasVal = allValuations.length > 0;
+      
+      if (hasTech && hasMom && hasVal) {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.style.cursor = "pointer";
+        btn.title = "Download Complete Master Report";
+      } else {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+        let missing = [];
+        if (!hasTech) missing.push("Technical");
+        if (!hasMom) missing.push("Momentum");
+        if (!hasVal) missing.push("Valuation");
+        btn.title = `Run all analysis engines first (Missing: ${missing.join(", ")})`;
+      }
     }
 
     function clearErrors() {
@@ -3508,7 +3623,12 @@
       <td>${medal}</td>
       <td><span class="rank-sym">${r.symbol}</span>
           <br><span style="font-size:9px;color:var(--text-faint)">${r.date}</span></td>
-      <td><span class="${sigClass} rank-signal">${r.signal}</span></td>
+      <td style="text-align:center">
+        ${r.beta != null ? `<span style="color:${r.beta_regime === 'HIGH' ? 'var(--red)' :
+            r.beta_regime === 'LOW' ? 'var(--teal)' : 'var(--text-dim)'
+            };font-size:11px">${r.beta?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
+        <br><span style="font-size:8px;color:var(--text-faint)">${r.beta_regime || ''}</span>
+      </td>
       <td style="text-align:center">
         <span style="font-size:16px;font-weight:800;color:${{ 5: '#ffea00', 4: '#69ff47', 3: '#40c4ff', 2: '#888', 1: '#555' }[r.strength || 1]
           }">${r.strength || 1}/5</span>
@@ -3529,17 +3649,12 @@
       <td style="color:var(--red)">Rs.${r.stop_loss}</td>
       <td style="color:var(--green)">Rs.${r.target_1m}</td>
       <td style="text-align:center">
-        ${r.beta != null ? `<span style="color:${r.beta_regime === 'HIGH' ? 'var(--red)' :
-            r.beta_regime === 'LOW' ? 'var(--teal)' : 'var(--text-dim)'
-            };font-size:11px">${r.beta?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
-        <br><span style="font-size:8px;color:var(--text-faint)">${r.beta_regime || ''}</span>
-      </td>
-      <td style="text-align:center">
         ${r.zscore_20 != null ? `<span style="color:${Math.abs(r.zscore_20) > 2 ? 'var(--red)' :
             Math.abs(r.zscore_20) > 1 ? 'var(--gold)' : 'var(--green)'
             };font-size:11px">${r.zscore_20?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
       </td>
       <td style="color:var(--gold)">${r.model_acc?.toFixed(1)}%</td>
+      <td><span class="${sigClass} rank-signal">${r.signal}</span></td>
       <td>${pdfBtn}</td>
     </tr>`;
       }).join("");
@@ -3553,6 +3668,7 @@
     function clearRanking() {
       allResults = [];
       renderRanking();
+      checkMasterButtonStatus();
     }
 
     // ── Momentum Scanner Logic ──────────────────────────────────────────────────
@@ -3617,8 +3733,25 @@
       const input = document.getElementById('symbolInput');
       let symbols = customSymbols || input.value.split(/[,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
 
+      // Eliminate duplicates already in ranking
+      const existing = momentumResults.map(r => r.symbol.toUpperCase());
+      const filtered = symbols.filter(s => !existing.includes(s));
+      const skippedCount = symbols.length - filtered.length;
+
+      if (!filtered.length) {
+          if (skippedCount > 0 && !customSymbols) { // Don't show for automatic index scans to avoid spam
+              const msg = skippedCount === 1 ? `"${symbols[0]}" already present in momentum rankings.` : `${skippedCount} stocks already present in momentum rankings.`;
+              showStatusMessage(msg, 'info');
+              document.getElementById('momentumRankingSection')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          setLoading(false);
+          return;
+      }
+
+      symbols = filtered; // Proceed with new stocks only
       if (!symbols.length) {
         showError("Please enter symbols or select an index");
+        setLoading(false);
         return;
       }
 
@@ -3684,18 +3817,73 @@
 
         if (!res.ok) throw new Error("Scan failed");
 
-        momentumResults = await res.json();
+        const newResults = await res.json();
+        // Merge results: replace existing or add new
+        newResults.forEach(r => {
+            const idx = momentumResults.findIndex(x => x.symbol === r.symbol);
+            if (idx >= 0) momentumResults[idx] = r;
+            else momentumResults.push(r);
+        });
+        // Re-sort by momentum score descending
+        momentumResults.sort((a, b) => b.momentum_score - a.momentum_score);
+
         if (etaEl) etaEl.innerText = ""; // Clear ETA on success
         
-        // Highlight active column if needed
-        // (Removed dynamic header update to keep it simple)
-
         renderMomentumResults();
+        saveMomentumHistory(symbols);
+        checkMasterButtonStatus();
       } catch (err) {
         showError(err.message);
       } finally {
         setLoading(false);
       }
+    }
+
+    function clearMomentumResults() {
+        momentumResults = [];
+        renderMomentumResults();
+        checkMasterButtonStatus();
+    }
+
+    function saveMomentumHistory(symbols) {
+        if (!symbols || !symbols.length) return;
+        let history = JSON.parse(localStorage.getItem('momentum_history') || '[]');
+        symbols.forEach(s => {
+            s = s.toUpperCase();
+            if (!history.includes(s)) history.unshift(s);
+            else {
+                // Move to front
+                history = history.filter(x => x !== s);
+                history.unshift(s);
+            }
+        });
+        history = history.slice(0, 15);
+        localStorage.setItem('momentum_history', JSON.stringify(history));
+        loadMomentumHistory();
+    }
+
+    function loadMomentumHistory() {
+        const history = JSON.parse(localStorage.getItem('momentum_history') || '[]');
+        const container = document.getElementById('momentum-recent-pills');
+        if (!container) return;
+        if (!history.length) {
+            document.getElementById('momentum-recent-row').style.display = 'none';
+            return;
+        }
+        document.getElementById('momentum-recent-row').style.display = 'block';
+        container.innerHTML = history.map(s => `
+            <div class="recent-pill" onclick="fillSearchAndScan('${s}')">
+                <span>${s}</span>
+                <span class="pill-del" onclick="event.stopPropagation();deleteMomentumHistory('${s}')">×</span>
+            </div>
+        `).join('');
+    }
+
+    function deleteMomentumHistory(sym) {
+        let history = JSON.parse(localStorage.getItem('momentum_history') || '[]');
+        history = history.filter(s => s !== sym);
+        localStorage.setItem('momentum_history', JSON.stringify(history));
+        loadMomentumHistory();
     }
 
     function renderMomentumResults() {
@@ -3727,9 +3915,8 @@
                     <td style="text-align:right; font-weight:${momentumRange === '6m' ? '700' : '400'}; color:${r.return_6m > 0 ? 'var(--green)' : 'var(--red)'}">${r.return_6m !== null ? r.return_6m + '%' : '-'}</td>
                     <td style="text-align:right; font-weight:${momentumRange === '1y' ? '700' : '400'}; color:${r.return_1y > 0 ? 'var(--green)' : 'var(--red)'}">${r.return_1y !== null ? r.return_1y + '%' : '-'}</td>
                     <td style="text-align:right; color:${r.daily_return > 0 ? 'var(--green)' : 'var(--red)'}">${r.daily_return}%</td>
-                    <td style="text-align:right">${r.volume_trend}x</td>
-                    <td style="text-align:center"><span class="momentum-status-pill ${r.is_above_ema50 ? 'status-ema-above' : 'status-ema-below'}">${r.is_above_ema50 ? 'Above' : 'Below'}</span></td>
                     <td style="text-align:center"><span class="momentum-status-pill ${r.is_above_ema200 ? 'status-ema-above' : 'status-ema-below'}">${r.is_above_ema200 ? 'Above' : 'Below'}</span></td>
+                    <td style="text-align:right">${r.volume_trend}x</td>
                     <td style="text-align:center">
                         <button class="watchlist-btn ${isWatched ? 'active' : ''}" onclick="toggleMomentumWatchlist('${r.symbol}')">
                             ${isWatched ? '★' : '☆'}
@@ -3853,6 +4040,67 @@
         }
       }
     }
+
+    async function downloadMasterPDF() {
+      if (!allResults.length || !momentumResults.length || !allValuations.length) {
+        showError("Please run all three analysis engines (Technical, Momentum, and Valuation) before generating a Master Report.");
+        return;
+      }
+
+      setLoading(true);
+      const etaEl = document.getElementById('loading-eta');
+      if (etaEl) etaEl.innerText = "Compiling Master Report...";
+
+      try {
+        const response = await fetch('/api/valuation/download_master_pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tech_data: allResults.map(r => ({
+              symbol: r.symbol,
+              score: r.score,
+              price: r.close || r.entry_price,
+              beta: r.beta,
+              signal: r.signal,
+              target: r.target_1m,
+              stop_loss: r.stop_loss
+            })),
+            momentum_data: momentumResults,
+            valuation_data: allValuations
+          })
+        });
+
+        if (!response.ok) {
+          let errorMsg = "Master PDF generation failed";
+          try {
+            const clone = response.clone();
+            const errData = await clone.json();
+            errorMsg = errData.detail || errorMsg;
+          } catch (e) {
+            // Fallback for non-JSON responses
+            const text = await response.text();
+            if (text.includes("Internal Server Error")) errorMsg = "Internal Server Error (Backend Crash)";
+            else errorMsg = text.substring(0, 200);
+          }
+          throw new Error(errorMsg);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Master_Analysis_Report_${new Date().toISOString().slice(0, 10)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error(err);
+        showError("Failed to generate master report: " + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
 
     // ── Boot ──────────────────────────────────────────────────────────────────────
     init();

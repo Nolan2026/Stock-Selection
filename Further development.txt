@@ -1,0 +1,17 @@
+1. Portfolio Tracking & Optimization
+Holdings Integration: Allow users to input their current holdings and purchase prices.
+Rebalancing Suggestions: Automatically flag stocks in the portfolio that have dropped to an "AVOID" signal and suggest rotating capital into "STRONG BUY" or "DEEP VALUE" candidates.
+Risk Metrics: Display portfolio-level risk metrics, such as overall Beta, sector exposure, and aggregate margin of safety.
+
+2. Advanced ML Expansion
+Probability Scoring: Instead of just a 5-day directional prediction, train the ML model to output the probability percentage of a stock hitting its Target before hitting its Stop Loss
+
+
+
+
+
+
+1. in master report "valuation section" i want two per page of stock detail valuation.
+2. in master report "Technical Analysis Rankings" add Beta column and move Signal  to end
+3. in master report "Momentum Scanner Rankings" add 3m retuns and remove EMA 50 column move Vol Trend col to end
+4. dont change this order in ranking table changes done in master report only

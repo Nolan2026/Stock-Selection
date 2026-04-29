@@ -20,12 +20,17 @@ from app.models.valuation_models import (
     CompareResponse,
     OverallVerdict,
     MetricSummary,
-    DataAvailability
+    DataAvailability,
+    MasterReportRequest
 )
+
 from app.services import valuation_service
 
 router = APIRouter(prefix="/api/valuation", tags=["Valuation Analysis"])
 logger = logging.getLogger(__name__)
+fh = logging.FileHandler("master_pdf_debug.log")
+fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(fh)
 
 def _perform_valuation(ticker_sym: str) -> Dict[str, Any]:
     """Helper to perform the full valuation logic for a single ticker."""
@@ -206,3 +211,40 @@ async def download_valuation_pdf(req: ValuationRequest):
         if os.path.exists(path): os.remove(path)
         logger.error(f"PDF Endpoint error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/download_master_pdf")
+async def download_master_pdf(req: MasterReportRequest):
+    """
+    Generate and download a comprehensive Master PDF report.
+    """
+    path = ""
+    try:
+        # Create temp file inside try block
+        fd, path = tempfile.mkstemp(suffix=".pdf", prefix="master_report_")
+        os.close(fd)
+
+        pdf_path = valuation_service.create_master_pdf(
+            req.tech_data, 
+            req.momentum_data, 
+            req.valuation_data, 
+            path
+        )
+        if not pdf_path or not os.path.exists(pdf_path):
+            raise HTTPException(status_code=500, detail="Master PDF generation failed.")
+        
+        return FileResponse(
+            path=pdf_path,
+            filename=f"Master_Analysis_Report_{datetime.now().strftime('%Y%m%d')}.pdf",
+            media_type="application/pdf"
+        )
+    except Exception as e:
+        import traceback
+        full_error = traceback.format_exc()
+        try:
+            if os.path.exists(path): os.remove(path)
+        except:
+            pass
+        logger.error(f"Master PDF Endpoint error: {full_error}")
+        raise HTTPException(status_code=500, detail=f"Master PDF Backend Error: {str(e)}\n{full_error[:500]}")
+

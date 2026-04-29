@@ -8,7 +8,7 @@ Defines request/response schemas for single-stock and comparison endpoints.
 from __future__ import annotations
 
 from datetime import date
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -34,6 +34,14 @@ class CompareRequest(BaseModel):
         min_length=2,
         max_length=5,
     )
+
+
+class MasterReportRequest(BaseModel):
+    """Request body for comprehensive master report generation."""
+    tech_data: List[Dict[str, Any]]
+    momentum_data: List[Dict[str, Any]]
+    valuation_data: List[Dict[str, Any]]
+
 
 
 # ── Metric Result ────────────────────────────────────────────────────────────

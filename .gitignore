@@ -5,6 +5,7 @@ data/search_history.json
 *.csv
 *.xlsx
 *.log
+master_pdf_debug.log
 
 # Python
 __pycache__/
@@ -12,6 +13,9 @@ __pycache__/
 *$py.class
 *.so
 .env
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Virtual Environments
 .venv/
@@ -28,18 +32,23 @@ test_*.py
 *_test.py
 test.py
 test_valuation.py
+test_yf.py
+scratch/
 
 # IDEs and OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+*.swp
 
 # Temporary Data
 temp*.json
 info.json
+*.cache
 
 # Image Exports
 *.jpg
 *.jpeg
 *.png
+!static/assets/  # Do not ignore assets if they are in this folder

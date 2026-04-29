@@ -1098,7 +1098,10 @@ def build_pdf(result: dict, d_eng: pd.DataFrame) -> str:
 
         fig2.suptitle(f"{symbol}  —  Momentum Dashboard  |  {result['date']}",
                       fontsize=13, fontweight="bold", color=sig_clr)
-        plt.tight_layout(rect=[0, 0.02, 1, 1])
+        try:
+            plt.tight_layout(rect=[0, 0.02, 1, 1])
+        except:
+            plt.subplots_adjust(left=0.08, right=0.92, top=0.9, bottom=0.1, hspace=0.4, wspace=0.3)
         pdf.savefig(fig2, bbox_inches="tight", facecolor=BG)
         plt.close(fig2)
     except Exception as me:
