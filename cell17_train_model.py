@@ -129,11 +129,11 @@ plt.rcParams.update({
 })
 BG = BG.strip()
 
-HORIZON      = 5      # days forward for target
-BUY_THRESH   = 1.5    # % return → BUY label  (was 2.0 — tighter = more BUY samples)
-SELL_THRESH  = -1.5   # % return → SELL label (was -2.0 — tighter = more SELL samples)
-TRAIN_YEARS  = 10     # years of data for training
-PREDICT_YEARS= 2      # years of recent data for prediction
+TARGET_LOOKAHEAD = 20     # Lookahead window for path-dependent target
+TARGET_PCT       = 4.0    # Target % for "hit before stop" logic
+STOP_PCT         = 2.0    # Stop Loss % for "hit before stop" logic
+TRAIN_YEARS      = 10     # years of data for training
+PREDICT_YEARS    = 2      # years of recent data for prediction
 
 # ══════════════════════════════════════════════════════════════════════════════
 # §A  DATA FETCHING  (yfinance)
@@ -532,17 +532,58 @@ def engineer(stock_df, nifty_df, vix_df):
 # §D  CLASSIFICATION TARGET
 # ══════════════════════════════════════════════════════════════════════════════
 
-def make_target(close_series):
+def make_target(df, target_pct=TARGET_PCT, stop_pct=STOP_PCT, max_lookahead=TARGET_LOOKAHEAD):
     """
-    3-class label based on HORIZON-day forward return.
-      +1 = BUY   (return > BUY_THRESH %)
-      -1 = SELL  (return < SELL_THRESH %)
-       0 = HOLD  (otherwise)
+    Advanced Path-Dependent Labeling:
+    Calculates if the price reaches the Target (+T%) before hitting the Stop Loss (-S%)
+    within a specified lookahead window.
+
+    +1 = BUY   (Hits Target first)
+    -1 = SELL  (Hits Stop Loss first)
+     0 = HOLD  (Neither hit within window, or noise)
     """
-    fwd = close_series.pct_change(HORIZON).shift(-HORIZON)*100
-    label = np.where(fwd >= BUY_THRESH, 1,
-                     np.where(fwd <= SELL_THRESH, -1, 0))
-    return pd.Series(label, index=close_series.index, name="TARGET")
+    close = df["CLOSE"].values
+    high  = df["HIGH"].values
+    low   = df["LOW"].values
+    n     = len(close)
+    labels = np.zeros(n)
+
+    # Use vectorized lookahead for efficiency
+    for i in range(n - max_lookahead):
+        entry = close[i]
+        upper = entry * (1 + target_pct/100)
+        lower = entry * (1 - stop_pct/100)
+
+        hit_upper = -1
+        hit_lower = -1
+
+        # Check for first event in high/low path
+        window_h = high[i+1 : i + max_lookahead + 1]
+        window_l = low[i+1 : i + max_lookahead + 1]
+
+        # Find first index where high >= upper
+        ups = np.where(window_h >= upper)[0]
+        if len(ups) > 0:
+            hit_upper = ups[0]
+
+        # Find first index where low <= lower
+        downs = np.where(window_l <= lower)[0]
+        if len(downs) > 0:
+            hit_lower = downs[0]
+
+        # Determine label based on which hit first
+        if hit_upper != -1 and (hit_lower == -1 or hit_upper < hit_lower):
+            labels[i] = 1
+        elif hit_lower != -1 and (hit_upper == -1 or hit_lower < hit_upper):
+            labels[i] = -1
+        else:
+            # Optional: handle neutral at end of window
+            final_ret = (close[i + max_lookahead] / entry - 1) * 100
+            if   final_ret >=  1.0: labels[i] =  1
+            elif final_ret <= -1.0: labels[i] = -1
+            else:                   labels[i] =  0
+
+    return pd.Series(labels, index=df.index, name="TARGET")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -589,12 +630,12 @@ def train_evaluate(d_eng):
     if missing: print(f"   ⚠️  Missing features (skipped): {missing}")
     print(f"   Using {len(feats)} features")
 
-    sub = d_eng[feats + ["DATE","CLOSE"]].copy()
-    sub["TARGET"] = make_target(pd.Series(sub["CLOSE"].values)).values
+    sub = d_eng[feats + ["DATE","CLOSE","HIGH","LOW"]].copy()
+    sub["TARGET"] = make_target(sub).values
 
-    # Drop only rows where TARGET or CLOSE is NaN (i.e. the last HORIZON rows)
-    # Replace inf → NaN, then impute feature NaNs with column median
-    sub = sub.dropna(subset=["TARGET","CLOSE"]).reset_index(drop=True)
+    # Drop only rows where TARGET is 0 but we don't have enough data to be sure
+    # (i.e. the last TARGET_LOOKAHEAD rows)
+    sub = sub.iloc[:-TARGET_LOOKAHEAD].reset_index(drop=True)
 
     # Step 1: replace +inf / -inf with NaN
     sub[feats] = sub[feats].replace([np.inf, -np.inf], np.nan)

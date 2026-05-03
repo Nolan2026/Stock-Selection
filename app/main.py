@@ -28,7 +28,7 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from app.routers import valuation_router, momentum_router
+from app.routers import valuation_router, momentum_router, portfolio_router
 
 app = FastAPI(
     title="NSE Stock Analysis API",
@@ -38,6 +38,7 @@ app = FastAPI(
 
 app.include_router(valuation_router.router)
 app.include_router(momentum_router.router)
+app.include_router(portfolio_router.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -247,9 +248,9 @@ def engineer(raw):
     d["EMA_STACK"]=d["EMA10_GT_20"]+d["EMA20_GT_50"]+d["EMA50_GT_200"]
 
     # ── Gap analysis ──────────────────────────────────────────────────────────
-    d["GAP_ATR"]=(e10-e50h)/atr;  d["GAP_PCT"]=(e10-e50h)/e50h*100
-    d["CLOSE_GAP_ATR"]=(C_-e50h)/atr
-    gap_raw=(e10-e50h)/atr
+    d["GAP_ATR"]=(e10-e50h)/atr.replace(0, np.nan);  d["GAP_PCT"]=(e10-e50h)/e50h.replace(0, np.nan)*100
+    d["CLOSE_GAP_ATR"]=(C_-e50h)/atr.replace(0, np.nan)
+    gap_raw=d["GAP_ATR"]
     d["GAP_WIDENING"]=gap_raw.diff(5)
 
     # ── Oscillators ───────────────────────────────────────────────────────────
@@ -372,6 +373,12 @@ def engineer(raw):
         std252 = _r.rolling(252).std()
         d["BETA_DISPLAY"] = (vol60 / std252.replace(0, np.nan)).round(3)
 
+    # ── Final cleanup for JSON compliance ─────────────────────────────────────
+    # Replace inf and -inf with NaN, then fill NaN with 0 in numeric columns.
+    # This prevents the "Out of range float values are not JSON compliant: inf" error.
+    num_cols = d.select_dtypes(include=[np.number]).columns
+    d[num_cols] = d[num_cols].replace([np.inf, -np.inf], np.nan).fillna(0)
+
     return d
 
 # ── Generate Signal ───────────────────────────────────────────────────────────
@@ -386,6 +393,30 @@ def generate_signal(d_eng: pd.DataFrame, symbol: str, model_name: str = "stock_m
     last  = d_eng.dropna(subset=feats).iloc[-1]
     X     = last[feats].values.reshape(1, -1)
     pred  = float(pipe.predict(X)[0])
+
+    # ── Probability scoring: P(hit target before stop loss) ───────────────────
+    # Uses the classifier's BUY-class probability as a proxy for
+    # "probability that price reaches Target before hitting Stop Loss".
+    # The model was trained with labels: +1=BUY (price >+1.5%), -1=SELL, 0=HOLD.
+    # BUY proba ≈ likelihood the stock moves up meaningfully in 5 days.
+    prob_hit_target = None
+    try:
+        if hasattr(pipe, "predict_proba"):
+            proba   = pipe.predict_proba(X)[0]        # shape (n_classes,)
+            clf     = pipe.named_steps["m"]
+            classes = list(clf.classes_)              # e.g. [-1, 0, 1]
+            if 1 in classes:
+                buy_idx         = classes.index(1)
+                sell_idx        = classes.index(-1) if -1 in classes else None
+                p_buy           = float(proba[buy_idx])
+                p_sell          = float(proba[sell_idx]) if sell_idx is not None else 0.0
+                p_directional   = p_buy + p_sell + 1e-9   # avoid div/0
+                # Conditional probability: given a directional move,
+                # how likely is it to be the TARGET direction (up)?
+                prob_hit_target = round(p_buy / p_directional * 100, 1)
+    except Exception as _pe:
+        logger.warning(f"predict_proba failed for {symbol}: {_pe}")
+        prob_hit_target = None
 
     # ── Core indicators ────────────────────────────────────────────────────────
     gap_atr     = float(last.get("GAP_ATR",      0))
@@ -544,6 +575,21 @@ def generate_signal(d_eng: pd.DataFrame, symbol: str, model_name: str = "stock_m
         "momentum_boost":     bool(momentum_aligned and sig == "STRONG BUY"),
     }
 
+    # ── Probability fallback (for regression models without predict_proba) ──────
+    # When predict_proba isn't available, synthesise a conditional probability
+    # from the ML regression output + score tier + signal strength.
+    # Formula: base 50% + pred contribution (±20%) + score contribution (±15%)
+    # Clipped to [15, 85] to avoid overconfident extremes.
+    if prob_hit_target is None:
+        try:
+            sig_bonus = {"STRONG BUY": 12, "BUY": 6, "WATCH": 0, "AVOID": -12}.get(sig, 0)
+            score_bonus = (total - 4) * 2.5        # score 8→+10, score 0→-10
+            pred_contrib = min(20, max(-20, float(pred) * 4))  # pred ±5% → ±20%
+            raw = 50.0 + pred_contrib + score_bonus + sig_bonus
+            prob_hit_target = round(max(15.0, min(85.0, raw)), 1)
+        except Exception:
+            prob_hit_target = None
+
     # Price history for sparkline
     hist90 = d_eng.tail(90)[["DATE","CLOSE","EMA50_HIGH","EMA50_LOW","EMA_10",
                                "GAP_ATR","RSI_14","MACD_HIST"]].copy()
@@ -558,6 +604,7 @@ def generate_signal(d_eng: pd.DataFrame, symbol: str, model_name: str = "stock_m
         "strength_label":    strength_label,
         "momentum":          momentum_detail,
         "pred_5d_pct":       round(pred, 2),
+        "prob_hit_target":   prob_hit_target,   # NEW: P(hit target) %
         "date":              str(d_eng["DATE"].iloc[-1])[:10],
         "close":             round(close, 2),
         "ema10":             round(e10, 2),
@@ -579,7 +626,7 @@ def generate_signal(d_eng: pd.DataFrame, symbol: str, model_name: str = "stock_m
         "stop_loss":         round(e50l, 2),
         "entry_price":       round(close, 2),
         "target_1m":         round(close * (1 + max(pred, 2) / 100), 2),
-        # ── New indicators ────────────────────────────────────────────────────
+        # ── Risk indicators ───────────────────────────────────────────────────
         "beta":              round(float(d_eng["BETA_DISPLAY"].iloc[-1]), 3)
                              if "BETA_DISPLAY" in d_eng.columns and
                              not np.isnan(d_eng["BETA_DISPLAY"].iloc[-1]) else None,
@@ -601,8 +648,6 @@ def generate_signal(d_eng: pd.DataFrame, symbol: str, model_name: str = "stock_m
                              if "TREND_STRUCT" in d_eng.columns else None,
         "overextended":      bool(d_eng["OVEREXTENDED"].iloc[-1])
                              if "OVEREXTENDED" in d_eng.columns else False,
-        # Chart data
-        "history":           hist90.to_dict("records"),
         # Chart data
         "history":           hist90.to_dict("records"),
         "model_name":        bundle["metrics"]["model"] if bundle else "N/A",

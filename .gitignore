@@ -1,13 +1,20 @@
 # App Data / Generated Files
 data/reports/
 data/search_history.json
+data/portfolio.json
+data/nse_master.json
 *.pdf
 *.csv
 *.xlsx
 *.log
 master_pdf_debug.log
 
-# Python
+# ML Models & Binary files
+models/*.pkl
+*.pkl
+*.joblib
+
+# Python Environment & Cache
 __pycache__/
 *.py[cod]
 *$py.class
@@ -16,6 +23,9 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+build/
+dist/
+*.egg-info/
 
 # Virtual Environments
 .venv/
@@ -27,12 +37,15 @@ env/
 .ipynb_checkpoints
 *.ipynb
 
-# Testing and Scratch files
+# Testing, Scratch and Unwanted files
 test_*.py
 *_test.py
 test.py
 test_valuation.py
 test_yf.py
+cell17_*.py
+Further development.txt
+{app,models,static}/
 scratch/
 
 # IDEs and OS

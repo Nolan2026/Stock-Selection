@@ -286,6 +286,51 @@
       background: rgba(255, 255, 255, 0.05);
     }
 
+    /* ── Scanner Hub ─────────────────────────────────────────────────────── */
+    .scanner-hub {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .scanner-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(74, 159, 212, 0.05);
+      border: 1px solid var(--border);
+      padding: 10px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text-dim);
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      letter-spacing: 0.5px;
+    }
+
+    .scanner-link:hover {
+      border-color: var(--teal);
+      background: rgba(74, 159, 212, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .scanner-link i {
+      font-size: 14px;
+      color: var(--teal);
+    }
+
+    .scanner-badge {
+      background: var(--teal);
+      color: var(--bg);
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
     /* ── Search enhancements ──────────────────────────────────────────────── */
     .search-input-wrap {
       position: relative;
@@ -1756,8 +1801,19 @@
     }
 
     .modal-cancel:hover {
-      border-color: var(--red);
-      color: var(--red)
+      border-color: var(--text-dim);
+      color: var(--text);
+    }
+
+    .confirm-btn-danger {
+      background: var(--red-dim) !important;
+      color: var(--red) !important;
+      border: 1px solid var(--red) !important;
+    }
+
+    .confirm-btn-danger:hover {
+      background: var(--red) !important;
+      color: var(--bg) !important;
     }
 
     .active-range-display {
@@ -1943,6 +1999,7 @@
         <button class="mode-btn active" id="mode-tech" onclick="switchMode('tech')">Technical Analysis</button>
         <button class="mode-btn" id="mode-val" onclick="switchMode('val')">Valuation Analysis</button>
         <button class="mode-btn" id="mode-momentum" onclick="switchMode('momentum')">Momentum Scanner</button>
+        <button class="mode-btn" id="mode-portfolio" onclick="switchMode('portfolio')">📊 Portfolio</button>
       </div>
 
       <div class="search-wrap">
@@ -2027,6 +2084,18 @@
           <div class="modal-actions">
             <button class="modal-cancel" onclick="closeDateModal()">Cancel</button>
             <button class="modal-apply" onclick="applyCustomRange()">Apply Range →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Confirmation Modal -->
+      <div class="modal-overlay" id="confirmModal">
+        <div class="modal-box" style="border-color: var(--border2);">
+          <div class="modal-title" id="confirmTitle" style="color: var(--text);">Confirm Action</div>
+          <div class="modal-sub" id="confirmMessage" style="color: var(--text-dim); margin-bottom: 24px;">Are you sure you want to proceed?</div>
+          <div class="modal-actions">
+            <button class="modal-cancel" onclick="closeConfirm()" style="flex: 1;">Cancel</button>
+            <button class="modal-apply confirm-btn-danger" id="confirmOkBtn" style="flex: 1.2;">Confirm Delete</button>
           </div>
         </div>
       </div>
@@ -2269,6 +2338,45 @@
       </div>
     </div>
 
+    <!-- Portfolio Panel -->
+    <div id="portfolio-panel" style="display:none">
+      <!-- Add Holding Form -->
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:24px 28px;margin-bottom:24px;">
+        <div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+          <span style="width:3px;height:18px;background:var(--teal);display:inline-block;border-radius:2px;"></span>
+          Add / Update Holding
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Symbol</div>
+            <input id="pf-symbol" type="text" placeholder="RELIANCE" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;text-transform:uppercase;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Qty (shares)</div>
+            <input id="pf-qty" type="number" placeholder="100" min="1" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Avg Cost (₹)</div>
+            <input id="pf-cost" type="number" placeholder="2450.00" min="0.01" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Sector (optional)</div>
+            <input id="pf-sector" type="text" placeholder="IT, FMCG, Banking..." style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
+          </div>
+        </div>
+        <button onclick="addHolding()" style="background:var(--teal);color:var(--bg);border:none;padding:10px 24px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;">+ Add Holding</button>
+        <button onclick="analyzePortfolio()" id="pf-analyze-btn" style="background:transparent;border:1px solid var(--green);color:var(--green);padding:10px 24px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;margin-left:10px;">⚡ Analyze Portfolio</button>
+        <button onclick="document.getElementById('pf-file-input').click()" style="background:transparent;border:1px solid var(--purple);color:var(--purple);padding:10px 24px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;margin-left:10px;">📤 Import Excel</button>
+        <input type="file" id="pf-file-input" style="display:none" accept=".xlsx, .xls, .csv" onchange="importPortfolioFile(this)">
+      </div>
+
+      <!-- Holdings List -->
+      <div id="pf-holdings-list"></div>
+
+      <!-- Portfolio Metrics + Rebalancing -->
+      <div id="pf-metrics-panel" style="display:none;margin-top:24px;"></div>
+    </div>
+
     <!-- Empty state -->
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">⬡</div>
@@ -2305,14 +2413,18 @@
       document.getElementById('mode-tech').classList.toggle('active', mode === 'tech');
       document.getElementById('mode-val').classList.toggle('active', mode === 'val');
       document.getElementById('mode-momentum').classList.toggle('active', mode === 'momentum');
-      
+      document.getElementById('mode-portfolio').classList.toggle('active', mode === 'portfolio');
+
       const techSearchLabel = document.getElementById('tech-search-label');
       const valSearchLabel = document.getElementById('val-search-label');
       if (techSearchLabel) techSearchLabel.style.display = mode === 'tech' ? 'flex' : 'none';
       if (valSearchLabel) valSearchLabel.style.display = mode === 'val' ? 'flex' : 'none';
 
-      const dateControls = document.querySelector('.date-range-row');
-      if (dateControls) dateControls.style.display = mode === 'tech' ? 'flex' : 'none';
+      // Hide the main search bar in portfolio mode (it has its own inputs)
+      const searchWrap = document.querySelector('.search-wrap');
+      const searchHint = document.querySelector('.search-hint');
+      if (searchWrap) searchWrap.style.display = mode === 'portfolio' ? 'none' : 'flex';
+      if (searchHint) searchHint.style.display = mode === 'portfolio' ? 'none' : '';
 
       const recentSection = document.getElementById('recentSection');
       if (recentSection) recentSection.style.display = mode === 'tech' ? 'block' : 'none';
@@ -2330,35 +2442,37 @@
       if (techDateRow) techDateRow.style.display = mode === 'tech' ? 'flex' : 'none';
 
       // --- RESULTS ISOLATION ---
-      // 1. Technical Analysis Views
       const techResults = document.getElementById('results');
       const techRank = document.getElementById('rankingSection');
       if (techResults) techResults.style.display = mode === 'tech' ? 'grid' : 'none';
       if (techRank) techRank.style.display = mode === 'tech' ? (allResults.length ? 'block' : 'none') : 'none';
 
-      // 2. Fundamental Valuation Views
       const valResults = document.getElementById('valuation-results');
       const valRank = document.getElementById('valRankingSection');
       if (valResults) valResults.style.display = mode === 'val' ? 'grid' : 'none';
       if (valRank) valRank.style.display = mode === 'val' ? (allValuations.length ? 'block' : 'none') : 'none';
 
-      // 3. Momentum Scanner Views
       const momResults = document.getElementById('momentum-results-container');
       const momRank = document.getElementById('momentumRankingSection');
       if (momResults) momResults.style.display = mode === 'momentum' ? 'block' : 'none';
       if (momRank) momRank.style.display = mode === 'momentum' ? (momentumResults.length ? 'block' : 'none') : 'none';
 
-      const hasData = (mode === 'tech' && allResults.length > 0) || 
-                      (mode === 'val' && allValuations.length > 0) || 
-                      (mode === 'momentum' && momentumResults.length > 0);
+      const pfPanel = document.getElementById('portfolio-panel');
+      if (pfPanel) pfPanel.style.display = mode === 'portfolio' ? 'block' : 'none';
+
+      const hasData = (mode === 'tech' && allResults.length > 0) ||
+                      (mode === 'val' && allValuations.length > 0) ||
+                      (mode === 'momentum' && momentumResults.length > 0) ||
+                      mode === 'portfolio';
       document.getElementById('emptyState').style.display = hasData ? 'none' : 'block';
 
       if (mode === 'val') loadValuationHistory();
       if (mode === 'momentum') {
-          loadMomentumMaster();
-          loadMomentumWatchlist();
-          loadMomentumHistory();
+        loadMomentumMaster();
+        loadMomentumWatchlist();
+        loadMomentumHistory();
       }
+      if (mode === 'portfolio') loadPortfolioHoldings();
     }
 
 
@@ -3303,11 +3417,11 @@
 
       <!-- Extra stats -->
       <div class="model-info">
-        <span>Streak above 50H: <strong style="color:var(--teal)">${r.streak_days}d</strong></span>
-        <span>52W pos: <strong>${r.pos_52w}%</strong></span>
-        <span>ML pred 5d: <strong style="color:${r.pred_5d_pct >= 0 ? 'var(--green)' : 'var(--red)'}">
-          ${r.pred_5d_pct >= 0 ? "+" : ""}${r.pred_5d_pct}%</strong></span>
-        <span>DirAcc: <strong class="model-acc">${r.model_acc?.toFixed(1)}%</strong></span>
+        <span>Streak: <strong style="color:var(--teal)">${r.streak_days}d</strong></span>
+        <span>52W: <strong>${r.pos_52w}%</strong></span>
+        <span>ML 5d: <strong style="color:${r.pred_5d_pct >= 0 ? 'var(--green)' : 'var(--red)'}">${r.pred_5d_pct >= 0 ? '+' : ''}${r.pred_5d_pct}%</strong></span>
+        ${r.prob_hit_target != null ? `<span>P(Target): <strong style="color:${r.prob_hit_target>=60?'var(--green)':r.prob_hit_target>=45?'var(--gold)':'var(--red)'}">${r.prob_hit_target}%</strong></span>` : ''}
+        <span>Acc: <strong class="model-acc">${r.model_acc?.toFixed(1)}%</strong></span>
       </div>
 
       <!-- Download -->
@@ -4030,7 +4144,7 @@
         document.body.removeChild(link);
       } catch (err) {
         console.error('Error generating image', err);
-        alert('Failed to generate image');
+        showError('Failed to generate image');
       } finally {
         if (actions) actions.style.display = originalDisplay;
         if (tableWrap && table) {
@@ -4101,6 +4215,318 @@
       }
     }
 
+
+    // ── Portfolio Functions ────────────────────────────────────────────────────────
+
+    async function loadPortfolioHoldings() {
+      try {
+        const r = await fetch('/api/portfolio');
+        const d = await r.json();
+        renderHoldingsList(d.holdings || {});
+      } catch(e) { showError('Could not load portfolio: ' + e.message); }
+    }
+
+    async function addHolding() {
+      const sym  = document.getElementById('pf-symbol').value.trim().toUpperCase();
+      const qty  = parseFloat(document.getElementById('pf-qty').value);
+      const cost = parseFloat(document.getElementById('pf-cost').value);
+      const sec  = document.getElementById('pf-sector').value.trim();
+      if (!sym || !qty || !cost) { showError('Symbol, Qty and Avg Cost are required'); return; }
+      try {
+        const r = await fetch('/api/portfolio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symbol: sym, qty, avg_cost: cost, sector: sec || 'Unknown' })
+        });
+        if (!r.ok) throw new Error((await r.json()).detail);
+        document.getElementById('pf-symbol').value = '';
+        document.getElementById('pf-qty').value = '';
+        document.getElementById('pf-cost').value = '';
+        document.getElementById('pf-sector').value = '';
+        await loadPortfolioHoldings();
+        showSuccess(`${sym} added to portfolio`);
+      } catch(e) { showError('Add failed: ' + e.message); }
+    }
+
+    async function importPortfolioFile(input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      setLoading(true);
+      try {
+        const r = await fetch('/api/portfolio/upload_excel', {
+          method: 'POST',
+          body: formData
+        });
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.detail || 'Import failed');
+        }
+        const res = await r.json();
+        showSuccess(`Successfully imported ${res.count} holdings`);
+        await loadPortfolioHoldings();
+      } catch (e) {
+        showError('Import failed: ' + e.message);
+      } finally {
+        setLoading(false);
+        input.value = ''; // Reset input
+      }
+    }
+
+    let confirmCallback = null;
+    function showConfirm(title, message, onOk) {
+      document.getElementById('confirmTitle').innerText = title;
+      document.getElementById('confirmMessage').innerText = message;
+      document.getElementById('confirmModal').classList.add('open');
+      confirmCallback = onOk;
+    }
+    function closeConfirm() {
+      document.getElementById('confirmModal').classList.remove('open');
+      confirmCallback = null;
+    }
+    document.getElementById('confirmOkBtn').onclick = () => {
+      if (confirmCallback) confirmCallback();
+      closeConfirm();
+    };
+
+    async function deleteHolding(sym) {
+      showConfirm('Remove Holding', `Are you sure you want to remove ${sym} from your portfolio? This action cannot be undone.`, async () => {
+        try {
+          const r = await fetch(`/api/portfolio/${sym}`, { method: 'DELETE' });
+          if (!r.ok) throw new Error('Delete failed');
+          await loadPortfolioHoldings();
+          showSuccess(`${sym} removed from portfolio`);
+        } catch (e) {
+          showError(e.message);
+        }
+      });
+    }
+
+    function renderHoldingsList(holdings) {
+      const el = document.getElementById('pf-holdings-list');
+      const syms = Object.keys(holdings);
+      if (!syms.length) {
+        el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-faint);font-size:13px;">No holdings yet. Add stocks using the form above.</div>`;
+        return;
+      }
+      el.innerHTML = `
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;">
+            <span style="display:flex;align-items:center;gap:8px;"><span style="width:3px;height:16px;background:var(--gold);display:inline-block;border-radius:2px;"></span>Holdings (${syms.length})</span>
+            <span style="color:var(--text-faint);">Click ⚡ Analyze Portfolio for live prices &amp; signals</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr style="background:var(--bg);">
+              <th style="padding:10px 16px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:left;">Symbol</th>
+              <th style="padding:10px 16px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">Qty</th>
+              <th style="padding:10px 16px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">Avg Cost</th>
+              <th style="padding:10px 16px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:left;">Sector</th>
+              <th style="padding:10px 16px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">Cost Basis</th>
+              <th style="padding:10px 16px;font-size:9px;font-size:9px;text-align:center;"></th>
+            </tr></thead>
+            <tbody>${syms.map(sym => {
+              const h = holdings[sym];
+              return `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:10px 16px;font-family:var(--font-display);font-weight:700;color:var(--teal);">${sym}</td>
+                <td style="padding:10px 16px;text-align:right;">${h.qty}</td>
+                <td style="padding:10px 16px;text-align:right;">₹${h.avg_cost.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                <td style="padding:10px 16px;font-size:11px;color:var(--text-dim);">${h.sector}</td>
+                <td style="padding:10px 16px;text-align:right;">₹${(h.qty * h.avg_cost).toLocaleString('en-IN', {maximumFractionDigits:0})}</td>
+                <td style="padding:10px 16px;text-align:center;">
+                  <button onclick="deleteHolding('${sym}')" style="background:transparent;border:1px solid var(--red-dim);color:var(--red);padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;">✕</button>
+                </td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>`;
+    }
+
+    async function analyzePortfolio() {
+      const btn = document.getElementById('pf-analyze-btn');
+      btn.disabled = true; btn.textContent = '⏳ Analyzing...';
+      setLoading(true);
+      const etaEl = document.getElementById('loading-eta');
+      if (etaEl) etaEl.innerText = 'Fetching live prices for all holdings...';
+      try {
+        const r = await fetch('/api/portfolio/analyze', { method: 'POST' });
+        if (!r.ok) throw new Error((await r.json()).detail);
+        const d = await r.json();
+        renderPortfolioMetrics(d);
+      } catch(e) { showError('Portfolio analysis failed: ' + e.message); }
+      finally {
+        setLoading(false);
+        btn.disabled = false; btn.textContent = '⚡ Analyze Portfolio';
+      }
+    }
+
+    function renderPortfolioMetrics(data) {
+      const panel = document.getElementById('pf-metrics-panel');
+      const { portfolio_metrics: pm, results, rebalance_flags } = data;
+      if (!pm || !results.length) { panel.style.display = 'none'; return; }
+      panel.style.display = 'block';
+
+      const pnlClr = pm.overall_pnl_pct >= 0 ? 'var(--green)' : 'var(--red)';
+      const betaClr = pm.weighted_beta > 1.2 ? 'var(--red)' : pm.weighted_beta > 0.8 ? 'var(--gold)' : 'var(--green)';
+
+      // Sector exposure chart (bar widths)
+      const secHtml = Object.entries(pm.sector_exposure || {}).sort((a,b)=>b[1]-a[1]).map(([sec, pct]) => `
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">
+            <span style="color:var(--text-dim);">${sec}</span><span style="color:var(--text);">${pct}%</span>
+          </div>
+          <div style="height:5px;background:var(--border);border-radius:3px;"><div style="height:100%;width:${pct}%;background:var(--teal);border-radius:3px;"></div></div>
+        </div>`).join('');
+
+      // Holdings table
+      const holdingsHtml = results.map(r => {
+        const pnlClr2 = r.pnl_pct >= 0 ? 'var(--green)' : 'var(--red)';
+        const sigClr = r.signal.includes('BUY') ? 'var(--green)' : r.signal === 'WATCH' ? 'var(--gold)' : 'var(--red)';
+        const flagClr = r.rebalance_flag === 'ROTATE_OUT' ? 'var(--red)' : r.rebalance_flag === 'HOLD_OR_ADD' ? 'var(--green)' : 'var(--gold)';
+        const probHtml = r.prob_hit_target != null
+          ? `<td style="text-align:right;font-size:11px;color:${r.prob_hit_target>=60?'var(--green)':r.prob_hit_target>=45?'var(--gold)':'var(--red)'}">${r.prob_hit_target}%</td>`
+          : '<td style="text-align:right;color:var(--text-faint);">—</td>';
+        return `<tr style="border-top:1px solid var(--border);">
+          <td style="padding:9px 14px;font-family:var(--font-display);font-weight:700;color:var(--teal);">${r.symbol}</td>
+          <td style="padding:9px 14px;text-align:right;">₹${r.current_price.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+          <td style="padding:9px 14px;text-align:right;color:${pnlClr2};font-weight:700;">${r.pnl_pct>=0?'+':''}${r.pnl_pct}%</td>
+          <td style="padding:9px 14px;text-align:right;color:${pnlClr2};">₹${r.pnl_abs.toLocaleString('en-IN',{maximumFractionDigits:0})}</td>
+          <td style="padding:9px 14px;text-align:right;">₹${r.current_value.toLocaleString('en-IN',{maximumFractionDigits:0})}</td>
+          <td style="padding:9px 14px;text-align:center;"><span style="padding:3px 8px;border-radius:3px;font-size:9px;font-weight:700;color:${sigClr};border:1px solid ${sigClr}44;background:${sigClr}11;">${r.signal}</span></td>
+          ${probHtml}
+          <td style="padding:9px 14px;text-align:right;color:${r.beta?'var(--text)':'var(--text-faint)'}">${r.beta ?? '—'}</td>
+          <td style="padding:9px 14px;text-align:right;color:${r.margin_of_safety>=10?'var(--green)':r.margin_of_safety>=0?'var(--gold)':'var(--red)'}">${r.margin_of_safety}%</td>
+          <td style="padding:9px 14px;text-align:center;"><span style="font-size:9px;font-weight:700;color:${flagClr};">${r.rebalance_flag.replace('_',' ')}</span></td>
+        </tr>`;
+      }).join('');
+
+      // Rebalancing alerts
+      const rebHtml = rebalance_flags.length ? rebalance_flags.map(f => `
+        <div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:8px;padding:14px 18px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:3px;">ROTATE OUT</span>
+            <span style="font-weight:700;color:var(--text);">${f.symbol}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">${f.reason} &nbsp;|&nbsp; P&L: <span style="color:${f.pnl_pct>=0?'var(--green)':'var(--red)'}">${f.pnl_pct>=0?'+':''}${f.pnl_pct}%</span></div>
+          ${f.rotate_into.length ? `<div style="font-size:11px;color:var(--text-faint);">Suggested rotation into: <span style="color:var(--green);font-weight:700;">${f.rotate_into.join(', ')}</span></div>` : ''}
+        </div>`).join('') : `<div style="color:var(--green);font-size:13px;padding:12px 0;">✓ No rebalancing needed — all signals are stable.</div>`;
+
+      panel.innerHTML = `
+        <!-- Download Actions -->
+        <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:20px;">
+          <button onclick="downloadPortfolioPDF()" class="download-btn" style="width:auto;padding:8px 16px;background:var(--panel);border:1px solid var(--teal);color:var(--teal);margin:0;opacity:1;cursor:pointer;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="margin-right:6px;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Download PDF Report
+          </button>
+          <button onclick="downloadPortfolioJPG()" class="download-btn" style="width:auto;padding:8px 16px;background:var(--panel);border:1px solid var(--gold);color:var(--gold);margin:0;opacity:1;cursor:pointer;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="margin-right:6px;">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+            Save as Image (JPG)
+          </button>
+        </div>
+
+        <!-- Portfolio Summary Metrics -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px;">
+          ${[['Total Value','₹'+pm.total_value.toLocaleString('en-IN',{maximumFractionDigits:0}),'var(--teal)'],
+             ['Total P&L','₹'+pm.total_pnl_abs.toLocaleString('en-IN',{maximumFractionDigits:0}),pnlClr],
+             ['Return %',(pm.overall_pnl_pct>=0?'+':'')+pm.overall_pnl_pct+'%',pnlClr],
+             ['Weighted Beta',pm.weighted_beta.toFixed(2),betaClr],
+             ['Beta Regime',pm.beta_regime,betaClr],
+             ['Agg Margin of Safety',pm.agg_margin_of_safety.toFixed(1)+'%',pm.agg_margin_of_safety>=10?'var(--green)':'var(--gold)'],
+             ['Holdings',pm.holdings_count,'var(--text)']].map(([lbl,val,clr])=>`
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px 16px;">
+              <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px;">${lbl}</div>
+              <div style="font-size:18px;font-weight:700;font-family:var(--font-display);color:${clr};">${val}</div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Sector Exposure -->
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:24px;">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+              <span style="width:3px;height:14px;background:var(--purple);display:inline-block;border-radius:2px;"></span>Sector Exposure
+            </div>${secHtml}</div>
+          <!-- Rebalancing Alerts -->
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+              <span style="width:3px;height:14px;background:var(--red);display:inline-block;border-radius:2px;"></span>Rebalancing Alerts
+            </div>${rebHtml}</div>
+        </div>
+
+        <!-- Holdings Analysis Table -->
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:flex;align-items:center;gap:8px;">
+            <span style="width:3px;height:14px;background:var(--gold);display:inline-block;border-radius:2px;"></span>Live Holdings Analysis
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;min-width:900px;border-collapse:collapse;">
+              <thead><tr style="background:var(--bg);">
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:left;">Symbol</th>
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">Price</th>
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">P&amp;L%</th>
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">P&amp;L ₹</th>
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">Value</th>
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:center;">Signal</th>
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">P(Target)</th>
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">Beta</th>
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">Margin of Safety</th>
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:center;">Action</th>
+              </tr></thead>
+              <tbody>${holdingsHtml}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    async function downloadPortfolioPDF() {
+      try {
+        setLoading(true);
+        const r = await fetch('/api/portfolio/download_pdf', { method: 'POST' });
+        const contentType = r.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/json')) {
+          const err = await r.json();
+          throw new Error(err.detail || 'Download failed');
+        }
+        
+        if (!r.ok) throw new Error('Download failed');
+        
+        const blob = await r.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Portfolio_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch(e) { showError('PDF Download failed: ' + e.message); }
+      finally { setLoading(false); }
+    }
+
+    async function downloadPortfolioJPG() {
+      try {
+        setLoading(true);
+        const r = await fetch('/api/portfolio/download_jpg', { method: 'POST' });
+        const contentType = r.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/json')) {
+          const err = await r.json();
+          throw new Error(err.detail || 'Download failed');
+        }
+        
+        if (!r.ok) throw new Error('Download failed');
+
+        const blob = await r.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Portfolio_Dashboard_${new Date().toISOString().split('T')[0]}.jpg`;
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch(e) { showError('JPG Download failed: ' + e.message); }
+      finally { setLoading(false); }
+    }
 
     // ── Boot ──────────────────────────────────────────────────────────────────────
     init();

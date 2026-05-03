@@ -7,6 +7,7 @@ Core business logic for Stock Valuation Analysis.
 from __future__ import annotations
 import logging
 import time
+import math
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import yfinance as yf
@@ -44,7 +45,10 @@ def fetch_stock_data(ticker_sym: str) -> Dict[str, Any]:
 
 def _r2(v: Any) -> Optional[float]:
     if v is None: return None
-    try: return round(float(v), 2)
+    try:
+        fv = float(v)
+        if not math.isfinite(fv): return None
+        return round(fv, 2)
     except: return None
 
 def _metric(name: str, code: str, value: Any, unit: str, verdict: str, ctx: str, raw: Any) -> Dict[str, Any]:
