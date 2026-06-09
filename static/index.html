@@ -1260,6 +1260,12 @@
       }
     }
 
+    @keyframes mf-loading-anim {
+      0% { left: -30%; width: 30%; }
+      50% { left: 40%; width: 40%; }
+      100% { left: 100%; width: 30%; }
+    }
+
     @media(max-width:640px) {
       .hero-title {
         font-size: 32px
@@ -1994,12 +2000,12 @@
     <div class="search-section">
       <div id="tech-search-label" class="search-label">Terminal — Signal Execution Target</div>
       <div id="val-search-label" class="search-label" style="display:none">Terminal — Fundamental Valuation Engine</div>
-
       <div class="mode-switcher">
-        <button class="mode-btn active" id="mode-tech" onclick="switchMode('tech')">Technical Analysis</button>
-        <button class="mode-btn" id="mode-val" onclick="switchMode('val')">Valuation Analysis</button>
-        <button class="mode-btn" id="mode-momentum" onclick="switchMode('momentum')">Momentum Scanner</button>
+        <button class="mode-btn active" id="mode-tech" onclick="switchMode('tech')">⚡ Technical Analysis</button>
+        <button class="mode-btn" id="mode-val" onclick="switchMode('val')">🔍 Valuation Analysis</button>
+        <button class="mode-btn" id="mode-momentum" onclick="switchMode('momentum')">🚀 Momentum Scanner</button>
         <button class="mode-btn" id="mode-portfolio" onclick="switchMode('portfolio')">📊 Portfolio</button>
+        <button class="mode-btn" id="mode-mf" onclick="switchMode('mf')">📈 Mutual Fund</button>
       </div>
 
       <div class="search-wrap">
@@ -2377,9 +2383,217 @@
       <div id="pf-metrics-panel" style="display:none;margin-top:24px;"></div>
     </div>
 
+    <!-- ── Mutual Fund Panel ──────────────────────────────────────────── -->
+    <div id="mf-panel" style="display:none">
+
+    <!-- ── Standalone SIP Calculator ──────────────────────────────────── -->
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:24px 28px;margin-bottom:24px;position:relative;overflow:hidden;">
+      <!-- Decorative gradient bar -->
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--purple),var(--teal),var(--gold));"></div>
+
+      <div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--text);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <span style="display:flex;align-items:center;gap:10px;">
+          <span style="width:3px;height:18px;background:var(--purple);display:inline-block;border-radius:2px;"></span>
+          📈 SIP Return Calculator
+        </span>
+        <span style="font-size:10px;color:var(--text-faint);font-weight:400;font-family:var(--font-mono);">No fund needed · Pure return estimate</span>
+      </div>
+
+      <!-- Inputs row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px;">
+        <div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;">Monthly SIP (₹)</div>
+          <input id="sip-calc-amount" type="number" placeholder="5000" min="100" step="100" value="5000"
+            oninput="calcSipReturn()"
+            style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;box-sizing:border-box;transition:border-color .2s;"
+            onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border2)'">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;">Expected Return (% p.a.)</div>
+          <input id="sip-calc-return" type="number" placeholder="12" min="1" max="50" step="0.5" value="12"
+            oninput="calcSipReturn()"
+            style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;box-sizing:border-box;transition:border-color .2s;"
+            onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border2)'">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;">Step-up (% per year)</div>
+          <input id="sip-calc-stepup" type="number" placeholder="0" min="0" max="50" step="0.5" value="0"
+            oninput="calcSipReturn()"
+            style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;box-sizing:border-box;transition:border-color .2s;"
+            onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border2)'">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;">Duration (years)</div>
+          <input id="sip-calc-years" type="number" placeholder="10" min="1" max="50" step="1" value="10"
+            oninput="calcSipReturn()"
+            style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;box-sizing:border-box;transition:border-color .2s;"
+            onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border2)'">
+        </div>
+      </div>
+
+      <!-- Results row -->
+      <div id="sip-calc-results" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;">
+        <div style="background:rgba(74,159,212,.07);border:1px solid rgba(74,159,212,.2);border-radius:8px;padding:14px 16px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">Total Invested</div>
+          <div id="sip-res-invested" style="font-size:20px;font-weight:800;color:var(--teal);font-family:var(--font-display);">₹0</div>
+        </div>
+        <div style="background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:14px 16px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">Est. Returns</div>
+          <div id="sip-res-returns" style="font-size:20px;font-weight:800;color:var(--green);font-family:var(--font-display);">₹0</div>
+        </div>
+        <div style="background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:14px 16px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">Total Corpus</div>
+          <div id="sip-res-corpus" style="font-size:20px;font-weight:800;color:var(--gold);font-family:var(--font-display);">₹0</div>
+        </div>
+      </div>
+
+      <!-- Progress bar (invested vs corpus) -->
+      <div style="margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-bottom:5px;">
+          <span>Invested</span>
+          <span id="sip-res-gain-pct" style="color:var(--green);font-weight:700;">+0%</span>
+          <span>Corpus</span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+          <div id="sip-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--teal),var(--green));border-radius:3px;width:50%;transition:width .4s ease;"></div>
+        </div>
+      </div>
+
+      <!-- Disclaimer -->
+      <div style="font-size:10px;color:var(--text-faint);margin-top:10px;">
+        ⚠️ Estimates assume returns compound monthly. Step-up is applied annually. Actual returns may vary.
+      </div>
+    </div>
+
+      <!-- Search & Add SIP Form -->
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:24px 28px;margin-bottom:24px;">
+        <div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+          <span style="width:3px;height:18px;background:var(--purple);display:inline-block;border-radius:2px;"></span>
+          SIP Calculator &amp; Tracker
+        </div>
+
+        <!-- MF Search -->
+        <div style="margin-bottom:14px;">
+          <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Search Mutual Fund</div>
+          <div style="display:flex;gap:10px;position:relative;">
+            <input id="mf-search-input" type="text" placeholder="Search by name (e.g. Mirae, HDFC, SBI Blue)" autocomplete="off"
+              oninput="debounceMfSearch()"
+              style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:10px 14px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
+            <div id="mf-search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:var(--panel);border:1px solid var(--border2);border-radius:0 0 8px 8px;z-index:50;box-shadow:0 12px 32px rgba(0,0,0,.5);"></div>
+          </div>
+        </div>
+
+        <!-- Selected Fund Display -->
+        <div id="mf-selected-fund" style="display:none;background:rgba(74,159,212,.06);border:1px solid var(--teal);border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div id="mf-selected-name" style="font-weight:700;color:var(--teal);"></div>
+              <div id="mf-selected-meta" style="font-size:11px;color:var(--text-dim);margin-top:3px;"></div>
+            </div>
+            <button onclick="clearMfSelection()" style="background:transparent;border:1px solid var(--border);color:var(--text-faint);padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;">✖ Change</button>
+          </div>
+        </div>
+
+        <!-- SIP Inputs -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">SIP Amount (₹/month)</div>
+            <input id="mf-sip-amount" type="number" placeholder="5000" min="100" step="100"
+              style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Step-Up % / Year</div>
+            <input id="mf-step-up" type="number" placeholder="0 (optional)" min="0" max="100" step="0.5"
+              title="SIP amount will increase by this % every year (e.g. 10 means +10% each anniversary)"
+              style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Initial Investment (₹)</div>
+            <input id="mf-initial" type="number" placeholder="0" min="0" step="100"
+              style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">SIP Start Date</div>
+            <input id="mf-start-date" type="date"
+              style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;color-scheme:dark;">
+          </div>
+          <div style="grid-column:1/-1;">
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;display:flex;align-items:center;gap:6px;">
+              Missed SIP Dates
+              <span style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.4);color:var(--gold);font-size:8px;padding:2px 6px;border-radius:10px;font-weight:700;letter-spacing:.5px;">OPTIONAL</span>
+            </div>
+            <input id="mf-missed-dates" type="hidden">
+            <div style="display:flex;gap:10px;margin-bottom:8px;">
+              <input id="mf-missed-date-picker" type="date"
+                style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;color-scheme:dark;">
+              <button type="button" onclick="addMissedDate()"
+                style="background:var(--teal);color:var(--bg);border:none;padding:9px 16px;border-radius:5px;font-family:var(--font-mono);font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;transition:.2s;letter-spacing:0.5px;">+ Add Date</button>
+            </div>
+            <div id="mf-missed-dates-container" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;min-height:24px;"></div>
+            <div style="font-size:10px;color:var(--text-faint);margin-top:4px;">💡 Missed SIPs will be excluded from invested amount — giving accurate profit calculation</div>
+          </div>
+        </div>
+
+        <!-- SIP Progress Loader -->
+        <div id="mf-calc-progress" style="display:none;width:100%;height:3px;background:var(--border);border-radius:3px;overflow:hidden;position:relative;margin:12px 0;">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:30%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:mf-loading-anim 1.5s infinite ease-in-out;"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button onclick="calculateMfSip()" id="mf-calc-btn"
+            style="background:var(--teal);color:var(--bg);border:none;padding:10px 24px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;">
+            ⚡ Calculate Returns
+          </button>
+          <button onclick="saveMfHolding()" id="mf-save-btn"
+            style="background:transparent;border:1px solid var(--green);color:var(--green);padding:10px 24px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;">
+            💾 Save to Tracker
+          </button>
+        </div>
+      </div>
+
+      <!-- SIP Results -->
+      <div id="mf-sip-results" style="display:none;margin-bottom:24px;"></div>
+
+      <!-- Saved MF Holdings -->
+      <div id="mf-holdings-list" style="margin-bottom:24px;"></div>
+
+      <!-- Top Performing Funds — Ranked with User Highlight -->
+      <div id="mf-suggestions-panel" style="margin-bottom:24px;">
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:24px 28px;">
+          <div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <span style="display:flex;align-items:center;gap:10px;">
+              <span style="width:3px;height:18px;background:var(--green);display:inline-block;border-radius:2px;"></span>
+              <span id="mf-top-title">🏆 Top Performing Funds — Ranked</span>
+            </span>
+            <button id="mf-find-my-fund-btn" onclick="findMyFundInRankings()" style="display:none;background:linear-gradient(135deg,var(--gold),#f59e0b);color:#000;border:none;padding:7px 16px;border-radius:6px;font-family:var(--font-mono);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:opacity .2s;" onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">
+              🎯 Find My Fund in Rankings
+            </button>
+          </div>
+          <div id="mf-top-subtitle" style="font-size:11px;color:var(--text-dim);margin-bottom:16px;">Live 1Y · 3Y · 5Y returns from mfapi.in — ranked best to worst. Your selected fund is highlighted.</div>
+
+          <!-- Category filters -->
+          <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;" id="mf-category-pills">
+            <button class="range-pill active" onclick="loadTopFunds('all', this)">All</button>
+            <button class="range-pill" onclick="loadTopFunds('large cap', this)">Large Cap</button>
+            <button class="range-pill" onclick="loadTopFunds('mid cap', this)">Mid Cap</button>
+            <button class="range-pill" onclick="loadTopFunds('small cap', this)">Small Cap</button>
+            <button class="range-pill" onclick="loadTopFunds('flexi cap', this)">Flexi Cap</button>
+            <button class="range-pill" onclick="loadTopFunds('index', this)">Index</button>
+            <button class="range-pill" onclick="loadTopFunds('elss', this)">ELSS</button>
+            <button class="range-pill" onclick="loadTopFunds('balanced advantage', this)">Balanced</button>
+            <button class="range-pill" onclick="loadTopFunds('large & mid cap', this)">L&M Cap</button>
+          </div>
+
+          <div id="mf-top-funds-list">
+            <div style="text-align:center;padding:30px;color:var(--text-faint);font-size:12px;">Loading ranked fund performance data...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Empty state -->
     <div class="empty-state" id="emptyState">
-      <div class="empty-icon">⬡</div>
+      <div class="empty-icon">⬇</div>
       <div class="empty-title">Ready to Analyze</div>
       <div class="empty-sub">
         Enter NSE stock symbols above.<br>
@@ -2414,17 +2628,19 @@
       document.getElementById('mode-val').classList.toggle('active', mode === 'val');
       document.getElementById('mode-momentum').classList.toggle('active', mode === 'momentum');
       document.getElementById('mode-portfolio').classList.toggle('active', mode === 'portfolio');
+      document.getElementById('mode-mf').classList.toggle('active', mode === 'mf');
 
       const techSearchLabel = document.getElementById('tech-search-label');
       const valSearchLabel = document.getElementById('val-search-label');
       if (techSearchLabel) techSearchLabel.style.display = mode === 'tech' ? 'flex' : 'none';
       if (valSearchLabel) valSearchLabel.style.display = mode === 'val' ? 'flex' : 'none';
 
-      // Hide the main search bar in portfolio mode (it has its own inputs)
+      // Hide the main search bar in portfolio and mf mode (they have their own inputs)
       const searchWrap = document.querySelector('.search-wrap');
       const searchHint = document.querySelector('.search-hint');
-      if (searchWrap) searchWrap.style.display = mode === 'portfolio' ? 'none' : 'flex';
-      if (searchHint) searchHint.style.display = mode === 'portfolio' ? 'none' : '';
+      const hideMainSearch = mode === 'portfolio' || mode === 'mf';
+      if (searchWrap) searchWrap.style.display = hideMainSearch ? 'none' : 'flex';
+      if (searchHint) searchHint.style.display = hideMainSearch ? 'none' : '';
 
       const recentSection = document.getElementById('recentSection');
       if (recentSection) recentSection.style.display = mode === 'tech' ? 'block' : 'none';
@@ -2460,10 +2676,13 @@
       const pfPanel = document.getElementById('portfolio-panel');
       if (pfPanel) pfPanel.style.display = mode === 'portfolio' ? 'block' : 'none';
 
+      const mfPanel = document.getElementById('mf-panel');
+      if (mfPanel) mfPanel.style.display = mode === 'mf' ? 'block' : 'none';
+
       const hasData = (mode === 'tech' && allResults.length > 0) ||
                       (mode === 'val' && allValuations.length > 0) ||
                       (mode === 'momentum' && momentumResults.length > 0) ||
-                      mode === 'portfolio';
+                      mode === 'portfolio' || mode === 'mf';
       document.getElementById('emptyState').style.display = hasData ? 'none' : 'block';
 
       if (mode === 'val') loadValuationHistory();
@@ -2473,6 +2692,11 @@
         loadMomentumHistory();
       }
       if (mode === 'portfolio') loadPortfolioHoldings();
+      if (mode === 'mf') {
+        loadMfHoldings();
+        loadTopFunds('all');
+        calcSipReturn(); // auto-calculate with default values
+      }
     }
 
 
@@ -2996,6 +3220,16 @@
       });
     }
 
+    // ── Model display-name mapping ─────────────────────────────────────────────
+    function getBrioName(rawName) {
+      if (!rawName) return 'Brio';
+      const n = rawName.trim().toLowerCase();
+      if (n.includes('huber') || n.includes('ridge')) return 'Brio 1.0';
+      if (n.includes('randomforest') || n.includes('random forest')) return 'Brio 2.0';
+      if (n.includes('lightgbm') || n.includes('lgbm')) return 'Brio Fast 2.5';
+      return 'Brio';
+    }
+
     async function loadModels() {
       try {
         const r = await fetch(`${API}/api/models`);
@@ -3008,7 +3242,7 @@
 
           sel.innerHTML = d.models.map(m =>
             `<option value="${m.id}" ${m.id === bestModelId ? 'selected' : ''}>
-              ${m.name}
+              ${getBrioName(m.name)}
             </option>`
           ).join("");
 
@@ -3029,7 +3263,7 @@
 
       const m = window.MODELS_INFO.find(x => x.id === modelId);
       if (m) {
-        status.innerHTML = `Model: ${m.name} &nbsp;·&nbsp; <span style="color:var(--gold)">${m.acc.toFixed(1)}% Acc</span>`;
+        status.innerHTML = `Model: ${getBrioName(m.name)}`;
       }
     }
 
@@ -3039,7 +3273,7 @@
         const d = await r.json();
         const el = document.getElementById("modelStatus");
         if (d.model_loaded) {
-          el.innerHTML = `${d.model} &nbsp;·&nbsp; DirAcc <span style="color:var(--gold)">${d.dir_acc?.toFixed(1)}%</span>`;
+          el.innerHTML = `${getBrioName(d.model)}`;
         } else {
           el.textContent = "No model loaded";
           el.style.color = "var(--red)";
@@ -3419,10 +3653,11 @@
       <div class="model-info">
         <span>Streak: <strong style="color:var(--teal)">${r.streak_days}d</strong></span>
         <span>52W: <strong>${r.pos_52w}%</strong></span>
-        <span>ML 5d: <strong style="color:${r.pred_5d_pct >= 0 ? 'var(--green)' : 'var(--red)'}">${r.pred_5d_pct >= 0 ? '+' : ''}${r.pred_5d_pct}%</strong></span>
-        ${r.prob_hit_target != null ? `<span>P(Target): <strong style="color:${r.prob_hit_target>=60?'var(--green)':r.prob_hit_target>=45?'var(--gold)':'var(--red)'}">${r.prob_hit_target}%</strong></span>` : ''}
-        <span>Acc: <strong class="model-acc">${r.model_acc?.toFixed(1)}%</strong></span>
-      </div>
+        <span>ML 5d: <strong style="color:${r.pred_5d_pct >= 0 ? 'var(--green)' : 'var(--red)'}">${r.pred_5d_pct >= 0 ? '+' : ''}${r.pred_5d_pct}%</strong></span>
+        ${r.prob_hit_target != null ? `<span>P(Target): <strong style="color:${r.prob_hit_target>=60?'var(--green)':r.prob_hit_target>=45?'var(--gold)':'var(--red)'}">${r.prob_hit_target}%</strong></span>` : ''}
+      </div>
+
+      <!-- Download -->
 
       <!-- Download -->
       <button class="download-btn" id="pdf-btn-${r.symbol}" disabled style="opacity:0.6; cursor:wait">
@@ -3540,7 +3775,7 @@
 
     function showError(msg) {
       const el = document.getElementById("errorBlock");
-      el.innerHTML += `<div class="error-block card-enter" style="animation: slideDown 0.3s ease-out">⚠ ${msg}</div>`;
+      el.innerHTML += `<div class="error-block card-enter" style="animation: slideDown 0.3s ease-out">⚠️ ${msg}</div>`;
       // Auto-hide after 10 seconds
       setTimeout(() => {
         const first = el.querySelector('.error-block');
@@ -3767,7 +4002,7 @@
             Math.abs(r.zscore_20) > 1 ? 'var(--gold)' : 'var(--green)'
             };font-size:11px">${r.zscore_20?.toFixed(2)}</span>` : '<span style="color:var(--text-faint)">—</span>'}
       </td>
-      <td style="color:var(--gold)">${r.model_acc?.toFixed(1)}%</td>
+      <td style="color:var(--text-dim)">${r.ml_confidence?.toFixed(1)}%</td>
       <td><span class="${sigClass} rank-signal">${r.signal}</span></td>
       <td>${pdfBtn}</td>
     </tr>`;
@@ -4335,7 +4570,7 @@
                 <td style="padding:10px 16px;font-size:11px;color:var(--text-dim);">${h.sector}</td>
                 <td style="padding:10px 16px;text-align:right;">₹${(h.qty * h.avg_cost).toLocaleString('en-IN', {maximumFractionDigits:0})}</td>
                 <td style="padding:10px 16px;text-align:center;">
-                  <button onclick="deleteHolding('${sym}')" style="background:transparent;border:1px solid var(--red-dim);color:var(--red);padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;">✕</button>
+                  <button onclick="deleteHolding('${sym}')" style="background:transparent;border:1px solid var(--red-dim);color:var(--red);padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;">✖</button>
                 </td>
               </tr>`;
             }).join('')}</tbody>
@@ -4345,7 +4580,7 @@
 
     async function analyzePortfolio() {
       const btn = document.getElementById('pf-analyze-btn');
-      btn.disabled = true; btn.textContent = '⏳ Analyzing...';
+      btn.disabled = true; btn.textContent = 'â ³ Analyzing...';
       setLoading(true);
       const etaEl = document.getElementById('loading-eta');
       if (etaEl) etaEl.innerText = 'Fetching live prices for all holdings...';
@@ -4527,6 +4762,1118 @@
       } catch(e) { showError('JPG Download failed: ' + e.message); }
       finally { setLoading(false); }
     }
+
+    // ── Mutual Fund Functions ──────────────────────────────────────────────────
+    let selectedMfCode = null;
+    let selectedMfName = '';
+    let selectedMfCategory = '';
+    let selectedMfStepUp = 0;
+    let mfSearchTimeout = null;
+    let lastMfCalcResult = null;   // stores last SIP calculation for report download
+    let mfCompareResults = {};     // global lookup for ranking table comparison returns
+
+    function debounceMfSearch() {
+      clearTimeout(mfSearchTimeout);
+      mfSearchTimeout = setTimeout(searchMf, 300);
+    }
+
+    async function searchMf() {
+      const q = document.getElementById('mf-search-input').value.trim();
+      const dropdown = document.getElementById('mf-search-dropdown');
+      if (q.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+      }
+      try {
+        const r = await fetch(`/api/mf/search?q=${encodeURIComponent(q)}`);
+        if (!r.ok) throw new Error("Search failed");
+        const data = await r.json();
+        const results = data.results || [];
+        
+        if (!results.length) {
+          dropdown.innerHTML = `<div style="padding:10px 14px;color:var(--text-dim);font-size:12px;">No funds found matching "${q}"</div>`;
+          dropdown.style.display = 'block';
+          return;
+        }
+
+        dropdown.innerHTML = '';
+        results.forEach(item => {
+          const div = document.createElement('div');
+          div.style = "padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:all 0.15s ease;font-size:12px;color:var(--text-dim);text-align:left;";
+          div.innerHTML = `<strong>${item.schemeCode}</strong> - ${item.schemeName}`;
+          div.onmouseenter = () => {
+            div.style.background = 'rgba(74, 159, 212, 0.08)';
+            div.style.color = 'var(--text)';
+          };
+          div.onmouseleave = () => {
+            div.style.background = 'transparent';
+            div.style.color = 'var(--text-dim)';
+          };
+          div.onclick = () => selectMf(item.schemeCode, item.schemeName);
+          dropdown.appendChild(div);
+        });
+        dropdown.style.display = 'block';
+      } catch(e) {
+        dropdown.innerHTML = `<div style="padding:10px 14px;color:var(--red);font-size:12px;">Search error: ${e.message}</div>`;
+        dropdown.style.display = 'block';
+      }
+    }
+
+    async function selectMf(code, name) {
+      document.getElementById('mf-search-dropdown').style.display = 'none';
+      const selectedBlock = document.getElementById('mf-selected-fund');
+      selectedBlock.style.display = 'block';
+      document.getElementById('mf-selected-name').innerText = name;
+      document.getElementById('mf-selected-meta').innerHTML = `<span style="color:var(--teal);">Fetching NAV details...</span>`;
+      
+      try {
+        const r = await fetch(`/api/mf/${code}/nav`);
+        if (!r.ok) throw new Error("NAV fetch failed");
+        const data = await r.json();
+        
+        selectedMfCode = String(code);
+        selectedMfName = name;
+        selectedMfCategory = data.scheme_category || "Mutual Fund";
+        
+        document.getElementById('mf-selected-meta').innerHTML = `
+          <strong>NAV:</strong> ₹${data.nav.toFixed(4)} (${data.nav_date}) &nbsp;|&nbsp;
+          <strong>Category:</strong> ${selectedMfCategory} &nbsp;|&nbsp;
+          <strong>Type:</strong> ${data.scheme_type}
+        `;
+        
+        if (!document.getElementById('mf-sip-amount').value) {
+          document.getElementById('mf-sip-amount').value = 5000;
+        }
+        if (!document.getElementById('mf-start-date').value) {
+          const d = new Date();
+          d.setFullYear(d.getFullYear() - 1);
+          document.getElementById('mf-start-date').value = d.toISOString().split('T')[0];
+        }
+      } catch (err) {
+        document.getElementById('mf-selected-meta').innerHTML = `<span style="color:var(--red);">Error: ${err.message}</span>`;
+      }
+    }
+
+    function updateMissedDatesUI() {
+      const input = document.getElementById('mf-missed-dates');
+      const container = document.getElementById('mf-missed-dates-container');
+      if (!input || !container) return;
+      
+      const missedRaw = input.value.trim();
+      const dates = missedRaw ? missedRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+      
+      container.innerHTML = '';
+      if (dates.length === 0) {
+        container.innerHTML = '<span style="color:var(--text-faint);font-size:10px;font-style:italic;">No missed dates selected</span>';
+        return;
+      }
+      
+      dates.forEach(date => {
+        const pill = document.createElement('span');
+        pill.style = "display:inline-flex;align-items:center;gap:6px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.4);color:var(--red);font-size:11px;padding:4px 8px;border-radius:4px;font-family:var(--font-mono);";
+        pill.innerHTML = `
+          <span>${date}</span>
+          <span onclick="removeMissedDate('${date}')" style="cursor:pointer;font-weight:700;font-size:12px;opacity:0.7;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">×</span>
+        `;
+        container.appendChild(pill);
+      });
+    }
+
+    function addMissedDate() {
+      const picker = document.getElementById('mf-missed-date-picker');
+      const input = document.getElementById('mf-missed-dates');
+      if (!picker || !input || !picker.value) return;
+      
+      const newDate = picker.value;
+      const missedRaw = input.value.trim();
+      let dates = missedRaw ? missedRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+      
+      if (!dates.includes(newDate)) {
+        dates.push(newDate);
+        dates.sort();
+        input.value = dates.join(', ');
+        updateMissedDatesUI();
+      }
+      picker.value = '';
+    }
+
+    function removeMissedDate(dateToRemove) {
+      const input = document.getElementById('mf-missed-dates');
+      if (!input) return;
+      
+      const missedRaw = input.value.trim();
+      let dates = missedRaw ? missedRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+      
+      dates = dates.filter(d => d !== dateToRemove);
+      input.value = dates.join(', ');
+      updateMissedDatesUI();
+    }
+
+    function clearMfSelection() {
+      selectedMfCode = null;
+      selectedMfName = '';
+      selectedMfCategory = '';
+      document.getElementById('mf-selected-fund').style.display = 'none';
+      document.getElementById('mf-search-input').value = '';
+      document.getElementById('mf-missed-dates').value = '';
+      updateMissedDatesUI();
+    }
+
+    // ── Standalone SIP Return Calculator ─────────────────────────────────────
+    function calcSipReturn() {
+      const sip    = parseFloat(document.getElementById('sip-calc-amount')?.value)  || 0;
+      const annRet = parseFloat(document.getElementById('sip-calc-return')?.value)  || 0;
+      const stepUp = parseFloat(document.getElementById('sip-calc-stepup')?.value)  || 0;
+      const years  = parseInt(document.getElementById('sip-calc-years')?.value)     || 0;
+
+      if (sip <= 0 || annRet <= 0 || years <= 0) {
+        ['sip-res-invested','sip-res-returns','sip-res-corpus'].forEach(id => {
+          document.getElementById(id).textContent = '₹0';
+        });
+        document.getElementById('sip-res-gain-pct').textContent = '+0%';
+        document.getElementById('sip-progress-bar').style.width = '50%';
+        return;
+      }
+
+      const monthlyRate = annRet / 12 / 100;
+      const totalMonths = years * 12;
+      let corpus = 0;
+      let invested = 0;
+
+      for (let m = 0; m < totalMonths; m++) {
+        const yearIdx = Math.floor(m / 12);                         // which year (0-based)
+        const monthlySip = sip * Math.pow(1 + stepUp / 100, yearIdx); // step-up applied each year
+        const monthsLeft = totalMonths - m;                         // months this payment compounds
+        corpus   += monthlySip * Math.pow(1 + monthlyRate, monthsLeft);
+        invested += monthlySip;
+      }
+
+      const returns = corpus - invested;
+      const gainPct = invested > 0 ? ((returns / invested) * 100) : 0;
+      const barPct  = Math.min(95, Math.max(5, (invested / corpus) * 100));
+
+      const fmt = (n) => '₹' + Math.round(n).toLocaleString('en-IN');
+
+      document.getElementById('sip-res-invested').textContent = fmt(invested);
+      document.getElementById('sip-res-returns').textContent  = fmt(returns);
+      document.getElementById('sip-res-corpus').textContent   = fmt(corpus);
+      document.getElementById('sip-res-gain-pct').textContent = `+${gainPct.toFixed(1)}%`;
+      document.getElementById('sip-progress-bar').style.width = `${barPct}%`;
+    }
+
+    async function calculateMfSip() {
+      if (!selectedMfCode) {
+        showError("Please search and select a Mutual Fund first.");
+        return;
+      }
+      const amount    = parseFloat(document.getElementById('mf-sip-amount').value) || 5000;
+      const initial   = parseFloat(document.getElementById('mf-initial').value) || 0;
+      const stepUp    = parseFloat(document.getElementById('mf-step-up').value) || 0;
+      const startDate = document.getElementById('mf-start-date').value;
+      if (!startDate) {
+        showError("Please select a SIP Start Date.");
+        return;
+      }
+
+      // Parse missed SIP dates from the text input
+      const missedRaw = document.getElementById('mf-missed-dates').value.trim();
+      const missedDates = missedRaw
+        ? missedRaw.split(',').map(s => s.trim()).filter(s => s.match(/^\d{4}-\d{2}-\d{2}$/))
+        : [];
+
+      const btn = document.getElementById('mf-calc-btn');
+      btn.disabled = true;
+      btn.textContent = 'Calculating...';
+      const progress = document.getElementById('mf-calc-progress');
+      if (progress) progress.style.display = 'block';
+
+      try {
+        // Fetch calculations and comparison concurrently
+        const [r, compareRes] = await Promise.all([
+          fetch('/api/mf/sip/calculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              scheme_code:      String(selectedMfCode),
+              sip_amount:       amount,
+              initial_investment: initial,
+              sip_start_date:   startDate,
+              step_up_pct:      stepUp,
+              missed_sip_dates: missedDates
+            })
+          }),
+          fetch('/api/mf/sip/compare', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              scheme_code:      String(selectedMfCode),
+              sip_amount:       amount,
+              initial_investment: initial,
+              sip_start_date:   startDate,
+              step_up_pct:      stepUp,
+              missed_sip_dates: missedDates
+            })
+          }).catch(err => {
+            console.error("Comparison fetch failed:", err);
+            return null;
+          })
+        ]);
+
+        if (!r.ok) {
+          const errData = await r.json().catch(() => ({}));
+          let errMsg = 'Calculation failed';
+          if (errData && errData.detail) {
+            if (typeof errData.detail === 'string') {
+              errMsg = errData.detail;
+            } else if (Array.isArray(errData.detail)) {
+              errMsg = errData.detail.map(d => `${d.loc ? d.loc.join('.') : 'Error'}: ${d.msg}`).join(', ');
+            } else {
+              errMsg = JSON.stringify(errData.detail);
+            }
+          }
+          throw new Error(errMsg);
+        }
+        const res = await r.json();
+        lastMfCalcResult = { ...res, step_up_pct: stepUp, missed_sip_dates: missedDates };
+
+        // Parse comparison results
+        if (compareRes && compareRes.ok) {
+          const compData = await compareRes.json();
+          mfCompareResults = {};
+          (compData.funds || []).forEach(f => {
+            mfCompareResults[f.scheme_code] = {
+              absolute_return: f.absolute_return,
+              pct_return: f.pct_return,
+              current_value: f.current_value
+            };
+          });
+          // Update rankings table to display Net Returns
+          loadTopFunds('all', null, true);
+        }
+
+        const pnlClr  = res.absolute_return >= 0 ? 'var(--green)' : 'var(--red)';
+        const cagrClr = res.cagr >= 0 ? 'var(--green)' : 'var(--red)';
+        const stepUpLabel = stepUp > 0
+          ? `<span style="color:var(--gold);font-size:10px;margin-left:6px;">📈 ${stepUp}% Step-Up/yr</span>`
+          : '';
+        const missedLabel = res.missed_sip_count > 0
+          ? `<span style="color:var(--red);font-size:10px;margin-left:6px;">⚠️ ${res.missed_sip_count} SIP${res.missed_sip_count > 1 ? 's' : ''} Missed</span>`
+          : '';
+
+        // Show Find My Fund button
+        const findBtn = document.getElementById('mf-find-my-fund-btn');
+        if (findBtn) findBtn.style.display = 'flex';
+
+        const resultsDiv = document.getElementById('mf-sip-results');
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = `
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:24px 28px;">
+            <div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+              <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span style="width:3px;height:18px;background:var(--teal);display:inline-block;border-radius:2px;"></span>
+                Calculation Results${stepUpLabel}${missedLabel}
+              </span>
+              <span style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);">${res.scheme_name}</span>
+                <button onclick="downloadMfReport()" title="Download PDF Report"
+                  style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-family:var(--font-mono);font-size:10px;font-weight:700;cursor:pointer;letter-spacing:0.5px;display:flex;align-items:center;gap:5px;transition:opacity .2s;"
+                  onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">
+                  ⬇ Download Report
+                </button>
+              </span>
+            </div>
+
+            <!-- Summary metrics -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px;">
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Invested</div>
+                <div style="font-size:18px;font-weight:700;color:var(--text);">₹${res.total_invested.toLocaleString('en-IN')}</div>
+              </div>
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Current Value</div>
+                <div style="font-size:18px;font-weight:700;color:var(--teal);">₹${res.current_value.toLocaleString('en-IN')}</div>
+              </div>
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Net Returns</div>
+                <div style="font-size:18px;font-weight:700;color:${pnlClr};">${res.absolute_return >= 0 ? '+' : ''}₹${res.absolute_return.toLocaleString('en-IN')}</div>
+              </div>
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">CAGR</div>
+                <div style="font-size:18px;font-weight:700;color:${cagrClr};">${res.cagr.toFixed(2)}%</div>
+              </div>
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Return %</div>
+                <div style="font-size:18px;font-weight:700;color:${pnlClr};">${res.pct_return.toFixed(1)}%</div>
+              </div>
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Instalments</div>
+                <div style="font-size:18px;font-weight:700;color:var(--text);">${res.sip_instalments} (${res.years_held.toFixed(1)}y)</div>
+              </div>
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Calculate Returns';
+        if (progress) progress.style.display = 'none';
+      }
+    }
+
+    async function downloadMfReport() {
+      if (!lastMfCalcResult || !selectedMfCode) {
+        showError('Please calculate SIP returns first before downloading.');
+        return;
+      }
+      const btn = event.currentTarget;
+      btn.textContent = '⏳ Generating...';
+      btn.disabled = true;
+      try {
+        // Re-fetch full data with all transactions for report and get ranked funds
+        const [calcRes, topRes] = await Promise.all([
+          fetch('/api/mf/sip/calculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              scheme_code: String(selectedMfCode),
+              sip_amount: lastMfCalcResult.sip_amount,
+              initial_investment: lastMfCalcResult.initial_investment,
+              sip_start_date: lastMfCalcResult.sip_start_date,
+              step_up_pct: lastMfCalcResult.step_up_pct || 0,
+              missed_sip_dates: lastMfCalcResult.missed_sip_dates || []
+            })
+          }),
+          fetch(`/api/mf/top/ranked?scheme_code=${encodeURIComponent(String(selectedMfCode))}&limit=40`)
+        ]);
+
+        if (!calcRes.ok) throw new Error('Could not fetch data for report');
+        const data = await calcRes.json();
+        
+        let topFunds = [];
+        if (topRes.ok) {
+          const topData = await topRes.json();
+          topFunds = topData.funds || [];
+        }
+
+        generateMfPdf(data, topFunds);
+      } catch(e) {
+        showError('Report generation failed: ' + e.message);
+      } finally {
+        btn.textContent = '⬇ Download Report';
+        btn.disabled = false;
+      }
+    }
+
+    function generateMfPdf(d, topFunds = []) {
+      const { jsPDF } = window.jspdf;
+      if (!jsPDF) { showError('PDF library not loaded.'); return; }
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const W = 210, H = 297;
+      const margin = 15;
+      let y = margin;
+
+      // ── Header ──
+      doc.setFillColor(12, 18, 32);
+      doc.rect(0, 0, W, 32, 'F');
+      doc.setTextColor(74, 159, 212);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('NSE Signal — SIP Report', margin, 14);
+      doc.setFontSize(9);
+      doc.setTextColor(160, 180, 200);
+      doc.text(`Generated: ${new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})}`, margin, 22);
+      doc.text('For educational purposes only. Not financial advice.', W - margin, 22, { align: 'right' });
+      y = 40;
+
+      // ── Fund Info ──
+      doc.setFillColor(20, 30, 50);
+      doc.roundedRect(margin, y, W - margin * 2, 28, 3, 3, 'F');
+      doc.setTextColor(220, 235, 255);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text(d.scheme_name || 'Unknown Fund', margin + 4, y + 8, { maxWidth: W - margin * 2 - 8 });
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 150, 180);
+      doc.text(`${d.fund_house || ''} | ${d.scheme_category || ''} | Code: ${d.scheme_code}`, margin + 4, y + 17);
+      const stepLabel = (d.step_up_pct > 0) ? `  |  Step-Up: ${d.step_up_pct}%/yr` : '';
+      doc.text(`SIP: ₹${(d.sip_amount||0).toLocaleString('en-IN')}${stepLabel}  |  Start: ${d.sip_start_date}  |  End: ${d.calc_end_date}`, margin + 4, y + 24);
+      y += 34;
+
+      // ── Summary Metrics ──
+      const metrics = [
+        { label: 'Total Invested',  value: `₹${(d.total_invested||0).toLocaleString('en-IN', {maximumFractionDigits:0})}`,  color: [220,235,255] },
+        { label: 'Current Value',   value: `₹${(d.current_value||0).toLocaleString('en-IN', {maximumFractionDigits:0})}`,   color: [74,159,212]  },
+        { label: 'Net Returns',     value: `${d.absolute_return>=0?'+':''}₹${(d.absolute_return||0).toLocaleString('en-IN', {maximumFractionDigits:0})}`, color: d.absolute_return>=0?[52,211,153]:[248,113,113] },
+        { label: 'CAGR',            value: `${(d.cagr||0).toFixed(2)}%`,         color: d.cagr>=0?[52,211,153]:[248,113,113] },
+        { label: 'Total Return %',  value: `${(d.pct_return||0).toFixed(1)}%`,    color: d.pct_return>=0?[52,211,153]:[248,113,113] },
+        { label: 'Instalments',     value: `${d.sip_instalments} (${(d.years_held||0).toFixed(1)}y)`, color: [220,235,255] },
+      ];
+      const boxW = (W - margin * 2 - 10) / 3;
+      const boxH = 18;
+      metrics.forEach((m, i) => {
+        const col = i % 3;
+        const row = Math.floor(i / 3);
+        const bx = margin + col * (boxW + 5);
+        const by = y + row * (boxH + 4);
+        doc.setFillColor(16, 24, 40);
+        doc.roundedRect(bx, by, boxW, boxH, 2, 2, 'F');
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 130, 160);
+        doc.text(m.label.toUpperCase(), bx + 4, by + 6);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...m.color);
+        doc.text(m.value, bx + 4, by + 14);
+      });
+      y += Math.ceil(metrics.length / 3) * (boxH + 4) + 8;
+
+      // ── Recent Transactions Table ──
+      doc.setTextColor(120, 150, 180);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RECENT TRANSACTIONS (LAST 12)', margin, y);
+      y += 5;
+      const txCols = [30, 18, 28, 24, 28];
+      const txHeaders = ['Date', 'Type', 'Amount (₹)', 'NAV (₹)', 'Units'];
+      doc.setFillColor(20, 30, 50);
+      doc.rect(margin, y, W - margin * 2, 7, 'F');
+      let cx = margin + 2;
+      txHeaders.forEach((h, i) => {
+        doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(74,159,212);
+        doc.text(h, cx, y + 5);
+        cx += txCols[i];
+      });
+      y += 8;
+      const txns = (d.transactions || []).slice(-12).reverse();
+      txns.forEach((t, ri) => {
+        if (y > H - 30) return;
+        const rowBg = (ri % 2 === 0) ? [14, 22, 38] : [8, 12, 20];
+        doc.setFillColor(...rowBg);
+        doc.rect(margin, y - 1, W - margin * 2, 7, 'F');
+        cx = margin + 2;
+        const vals = [t.date, t.type, t.amount.toLocaleString('en-IN'), t.nav.toFixed(4), t.units.toFixed(4)];
+        vals.forEach((v, i) => {
+          doc.setFontSize(7); doc.setFont('helvetica','normal');
+          if (i===1) doc.setTextColor(t.type==='SIP'?167:74, t.type==='SIP'?139:159, t.type==='SIP'?250:212);
+          else doc.setTextColor(200,215,230);
+          doc.text(String(v), cx, y + 4);
+          cx += txCols[i];
+        });
+        y += 7;
+      });
+
+      // ── Page 1 Footer ──
+      doc.setFillColor(12, 18, 32);
+      doc.rect(0, H - 12, W, 12, 'F');
+      doc.setFontSize(7);
+      doc.setTextColor(80, 100, 130);
+      doc.text('NSE Signal · SIP Calculator Report · Data sourced from mfapi.in · Not for commercial use', W/2, H - 4, { align: 'center' });
+
+      // ── Page 2: Rankings Comparison ──
+      if (topFunds && topFunds.length > 0) {
+        doc.addPage();
+        let y2 = margin;
+
+        // Header for Page 2
+        doc.setFillColor(12, 18, 32);
+        doc.rect(0, 0, W, 26, 'F');
+        doc.setTextColor(74, 159, 212);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('NSE Signal — Top Funds Comparison', margin, 11);
+        doc.setFontSize(8);
+        doc.setTextColor(160, 180, 200);
+        doc.text('Comparing your fund with the top performers by 1Y return', margin, 18);
+
+        y2 = 36;
+
+        doc.setTextColor(120, 150, 180);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TOP PERFORMING FUNDS RANKING (1Y / 3Y / 5Y)', margin, y2);
+        y2 += 5;
+
+        // Filter and get top 6 + user's fund if not in top 6
+        const renderFunds = topFunds.slice(0, 6);
+        const userFundCode = String(d.scheme_code);
+        const isUserInTop6 = renderFunds.some(f => String(f.scheme_code) === userFundCode);
+        if (!isUserInTop6) {
+          const userFund = topFunds.find(f => String(f.scheme_code) === userFundCode);
+          if (userFund) {
+            renderFunds.push(userFund);
+          }
+        }
+
+        // Table Headers for Top Funds
+        const rankCols = [12, 70, 26, 22, 22, 22]; // Rank, Name, Category, 1Y, 3Y, 5Y
+        const rankHeaders = ['Rank', 'Fund Name', 'Category', '1Y Ret', '3Y Ret', '5Y Ret'];
+
+        doc.setFillColor(20, 30, 50);
+        doc.rect(margin, y2, W - margin * 2, 7, 'F');
+        let rx = margin + 2;
+        rankHeaders.forEach((rh, i) => {
+          doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(74, 159, 212);
+          if (i >= 3) {
+            doc.text(rh, rx + rankCols[i] - 2, y2 + 5, { align: 'right' });
+          } else {
+            doc.text(rh, rx, y2 + 5);
+          }
+          rx += rankCols[i];
+        });
+        y2 += 8;
+
+        renderFunds.forEach((f, ri) => {
+          const isUser = (String(f.scheme_code) === userFundCode);
+          
+          if (isUser) {
+            doc.setFillColor(25, 35, 30); // Highlight background
+            doc.rect(margin, y2 - 1, W - margin * 2, 9, 'F');
+            doc.setFillColor(251, 191, 36); // Gold left border line
+            doc.rect(margin, y2 - 1, 1.5, 9, 'F');
+          } else {
+            const rbg = (ri % 2 === 0) ? [14, 22, 38] : [8, 12, 20];
+            doc.setFillColor(...rbg);
+            doc.rect(margin, y2 - 1, W - margin * 2, 9, 'F');
+          }
+
+          rx = margin + 2;
+
+          // Rank
+          doc.setFontSize(7); doc.setFont('helvetica', isUser ? 'bold' : 'normal');
+          doc.setTextColor(isUser ? 251 : 200, isUser ? 191 : 215, isUser ? 36 : 230);
+          doc.text(String(f.rank || (ri + 1)), rx, y2 + 5.5);
+          rx += rankCols[0];
+
+          // Fund Name
+          let nameStr = f.scheme_name || '';
+          if (isUser) nameStr += ' (YOUR SELECTED FUND)';
+          if (nameStr.length > 52) nameStr = nameStr.substring(0, 49) + '...';
+          doc.text(nameStr, rx, y2 + 5.5);
+          rx += rankCols[1];
+
+          // Category
+          doc.text(f.category || 'N/A', rx, y2 + 5.5);
+          rx += rankCols[2];
+
+          // 1Y, 3Y, 5Y Returns
+          const r1 = f.return_1y != null ? `${f.return_1y.toFixed(1)}%` : '—';
+          const r3 = f.return_3y != null ? `${f.return_3y.toFixed(1)}%` : '—';
+          const r5 = f.return_5y != null ? `${f.return_5y.toFixed(1)}%` : '—';
+
+          doc.text(r1, rx + rankCols[3] - 2, y2 + 5.5, { align: 'right' });
+          rx += rankCols[3];
+          doc.text(r3, rx + rankCols[4] - 2, y2 + 5.5, { align: 'right' });
+          rx += rankCols[4];
+          doc.text(r5, rx + rankCols[5] - 2, y2 + 5.5, { align: 'right' });
+
+          y2 += 9;
+        });
+
+        // ── Page 2 Footer ──
+        doc.setFillColor(12, 18, 32);
+        doc.rect(0, H - 12, W, 12, 'F');
+        doc.setFontSize(7);
+        doc.setTextColor(80, 100, 130);
+        doc.text('NSE Signal · SIP Calculator Report · Data sourced from mfapi.in · Not for commercial use', W/2, H - 4, { align: 'center' });
+      }
+
+      doc.save(`SIP_Report_${d.scheme_code}_${d.sip_start_date}.pdf`);
+    }
+
+    function drawMfNavChart(chartData) {
+      const canvas = document.getElementById('mf-nav-chart');
+      if (!canvas || !chartData || !chartData.length) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.offsetWidth || 500;
+      const H = canvas.offsetHeight || 150;
+      canvas.width = W;
+      canvas.height = H;
+
+      const navs = chartData.map(d => d.nav);
+      const mn = Math.min(...navs) * 0.99;
+      const mx = Math.max(...navs) * 1.01;
+      const N = chartData.length;
+
+      const px = (i) => (i / (N - 1)) * W;
+      const py = (v) => H - 15 - ((v - mn) / (mx - mn)) * (H - 25);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 4; i++) {
+        const y = py(mn + (mx - mn) * i / 4);
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, 'rgba(74,159,212,0.15)');
+      grad.addColorStop(1, 'rgba(74,159,212,0.0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(px(0), H);
+      for (let i = 0; i < N; i++) {
+        ctx.lineTo(px(i), py(chartData[i].nav));
+      }
+      ctx.lineTo(px(N - 1), H);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'var(--teal)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(px(0), py(chartData[0].nav));
+      for (let i = 1; i < N; i++) {
+        ctx.lineTo(px(i), py(chartData[i].nav));
+      }
+      ctx.stroke();
+
+      ctx.fillStyle = 'var(--text-dim)';
+      ctx.font = '9px monospace';
+      ctx.fillText(`Max: ₹${mx.toFixed(2)}`, 10, 15);
+      ctx.fillText(`Min: ₹${mn.toFixed(2)}`, 10, H - 5);
+      ctx.fillText(`${chartData[0].date}`, 5, H - 5);
+      ctx.fillText(`${chartData[N-1].date}`, W - 70, H - 5);
+    }
+
+    async function saveMfHolding() {
+      if (!selectedMfCode) {
+        showError("Please search and select a Mutual Fund first.");
+        return;
+      }
+      const amount    = parseFloat(document.getElementById('mf-sip-amount').value);
+      const initial   = parseFloat(document.getElementById('mf-initial').value) || 0;
+      const stepUp    = parseFloat(document.getElementById('mf-step-up').value) || 0;
+      const startDate = document.getElementById('mf-start-date').value;
+      if (!amount || !startDate) {
+        showError("SIP Amount and Start Date are required to save.");
+        return;
+      }
+
+      // Collect missed dates
+      const missedRaw = document.getElementById('mf-missed-dates').value.trim();
+      const missedDates = missedRaw
+        ? missedRaw.split(',').map(s => s.trim()).filter(s => s.match(/^\d{4}-\d{2}-\d{2}$/))
+        : [];
+
+      try {
+        const r = await fetch('/api/mf/holdings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scheme_code:       String(selectedMfCode),
+            scheme_name:       selectedMfName,
+            sip_amount:        amount,
+            initial_investment: initial,
+            step_up_pct:       stepUp,
+            sip_start_date:    startDate,
+            missed_sip_dates:  missedDates,
+            category:          selectedMfCategory || "Mutual Fund",
+            notes:             ""
+          })
+        });
+        if (!r.ok) {
+          const errData = await r.json().catch(() => ({}));
+          let errMsg = 'Save failed';
+          if (errData && errData.detail) {
+            if (typeof errData.detail === 'string') {
+              errMsg = errData.detail;
+            } else if (Array.isArray(errData.detail)) {
+              errMsg = errData.detail.map(d => `${d.loc ? d.loc.join('.') : 'Error'}: ${d.msg}`).join(', ');
+            } else {
+              errMsg = JSON.stringify(errData.detail);
+            }
+          }
+          throw new Error(errMsg);
+        }
+        
+        clearMfSelection();
+        document.getElementById('mf-sip-amount').value = '';
+        document.getElementById('mf-initial').value = '';
+        document.getElementById('mf-step-up').value = '';
+        document.getElementById('mf-start-date').value = '';
+        document.getElementById('mf-missed-dates').value = '';
+        updateMissedDatesUI();
+        document.getElementById('mf-sip-results').style.display = 'none';
+        const findBtn = document.getElementById('mf-find-my-fund-btn');
+        if (findBtn) findBtn.style.display = 'none';
+
+        await loadMfHoldings();
+        showSuccess("SIP holding saved successfully.");
+      } catch(e) {
+        showError('Save failed: ' + e.message);
+      }
+    }
+
+    async function loadMfHoldings() {
+      const container = document.getElementById('mf-holdings-list');
+      if (!container) return;
+      container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--teal);">Loading saved holdings...</div>`;
+      try {
+        const r = await fetch('/api/mf/holdings');
+        const data = await r.json();
+        const holdingsMap = data.holdings || {};
+        const uids = Object.keys(holdingsMap);
+
+        if (!uids.length) {
+          container.innerHTML = `
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:24px 28px;text-align:center;">
+              <div style="font-size:13px;color:var(--text-faint);margin-bottom:8px;">No Mutual Fund holdings tracked yet.</div>
+              <div style="font-size:11px;color:var(--text-dim);">Use the calculator form above to analyze and click "Save to Tracker" to begin monitoring your mutual fund portfolio.</div>
+            </div>
+          `;
+          return;
+        }
+
+        const fetchPromises = uids.map(async (uid) => {
+          const h = holdingsMap[uid];
+          // Retry once on NAV fetch failure (mfapi.in can be intermittent)
+          const tryCalc = async () => {
+            const res = await fetch('/api/mf/sip/calculate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                scheme_code: h.scheme_code,
+                sip_amount: h.sip_amount,
+                initial_investment: h.initial_investment || 0,
+                sip_start_date: h.sip_start_date,
+                step_up_pct: h.step_up_pct || 0
+              })
+            });
+            if (!res.ok) throw new Error(`API ${res.status}`);
+            return res.json();
+          };
+          try {
+            const calc = await tryCalc().catch(async () => {
+              await new Promise(r => setTimeout(r, 1200)); // wait 1.2s then retry
+              return tryCalc();
+            });
+            return { uid, h, calc, error: null };
+          } catch(e) {
+            return { uid, h, calc: null, error: 'NAV fetch failed — mfapi.in may be unavailable. Try refreshing.' };
+          }
+        });
+
+        const results = await Promise.all(fetchPromises);
+
+        let totalInvested = 0;
+        let totalCurrent = 0;
+        results.forEach(item => {
+          if (item.calc) {
+            totalInvested += item.calc.total_invested;
+            totalCurrent += item.calc.current_value;
+          }
+        });
+        const totalReturn = totalCurrent - totalInvested;
+        const totalReturnPct = totalInvested > 0 ? (totalReturn / totalInvested * 100) : 0;
+        const totalReturnClr = totalReturn >= 0 ? 'var(--green)' : 'var(--red)';
+
+        let html = `
+          <!-- MF Portfolio Summary -->
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
+            <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+              <span style="width:3px;height:15px;background:var(--purple);display:inline-block;border-radius:2px;"></span>
+              Mutual Fund Portfolio Summary
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Cost</div>
+                <div style="font-size:16px;font-weight:700;color:var(--text);">₹${totalInvested.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+              </div>
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Current Value</div>
+                <div style="font-size:16px;font-weight:700;color:var(--teal);">₹${totalCurrent.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+              </div>
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Returns</div>
+                <div style="font-size:16px;font-weight:700;color:${totalReturnClr};">${totalReturn >= 0 ? '+' : ''}₹${totalReturn.toLocaleString('en-IN', {maximumFractionDigits:0})} (${totalReturnPct.toFixed(1)}%)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MF Holdings Table -->
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:flex;align-items:center;gap:8px;">
+              <span style="width:3px;height:14px;background:var(--teal);display:inline-block;border-radius:2px;"></span>
+              Active SIP Holdings (${results.length})
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;min-width:850px;border-collapse:collapse;font-size:12px;">
+                <thead>
+                  <tr style="background:var(--bg);border-bottom:1px solid var(--border);">
+                    <th style="padding:10px 14px;color:var(--text-dim);text-align:left;">Scheme Name</th>
+                    <th style="padding:10px 14px;color:var(--text-dim);text-align:right;">SIP Amount</th>
+                    <th style="padding:10px 14px;color:var(--text-dim);text-align:left;">Start Date</th>
+                    <th style="padding:10px 14px;color:var(--text-dim);text-align:right;">Invested</th>
+                    <th style="padding:10px 14px;color:var(--text-dim);text-align:right;">Current Val</th>
+                    <th style="padding:10px 14px;color:var(--text-dim);text-align:right;">P&amp;L %</th>
+                    <th style="padding:10px 14px;color:var(--text-dim);text-align:right;">CAGR</th>
+                    <th style="padding:10px 14px;color:var(--text-dim);text-align:center;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+        `;
+
+        results.forEach(item => {
+          const { uid, h, calc, error } = item;
+          if (error) {
+            html += `
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:10px 14px;font-family:var(--font-display);font-weight:700;color:var(--teal);">${h.scheme_name}</td>
+                <td colspan="6" style="padding:10px 14px;">
+                  <span style="color:var(--red);font-size:11px;">⚠️ ${error}</span>
+                  <button onclick="loadMfHoldings()" style="margin-left:10px;background:transparent;border:1px solid var(--border2);color:var(--text-dim);padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;" title="Retry fetching NAV">â†» Retry</button>
+                </td>
+                <td style="padding:10px 14px;text-align:center;">
+                  <button onclick="deleteMfHolding('${uid}')" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px;">✖</button>
+                </td>
+              </tr>
+            `;
+          } else {
+            const pnlClr = calc.absolute_return >= 0 ? 'var(--green)' : 'var(--red)';
+            const missedBadge = (h.missed_sip_dates && h.missed_sip_dates.length)
+              ? `<span style="background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);color:var(--red);font-size:8px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;">${h.missed_sip_dates.length} MISSED</span>`
+              : '';
+            html += `
+              <tr style="border-bottom:1px solid var(--border);transition: background 0.15s ease;" onmouseenter="this.style.background='rgba(255,255,255,0.01)'" onmouseleave="this.style.background='transparent'">
+                <td style="padding:10px 14px;">
+                  <div style="font-family:var(--font-display);font-weight:700;color:var(--text);display:flex;align-items:center;flex-wrap:wrap;gap:4px;">${calc.scheme_name}${missedBadge}</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Category: ${calc.scheme_category} | Code: ${calc.scheme_code}</div>
+                </td>
+                <td style="padding:10px 14px;text-align:right;font-weight:600;">₹${calc.sip_amount.toLocaleString('en-IN')}</td>
+                <td style="padding:10px 14px;color:var(--text-faint);">${calc.sip_start_date}</td>
+                <td style="padding:10px 14px;text-align:right;color:var(--text-faint);">₹${calc.total_invested.toLocaleString('en-IN', {maximumFractionDigits:0})}</td>
+                <td style="padding:10px 14px;text-align:right;color:var(--teal);font-weight:600;">₹${calc.current_value.toLocaleString('en-IN', {maximumFractionDigits:0})}</td>
+                <td style="padding:10px 14px;text-align:right;color:${pnlClr};font-weight:700;">${calc.absolute_return >= 0 ? '+' : ''}${calc.pct_return.toFixed(1)}%</td>
+                <td style="padding:10px 14px;text-align:right;color:${pnlClr};font-weight:700;">${calc.cagr.toFixed(1)}%</td>
+                <td style="padding:10px 14px;text-align:center;">
+                  <div style="display:flex;justify-content:center;gap:10px;">
+                    <button onclick="loadMfIntoCalc('${calc.scheme_code}', '${calc.scheme_name.replace(/'/g, "\\'")}', ${calc.sip_amount}, ${calc.initial_investment}, '${calc.sip_start_date}', ${h.step_up_pct || 0}, ${JSON.stringify(h.missed_sip_dates||[])})" title="Analyze in Calculator" style="background:transparent;border:none;color:var(--teal);cursor:pointer;font-size:13px;padding:4px;">⚡</button>
+                    <button onclick="deleteMfHolding('${uid}')" title="Delete Holding" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px;">✖</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }
+        });
+
+        html += `
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+        container.innerHTML = html;
+      } catch(e) {
+        container.innerHTML = `<div style="padding:20px;color:var(--red);">Failed to load holdings: ${e.message}</div>`;
+      }
+    }
+
+    function deleteMfHolding(uid) {
+      showConfirm('Remove SIP', `Are you sure you want to remove this SIP tracking?`, async () => {
+        try {
+          const r = await fetch(`/api/mf/holdings/${uid}`, { method: 'DELETE' });
+          if (!r.ok) throw new Error('Delete failed');
+          await loadMfHoldings();
+          showSuccess(`SIP removed successfully`);
+        } catch (e) {
+          showError('Delete failed: ' + e.message);
+        }
+      });
+    }
+
+    function loadMfIntoCalc(code, name, amount, initial, startDate, stepUp, missedDates) {
+      selectedMfCode = code;
+      selectedMfName = name;
+      document.getElementById('mf-search-input').value = '';
+      document.getElementById('mf-selected-fund').style.display = 'block';
+      document.getElementById('mf-selected-name').innerText = name;
+      document.getElementById('mf-selected-meta').innerHTML = `Code: ${code}`;
+      document.getElementById('mf-sip-amount').value = amount;
+      document.getElementById('mf-initial').value = initial;
+      document.getElementById('mf-step-up').value = stepUp || 0;
+      // Restore missed SIP dates if provided
+      const missedInput = document.getElementById('mf-missed-dates');
+      if (missedInput) {
+        missedInput.value = (missedDates && missedDates.length) ? missedDates.join(', ') : '';
+        updateMissedDatesUI();
+      }
+      if (startDate) {
+        document.getElementById('mf-start-date').value = startDate;
+      } else {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() - 1);
+        document.getElementById('mf-start-date').value = d.toISOString().split('T')[0];
+      }
+      calculateMfSip();
+      document.getElementById('mf-panel').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── Find My Fund in Rankings ───────────────────────────────────────────────
+    async function findMyFundInRankings() {
+      if (!selectedMfCode) { showError('Please select a fund first.'); return; }
+      document.getElementById('mf-suggestions-panel').scrollIntoView({ behavior: 'smooth' });
+      await loadTopFunds('all', null, true);
+    }
+
+    // ── Top Performing Funds — Ranked with User Highlight ─────────────────────
+    async function loadTopFunds(category, btnEl, forceUserHighlight) {
+      if (btnEl) {
+        document.querySelectorAll('#mf-category-pills .range-pill').forEach(btn => btn.classList.remove('active'));
+        btnEl.classList.add('active');
+      } else if (!forceUserHighlight) {
+        const pills = document.querySelectorAll('#mf-category-pills .range-pill');
+        if (pills.length) {
+          pills.forEach(btn => btn.classList.remove('active'));
+          pills[0].classList.add('active');
+        }
+      }
+
+      const container = document.getElementById('mf-top-funds-list');
+      if (!container) return;
+      container.innerHTML = `
+        <div style="text-align:center;padding:30px;">
+          <div style="display:inline-block;width:24px;height:24px;border:2px solid var(--border2);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px;"></div>
+          <div style="color:var(--teal);font-size:12px;letter-spacing:1px;">Fetching live returns from mfapi.in...</div>
+          <div style="color:var(--text-faint);font-size:10px;margin-top:6px;">This may take 8–15 seconds — fetching fund data live</div>
+        </div>`;
+
+      try {
+        const useRanked = (category === 'all' || forceUserHighlight);
+        let url;
+        if (useRanked) {
+          const uc = selectedMfCode ? `&scheme_code=${encodeURIComponent(String(selectedMfCode))}` : '';
+          url = `/api/mf/top/ranked?limit=40${uc}`;
+        } else {
+          url = `/api/mf/top?category=${encodeURIComponent(category)}&limit=20`;
+        }
+
+        const r    = await fetch(url);
+        const data = await r.json();
+        const funds    = data.funds || [];
+        const userRank = data.user_fund_rank || null;
+
+        if (!funds.length) {
+          container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-dim);">No funds found in this category.</div>`;
+          return;
+        }
+
+        // Banner: user fund rank
+        let headerNote = '';
+        if (useRanked && userRank) {
+          headerNote = `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:12px;color:var(--gold);display:flex;align-items:center;gap:10px;">
+            ⭐ <strong>Your selected fund ranks #${userRank}</strong> out of ${funds.length} funds by 1Y return
+          </div>`;
+        } else if (useRanked && selectedMfCode) {
+          headerNote = `<div style="background:rgba(74,159,212,.08);border:1px solid rgba(74,159,212,.25);border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:12px;color:var(--teal);">Select a fund above and click ⚡ Calculate to see your fund highlighted in the rankings.</div>`;
+        }
+
+        let html = headerNote + `
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:left;">
+              <thead>
+                <tr style="background:rgba(0,0,0,.3);">
+                  ${useRanked ? '<th style="padding:9px 10px;color:var(--text-dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;width:44px;">#</th>' : ''}
+                  <th style="padding:9px 10px;color:var(--text-dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;">Fund Name</th>
+                  <th style="padding:9px 10px;color:var(--text-dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;">Category</th>
+                  <th style="padding:9px 10px;color:var(--text-dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;text-align:right;">NAV</th>
+                  <th style="padding:9px 10px;color:var(--text-dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;text-align:right;">1Y Return</th>
+                  <th style="padding:9px 10px;color:var(--text-dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;text-align:right;">3Y Return</th>
+                  <th style="padding:9px 10px;color:var(--text-dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;text-align:right;">5Y Return</th>
+                  <th style="padding:9px 10px;color:var(--text-dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;text-align:right;">Net Returns</th>
+                  <th style="padding:9px 10px;color:var(--text-dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;text-align:center;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        funds.forEach((f, idx) => {
+          const isUser  = f.is_user_fund;
+          const rank    = f.rank || (idx + 1);
+          const ret1y   = f.return_1y != null ? `${f.return_1y.toFixed(1)}%` : '—';
+          const ret3y   = f.return_3y != null ? `${f.return_3y.toFixed(1)}%` : '—';
+          const ret5y   = f.return_5y != null ? `${f.return_5y.toFixed(1)}%` : '—';
+          const clr1y   = f.return_1y != null ? (f.return_1y >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--text-dim)';
+          const clr3y   = f.return_3y != null ? (f.return_3y >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--text-dim)';
+          const clr5y   = f.return_5y != null ? (f.return_5y >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--text-dim)';
+
+          let rankBadge = '';
+          if (useRanked) {
+            const mc = rank === 1 ? '#ffd700' : rank === 2 ? '#c0c0c0' : rank === 3 ? '#cd7f32' : 'var(--text-dim)';
+            const mf = rank <= 3 ? `background:${mc}22;border:1px solid ${mc}55;` : 'background:transparent;border:1px solid var(--border);';
+            rankBadge = `<td style="padding:9px 10px;"><div style="${mf}color:${mc};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">${rank}</div></td>`;
+          }
+
+          const rowStyle  = isUser ? 'background:linear-gradient(90deg,rgba(251,191,36,.08),rgba(74,159,212,.06));border-left:3px solid var(--gold);' : '';
+          const userBadge = isUser ? `<span style="background:var(--gold);color:#000;font-size:8px;font-weight:800;padding:2px 6px;border-radius:4px;margin-left:6px;letter-spacing:.5px;">⭐ YOUR FUND</span>` : '';
+
+          html += `
+            <tr id="mf-rank-row-${f.scheme_code}" style="border-bottom:1px solid rgba(255,255,255,0.04);transition:background .15s;${rowStyle}"
+              onmouseenter="if(!this.dataset.user)this.style.background='rgba(255,255,255,0.02)'"
+              onmouseleave="if(!this.dataset.user)this.style.background=''"
+              ${isUser ? 'data-user="true"' : ''}>
+              ${rankBadge}
+              <td style="padding:9px 10px;">
+                <div style="font-weight:600;color:${isUser?'var(--gold)':'var(--text)'};display:flex;align-items:center;flex-wrap:wrap;gap:4px;">${f.scheme_name}${userBadge}</div>
+                <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${f.fund_house || ''}</div>
+              </td>
+              <td style="padding:9px 10px;white-space:nowrap;"><span style="background:rgba(255,255,255,.05);padding:2px 8px;border-radius:10px;font-size:10px;color:var(--text-dim);white-space:nowrap;">${f.category}</span></td>
+              <td style="padding:9px 10px;text-align:right;color:var(--text-faint);">₹${(f.current_nav||0).toFixed(2)}</td>
+              <td style="padding:9px 10px;text-align:right;color:${clr1y};font-weight:700;font-size:13px;">${ret1y}</td>
+              <td style="padding:9px 10px;text-align:right;color:${clr3y};font-weight:600;">${ret3y}</td>
+              <td style="padding:9px 10px;text-align:right;color:${clr5y};font-weight:600;">${ret5y}</td>
+              <td style="padding:9px 10px;text-align:right;color:${(function() {
+                const comp = mfCompareResults[f.scheme_code];
+                return comp ? (comp.absolute_return >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--text-dim)';
+              })()};">${(function() {
+                const comp = mfCompareResults[f.scheme_code];
+                if (!comp) return '—';
+                const sign = comp.absolute_return >= 0 ? '+' : '';
+                return `<span style="font-weight:700;">${sign}${comp.pct_return.toFixed(1)}%</span><br><span style="font-size:10px;opacity:0.8;">₹${comp.absolute_return.toLocaleString('en-IN', {maximumFractionDigits:0})}</span>`;
+              })()}</td>
+              <td style="padding:9px 10px;text-align:center;">
+                <button onclick="(function(){
+                  const amt    = parseFloat(document.getElementById('mf-sip-amount')?.value) || 5000;
+                  const init   = parseFloat(document.getElementById('mf-initial')?.value) || 0;
+                  const start  = document.getElementById('mf-start-date')?.value || '';
+                  const stepUp = parseFloat(document.getElementById('mf-step-up')?.value) || 0;
+                  const missedRaw = document.getElementById('mf-missed-dates')?.value || '';
+                  const missed = missedRaw ? missedRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+                  loadMfIntoCalc('${f.scheme_code}','${(f.scheme_name||'').replace(/'/g,"\\'")}',amt,init,start,stepUp,missed);
+                })()"
+                  style="background:${isUser?'var(--gold)':'var(--teal)'};color:${isUser?'#000':'var(--bg)'};border:none;padding:4px 12px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;transition:opacity .2s;"
+                  onmouseenter="this.style.opacity='.8'" onmouseleave="this.style.opacity='1'"
+                  title="Uses your current SIP amount, date &amp; settings for accurate calculation">${isUser?'Recalculate':'Select'}</button>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+
+        // Auto-scroll to user's fund row
+        if (userRank) {
+          setTimeout(() => {
+            const userRow = container.querySelector('[data-user="true"]');
+            if (userRow) userRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
+        }
+
+      } catch(e) {
+        container.innerHTML = `<div style="padding:20px;color:var(--red);">Failed to load top funds: ${e.message}</div>`;
+      }
+    }
+
+
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('mf-search-dropdown');
+      const input = document.getElementById('mf-search-input');
+      if (dropdown && input && !dropdown.contains(e.target) && e.target !== input) {
+        dropdown.style.display = 'none';
+      }
+    });
 
     // ── Boot ──────────────────────────────────────────────────────────────────────
     init();
