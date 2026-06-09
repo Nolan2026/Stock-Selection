@@ -3226,7 +3226,7 @@
       const n = rawName.trim().toLowerCase();
       if (n.includes('huber') || n.includes('ridge')) return 'Brio 1.0';
       if (n.includes('randomforest') || n.includes('random forest')) return 'Brio 2.0';
-      if (n.includes('lightgbm') || n.includes('lgbm')) return 'Brio Fast 2.5';
+      if (n.includes('lightgbm') || n.includes('lgbm')) return 'Brio Flash 2.5';
       return 'Brio';
     }
 
@@ -3653,11 +3653,16 @@
       <div class="model-info">
         <span>Streak: <strong style="color:var(--teal)">${r.streak_days}d</strong></span>
         <span>52W: <strong>${r.pos_52w}%</strong></span>
-        <span>ML 5d: <strong style="color:${r.pred_5d_pct >= 0 ? 'var(--green)' : 'var(--red)'}">${r.pred_5d_pct >= 0 ? '+' : ''}${r.pred_5d_pct}%</strong></span>
-        ${r.prob_hit_target != null ? `<span>P(Target): <strong style="color:${r.prob_hit_target>=60?'var(--green)':r.prob_hit_target>=45?'var(--gold)':'var(--red)'}">${r.prob_hit_target}%</strong></span>` : ''}
-      </div>
-
-      <!-- Download -->
+        <span>ML 5d: <strong style="color:${r.pred_5d_pct >= 0 ? 'var(--green)' : 'var(--red)'}">${r.pred_5d_pct >= 0 ? '+' : ''}${r.pred_5d_pct}%</strong></span>
+
+        ${r.prob_hit_target != null ? `<span>P(Target): <strong style="color:${r.prob_hit_target>=60?'var(--green)':r.prob_hit_target>=45?'var(--gold)':'var(--red)'}">${r.prob_hit_target}%</strong></span>` : ''}
+
+      </div>
+
+
+
+      <!-- Download -->
+
 
       <!-- Download -->
       <button class="download-btn" id="pdf-btn-${r.symbol}" disabled style="opacity:0.6; cursor:wait">
