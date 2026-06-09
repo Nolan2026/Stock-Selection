@@ -8,19 +8,35 @@ Fetches live data from Yahoo Finance, runs your trained model, and serves PDF re
 ## Project Structure
 
 ```
-stock_api/
+Swing_Trade/
 ├── app/
-│   └── main.py              ← FastAPI backend (all routes + logic)
+│   ├── main.py                         ← FastAPI backend (core routes + analysis logic)
+│   ├── routers/
+│   │   ├── valuation_router.py         ← Stock valuation analysis endpoints
+│   │   ├── momentum_router.py          ← Momentum scanner endpoints
+│   │   ├── portfolio_router.py         ← Portfolio management endpoints
+│   │   └── mf_router.py               ← Mutual fund SIP tracker endpoints
+│   ├── services/
+│   │   ├── valuation_service.py        ← Valuation calculations & PDF generation
+│   │   ├── momentum_service.py         ← Momentum scanning logic
+│   │   └── portfolio_report_service.py ← Portfolio report generation
+│   └── models/
+│       └── valuation_models.py         ← Pydantic models for valuation
 ├── models/
-│   └── stock_model.pkl      ← YOUR TRAINED MODEL (from Cell 17)
+│   └── stock_model.pkl                 ← YOUR TRAINED MODEL (not tracked in git)
 ├── static/
-│   └── index.html           ← Frontend UI
-├── data/
-│   ├── search_history.json  ← Auto-created (recent stocks)
-│   └── reports/             ← Auto-created (generated PDFs)
+│   └── index.html                      ← Frontend UI (single-page app)
+├── pine/
+│   ├── swing_trade_signal.pine         ← TradingView Pine Script (signal)
+│   └── swing_trade_projection.pine     ← TradingView Pine Script (projection)
+├── data/                               ← Auto-created runtime data (gitignored)
+│   ├── search_history.json
+│   ├── portfolio.json
+│   ├── mf_holdings.json
+│   ├── nse_master.json
+│   └── reports/                        ← Generated PDF reports
 ├── requirements.txt
-├── README.md
-└── cell17_train_model.py    ← Colab cell to train + save model
+└── README.md
 ```
 
 ---
@@ -30,14 +46,13 @@ stock_api/
 ### Step 1 — Train your model (Google Colab)
 
 1. Open Google Colab
-2. Run `cell17_train_model.py` as a cell
+2. Run the Cell 17 training script
 3. Upload your NSE 3-year stock CSV when prompted
 4. Download the generated `stock_model.pkl`
 
 ### Step 2 — Install dependencies
 
 ```bash
-cd stock_api
 pip install -r requirements.txt
 ```
 
@@ -63,6 +78,8 @@ http://localhost:8000
 
 ## API Endpoints
 
+### Core Analysis
+
 | Method | URL | Description |
 |--------|-----|-------------|
 | GET  | `/` | Frontend UI |
@@ -71,6 +88,40 @@ http://localhost:8000
 | GET  | `/api/history` | Get recent search history |
 | DELETE | `/api/history/{symbol}` | Remove from history |
 | GET  | `/api/download/{symbol}` | Download PDF report |
+| GET  | `/api/models` | List available ML models |
+
+### Valuation Analysis
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| POST | `/api/valuation` | Metric-by-metric valuation |
+| POST | `/api/valuation/compare` | Side-by-side comparison |
+| POST | `/api/valuation/download_pdf` | Download valuation PDF |
+| POST | `/api/valuation/download_master_pdf` | Full master report PDF |
+
+### Momentum Scanner
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| POST | `/api/momentum/scan` | Scan stocks for momentum signals |
+
+### Portfolio
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET  | `/api/portfolio/holdings` | Get portfolio holdings |
+| POST | `/api/portfolio/holdings` | Add/update holdings |
+| POST | `/api/portfolio/report` | Generate portfolio report |
+
+### Mutual Fund SIP Tracker
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET  | `/api/mf/search?q=...` | Search MF schemes |
+| GET  | `/api/mf/{code}/nav` | Get latest NAV |
+| POST | `/api/mf/sip/calculate` | Compute SIP returns |
+| POST | `/api/mf/sip/compare` | Compare SIP across funds |
+| GET  | `/api/mf/holdings` | Get saved MF SIPs |
 
 ### POST /api/analyze — Example
 
@@ -127,7 +178,7 @@ Signal = GO/WAIT/AVOID per filter:
 ## Updating the Model
 
 To retrain with new data or a different stock:
-1. Run Cell 17 again with updated CSV
+1. Run the Cell 17 training script again with updated CSV
 2. Replace `models/stock_model.pkl`
 3. Restart uvicorn — model reloads automatically
 
@@ -138,8 +189,5 @@ To retrain with new data or a different stock:
 - Yahoo Finance `.NS` suffix is added automatically for NSE stocks
 - Search history is saved in `data/search_history.json` (last 20 searches)
 - PDF reports saved in `data/reports/` — one per symbol, overwritten on re-analyze
-- All indicator calculations match exactly what Cell 15/16 compute in Colab
-
-
-
-<!-- PREMIERPOL,MRPL,NEOGEN,SEAMECLTD,CHENNPETRO,ABSLAMC,EBGNG,AGIIL,JINDALSAW,TICL,ACUTAAS,GESHIP,AETHER,CGPOWER,LENSKART,ACMESOLAR,POWERGRID,LINDEINDIA,	PKTEA,TIMKEN,TATAPOWER,THERMAX,JBCHEPHARM, -->
+- All data files in `data/` are gitignored — they contain runtime/personal data
+- Model files in `models/` are gitignored — place your trained `.pkl` manually

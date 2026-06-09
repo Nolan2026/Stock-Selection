@@ -28,7 +28,7 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from app.routers import valuation_router, momentum_router, portfolio_router
+from app.routers import valuation_router, momentum_router, portfolio_router, mf_router
 
 app = FastAPI(
     title="NSE Stock Analysis API",
@@ -39,6 +39,7 @@ app = FastAPI(
 app.include_router(valuation_router.router)
 app.include_router(momentum_router.router)
 app.include_router(portfolio_router.router)
+app.include_router(mf_router.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -230,14 +231,6 @@ def engineer(raw):
     # ── EMA ratios ────────────────────────────────────────────────────────────
     d["EMA10_RATIO"]=C_/e10-1;    d["EMA20_RATIO"]=C_/e20-1
     d["EMA50_RATIO"]=C_/e50-1;    d["SMA200_RATIO"]=C_/sma200-1
-    d["EMA50H_RATIO"]=C_/e50l-1 # Correction: training uses C_/e50h-1, but wait, let me look at cell17
-
-    # wait, I should re-check cell17 lines 170-173
-    # 170: d["EMA10_RATIO"]=C_/e10-1;    d["EMA20_RATIO"]=C_/e20-1
-    # 171: d["EMA50_RATIO"]=C_/e50-1;    d["SMA200_RATIO"]=C_/sma200-1
-    # 172: d["EMA50H_RATIO"]=C_/e50h-1;  d["EMA50L_RATIO"]=C_/e50l-1
-    
-    # Okay, I'll resume the replacement.
     d["EMA50H_RATIO"]=C_/e50h-1;  d["EMA50L_RATIO"]=C_/e50l-1
 
     # ── EMA alignment ─────────────────────────────────────────────────────────

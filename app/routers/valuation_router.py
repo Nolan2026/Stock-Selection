@@ -28,7 +28,11 @@ from app.services import valuation_service
 
 router = APIRouter(prefix="/api/valuation", tags=["Valuation Analysis"])
 logger = logging.getLogger(__name__)
-fh = logging.FileHandler("master_pdf_debug.log")
+
+# Write debug log into data/ so it's auto-gitignored
+_BASE_DIR = Path(__file__).parent.parent.parent
+_LOG_PATH = _BASE_DIR / "data" / "master_pdf_debug.log"
+fh = logging.FileHandler(str(_LOG_PATH))
 fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(fh)
 

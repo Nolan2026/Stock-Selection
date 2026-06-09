@@ -1,25 +1,28 @@
-# App Data / Generated Files
+# ── App Data / Runtime Generated Files ────────────────────────────────────────
 data/reports/
 data/search_history.json
 data/portfolio.json
 data/nse_master.json
+data/mf_holdings.json
+data/mf_master.json
 *.pdf
 *.csv
 *.xlsx
-*.log
-master_pdf_debug.log
 
-# ML Models & Binary files
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+
+# ── ML Models & Binary Files ─────────────────────────────────────────────────
 models/*.pkl
 *.pkl
 *.joblib
 
-# Python Environment & Cache
+# ── Python Environment & Cache ────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 *.so
-.env
 .pytest_cache/
 .coverage
 htmlcov/
@@ -27,41 +30,46 @@ build/
 dist/
 *.egg-info/
 
-# Virtual Environments
+# ── Environment Variables (SENSITIVE) ─────────────────────────────────────────
+.env
+.env.*
+.env.local
+.env.production
+
+# ── Virtual Environments ──────────────────────────────────────────────────────
 .venv/
 venv/
 ENV/
 env/
 
-# Jupyter Notebooks
-.ipynb_checkpoints
+# ── Jupyter Notebooks ─────────────────────────────────────────────────────────
+.ipynb_checkpoints/
 *.ipynb
 
-# Testing, Scratch and Unwanted files
+# ── Testing & Scratch Files ──────────────────────────────────────────────────
 test_*.py
 *_test.py
 test.py
-test_valuation.py
-test_yf.py
 cell17_*.py
-Further development.txt
-{app,models,static}/
 scratch/
 
-# IDEs and OS
+# ── Dev Notes & Docs (not for repo) ──────────────────────────────────────────
+Further development.txt
+NSE Signals Calculations.pdf
+
+# ── IDEs and OS ───────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 *.swp
 
-# Temporary Data
+# ── Temporary Data ────────────────────────────────────────────────────────────
 temp*.json
 info.json
 *.cache
 
-# Image Exports
+# ── Image Exports ─────────────────────────────────────────────────────────────
 *.jpg
 *.jpeg
 *.png
-!static/assets/  # Do not ignore assets if they are in this folder
