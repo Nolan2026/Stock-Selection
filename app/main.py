@@ -72,7 +72,7 @@ os.makedirs(STATIC_DIR,         exist_ok=True)
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# ── Load Model ────────────────────────────────────────────────────────────────
+# ── Load Model (Reload Triggered) ─────────────────────────────────────────────
 MODELS_CACHE = {}
 
 def get_model(model_name: str = "stock_model.pkl"):
