@@ -175,6 +175,18 @@ Signal = GO/WAIT/AVOID per filter:
 
 ---
 
+## Available Models & Accuracy
+
+The table below lists the available machine learning models in the `models/` directory, including their internal name, directional accuracy, and how they are displayed in the HTML interface:
+
+| Filename | Model Name (Internal) | Named As (HTML display) | Directional Accuracy | Trained On |
+| :--- | :--- | :--- | :---: | :---: |
+| `stock_model.pkl` | `LightGBM` | **Brio Flash 2.5** | **51.0%** | 2026-06-09 |
+| `stock_model-1.pkl` | `RandomForest` | **Brio 2.0** | **68.5%** | 2026-03-18 |
+| `stock_model_backup.pkl` | `HuberRidge` | **Brio 1.0** | **63.3%** | 2026-03-16 |
+
+---
+
 ## Updating the Model
 
 To retrain with new data or a different stock:
