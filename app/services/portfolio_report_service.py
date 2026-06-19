@@ -44,19 +44,23 @@ def create_portfolio_report(data: dict, format: str = "pdf") -> str:
     fig_height = max(14, 10 + num_holdings * 0.5)
     fig = plt.figure(figsize=(16, fig_height), facecolor=BG)
     
-    # Layout Grid: Header (1), Metrics (2), Charts (3), Table (4)
-    gs = gridspec.GridSpec(4, 3, fig, hspace=0.35, wspace=0.25,
-                             height_ratios=[0.6, 1.4, 2.5, max(4, num_holdings * 0.4)])
+    # Layout Grid: Header (0), Metrics Row 1 (1), Metrics Row 2 (2), Charts (3), Table (4)
+    # 5 rows and 12 columns for dynamic scaling without overlap
+    gs = gridspec.GridSpec(5, 12, fig, hspace=0.45, wspace=0.25,
+                             top=0.95, bottom=0.02, left=0.05, right=0.95,
+                             height_ratios=[0.6, 0.7, 0.7, 2.5, max(4, num_holdings * 0.4)])
 
     # --- 1. HEADER ---
     ax_head = fig.add_subplot(gs[0, :])
     ax_head.axis("off")
-    ax_head.text(0.02, 0.6, "NSE SIGNAL — PORTFOLIO DASHBOARD", 
+    portfolio_name = data.get("name")
+    heading_text = f"NSE SIGNAL — {portfolio_name.upper()}" if portfolio_name else "NSE SIGNAL — PORTFOLIO DASHBOARD"
+    ax_head.text(0.0, 0.6, heading_text, 
                  ha="left", va="center", fontsize=22, fontweight="bold", color=TEAL)
-    ax_head.text(0.02, 0.2, f"LIVE ANALYTICS | {datetime.now().strftime('%d %b %Y, %H:%M')}", 
+    ax_head.text(0.0, 0.2, f"LIVE ANALYTICS | {datetime.now().strftime('%d %b %Y, %H:%M')}", 
                  ha="left", va="center", fontsize=10, color=TEXT_DIM)
 
-    # --- 2. METRIC CARDS (Matching UI layout) ---
+    # --- 2. METRIC CARDS (Matching UI layout, dynamic sizing) ---
     card_data = [
         ("TOTAL VALUE", f"₹{pm.get('total_value', 0):,.0f}", TEAL),
         ("TOTAL P&L", f"₹{pm.get('total_pnl_abs', 0):,.0f}", GREEN if pm.get('overall_pnl_pct',0)>=0 else RED),
@@ -67,24 +71,22 @@ def create_portfolio_report(data: dict, format: str = "pdf") -> str:
         ("HOLDINGS", f"{len(results)}", TEXT)
     ]
     
-    # Render 7 cards in a flexible grid
+    # Render 7 cards in a flexible grid inside the gridspec
     for i, (label, val, clr) in enumerate(card_data):
-        # We have 3 columns. Cards 0-2 (row1), 3-5 (row2), 6 (row3)
-        row = i // 3
-        col = i % 3
+        row = i // 4
+        col = i % 4
         
-        # We need a sub-gridspec or just offset the axes
-        # To match the UI look, we'll create individual axes
-        ax = fig.add_axes([0.05 + col*0.3, 0.78 - row*0.07, 0.28, 0.06])
+        # Each card spans 3 columns out of 12
+        ax = fig.add_subplot(gs[1 + row, col*3 : (col+1)*3])
         ax.set_facecolor(PAN)
         ax.set_xticks([]); ax.set_yticks([])
-        ax.text(0.08, 0.7, label, ha="left", va="center", fontsize=8, color=TEXT_DIM, fontweight="bold")
-        ax.text(0.08, 0.3, val, ha="left", va="center", fontsize=16, color=clr, fontweight="bold")
+        ax.text(0.08, 0.7, label, ha="left", va="center", fontsize=8, color=TEXT_DIM, fontweight="bold", transform=ax.transAxes)
+        ax.text(0.08, 0.3, val, ha="left", va="center", fontsize=16, color=clr, fontweight="bold", transform=ax.transAxes)
         for spine in ax.spines.values(): spine.set_edgecolor(GRD); spine.set_linewidth(1)
 
     # --- 3. CHARTS ---
     # A. Sector Exposure (Matching UI)
-    ax_sec = fig.add_subplot(gs[2, :1]) # Left column
+    ax_sec = fig.add_subplot(gs[3, 0:4]) # Left column (columns 0-4)
     sectors = sorted(pm.get("sector_exposure", {}).items(), key=lambda x: x[1])
     if sectors:
         names = [x[0] for x in sectors]
@@ -102,7 +104,7 @@ def create_portfolio_report(data: dict, format: str = "pdf") -> str:
         ax_sec.axis("off")
 
     # B. Rebalancing Alerts (Matching UI Red Box)
-    ax_reb = fig.add_subplot(gs[2, 1:]) # Right 2 columns
+    ax_reb = fig.add_subplot(gs[3, 4:12]) # Right columns (columns 4-12)
     ax_reb.set_facecolor(PAN)
     ax_reb.set_xticks([]); ax_reb.set_yticks([])
     ax_reb.set_title("  REBALANCING ALERTS", fontsize=11, fontweight="bold", pad=20, loc="left", color=RED)
@@ -140,11 +142,11 @@ def create_portfolio_report(data: dict, format: str = "pdf") -> str:
     for spine in ax_reb.spines.values(): spine.set_edgecolor(GRD)
 
     # --- 4. HOLDINGS TABLE ---
-    ax_tab = fig.add_subplot(gs[3, :])
+    ax_tab = fig.add_subplot(gs[4, :])
     ax_tab.axis("off")
     ax_tab.set_title("  LIVE HOLDINGS ANALYSIS", fontsize=11, fontweight="bold", pad=20, loc="left", color=GOLD)
     
-    headers = ["SYMBOL", "PRICE", "P&L %", "P&L ₹", "VALUE", "SIGNAL", "P(TARGET)", "BETA", "MOS %", "ACTION"]
+    headers = ["SYMBOL", "ENTRY PRICE", "PRICE", "P&L %", "P&L ₹", "TODAY P&L", "GAIN/SHARE", "VALUE", "SIGNAL", "P(TARGET)", "MOS %", "ACTION", "BETA"]
     table_data = []
     cell_colors = []
     
@@ -152,25 +154,56 @@ def create_portfolio_report(data: dict, format: str = "pdf") -> str:
         pnl_clr = GREEN if r["pnl_pct"] >= 0 else RED
         sig_clr = GREEN if "BUY" in r["signal"] else (GOLD if r["signal"] == "WATCH" else RED)
         
+        # Calculate Gain/Share
+        diff_val = r["current_price"] - r["avg_cost"]
+        diff_clr = GREEN if diff_val >= 0 else RED
+        diff_sign = "+" if diff_val >= 0 else ""
+        
+        # Today's P&L
+        today_pnl_val = r.get("today_pnl_abs", 0.0)
+        today_pnl_pct = r.get("today_pnl_pct", 0.0)
+        today_pnl_clr = GREEN if today_pnl_val >= 0 else RED
+        today_pnl_sign = "+" if today_pnl_val >= 0 else ""
+        today_pnl_str = f"{today_pnl_sign}₹{today_pnl_val:,.0f}\n({today_pnl_pct:+.2f}%)"
+        
+        # Star marker for favorites in PDF/Image
+        sym_label = f"* {r['symbol']}" if r.get("favorite") else r["symbol"]
+        
         row = [
-            r["symbol"],
+            sym_label,
+            f"₹{r['avg_cost']:,.2f}",
             f"₹{r['current_price']:,.2f}",
             f"{r['pnl_pct']:+.2f}%",
             f"₹{r['pnl_abs']:,.0f}",
+            today_pnl_str,
+            f"{diff_sign}₹{diff_val:,.2f}",
             f"₹{r['current_value']:,.0f}",
             r["signal"],
             f"{r.get('prob_hit_target','—')}%" if r.get("prob_hit_target") else "—",
-            f"{r.get('beta', 1.0):.2f}",
             f"{r.get('margin_of_safety', 0):.2f}%",
-            r.get("rebalance_flag", "HOLD").replace("_", " ")
+            r.get("rebalance_flag", "HOLD").replace("_", " "),
+            f"{r.get('beta', 1.0):.2f}",
         ]
         table_data.append(row)
         
-        # UI-specific cell coloring
-        colors = [TEAL] + [TEXT]*3 + [TEXT] + [sig_clr] + [TEXT]*3 + [GOLD]
-        colors[2] = pnl_clr # P&L%
-        colors[3] = pnl_clr # P&L absolute
-        colors[8] = GREEN if r.get('margin_of_safety',0) > 10 else (GOLD if r.get('margin_of_safety',0) > 0 else RED)
+        # UI-specific cell coloring (matching headers)
+        mos_clr = GREEN if r.get('margin_of_safety', 0) > 10 else (GOLD if r.get('margin_of_safety', 0) > 0 else RED)
+        
+        colors = [
+            TEAL,        # Symbol
+            TEXT_DIM,    # Entry Price (Avg Cost)
+            TEXT,        # Price
+            pnl_clr,     # P&L %
+            pnl_clr,     # P&L ₹
+            today_pnl_clr, # TODAY P&L
+            diff_clr,    # Gain/Share
+            TEXT,        # Value
+            sig_clr,     # Signal
+            TEXT,        # P(Target)
+            mos_clr,     # MOS %
+            GOLD,        # Action
+            TEXT,        # Beta
+        ]
         cell_colors.append(colors)
 
     if table_data:
@@ -179,7 +212,7 @@ def create_portfolio_report(data: dict, format: str = "pdf") -> str:
                              colColours=[GRD]*len(headers))
         
         table.auto_set_font_size(False)
-        table.set_fontsize(9)
+        table.set_fontsize(7.0) # Slightly smaller font since we have more columns
         table.scale(1, 2.2)
         
         # Style the table to match UI exactly
@@ -187,7 +220,7 @@ def create_portfolio_report(data: dict, format: str = "pdf") -> str:
             cell.set_edgecolor(GRD)
             cell.set_linewidth(0.5)
             if row == 0:
-                cell.set_text_props(weight="bold", color=TEXT_DIM, fontsize=8)
+                cell.set_text_props(weight="bold", color=TEXT_DIM, fontsize=7)
                 cell.set_facecolor(BG) # Header background matches main BG
             else:
                 cell.set_facecolor(PAN)

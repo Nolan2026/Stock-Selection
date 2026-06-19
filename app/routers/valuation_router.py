@@ -5,7 +5,7 @@ FastAPI routes for the Stock Valuation Analysis feature.
 Provides endpoints for single-stock analysis and multi-stock comparison.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
 from datetime import datetime
 import logging
@@ -92,7 +92,7 @@ def _perform_valuation(ticker_sym: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error analyzing valuation for {ticker_sym}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Analysis failed for {ticker_sym}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed for {ticker_sym}. Check server logs for details.")
 
 @router.post("", response_model=List[ValuationResponse])
 async def get_valuation(req: ValuationRequest):
@@ -106,6 +106,8 @@ async def get_valuation(req: ValuationRequest):
     
     if not tickers:
         raise HTTPException(status_code=400, detail="No valid tickers provided.")
+    if len(tickers) > 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 tickers per request.")
 
     for ticker_sym in tickers:
         try:
@@ -150,13 +152,15 @@ async def compare_valuations(req: CompareRequest):
     }
 
 @router.post("/download_pdf")
-async def download_valuation_pdf(req: ValuationRequest):
+async def download_valuation_pdf(req: ValuationRequest, background_tasks: BackgroundTasks):
     """
     Generate and download a PDF report for the provided tickers.
     """
     tickers = [t.strip().upper() for t in req.ticker.split(",") if t.strip()]
     if not tickers:
         raise HTTPException(status_code=400, detail="No tickers provided.")
+    if len(tickers) > 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 tickers per request.")
 
     all_data = []
     for ticker_sym in tickers:
@@ -207,6 +211,9 @@ async def download_valuation_pdf(req: ValuationRequest):
         if not pdf_path or not os.path.exists(pdf_path):
             raise HTTPException(status_code=500, detail="PDF generation failed.")
         
+        # Schedule cleanup after response is sent
+        background_tasks.add_task(lambda p: os.remove(p) if os.path.exists(p) else None, pdf_path)
+
         return FileResponse(
             path=pdf_path,
             filename=f"Valuation_Report_{datetime.now().strftime('%Y%m%d')}.pdf",
@@ -215,11 +222,11 @@ async def download_valuation_pdf(req: ValuationRequest):
     except Exception as e:
         if os.path.exists(path): os.remove(path)
         logger.error(f"PDF Endpoint error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="PDF generation failed. Check server logs for details.")
 
 
 @router.post("/download_master_pdf")
-async def download_master_pdf(req: MasterReportRequest):
+async def download_master_pdf(req: MasterReportRequest, background_tasks: BackgroundTasks):
     """
     Generate and download a comprehensive Master PDF report.
     """
@@ -238,18 +245,19 @@ async def download_master_pdf(req: MasterReportRequest):
         if not pdf_path or not os.path.exists(pdf_path):
             raise HTTPException(status_code=500, detail="Master PDF generation failed.")
         
+        # Schedule cleanup after response is sent
+        background_tasks.add_task(lambda p: os.remove(p) if os.path.exists(p) else None, pdf_path)
+
         return FileResponse(
             path=pdf_path,
             filename=f"Master_Analysis_Report_{datetime.now().strftime('%Y%m%d')}.pdf",
             media_type="application/pdf"
         )
     except Exception as e:
-        import traceback
-        full_error = traceback.format_exc()
         try:
             if os.path.exists(path): os.remove(path)
-        except:
+        except Exception:
             pass
-        logger.error(f"Master PDF Endpoint error: {full_error}")
-        raise HTTPException(status_code=500, detail=f"Master PDF Backend Error: {str(e)}\n{full_error[:500]}")
+        logger.error(f"Master PDF Endpoint error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Master PDF generation failed. Check server logs for details.")
 

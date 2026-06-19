@@ -10,14 +10,22 @@ Routes:
   GET  /api/health              → health check
 """
 
+import os, re
+# Force single-threaded execution for numeric libraries to prevent OpenMP deadlocks inside Uvicorn
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import pickle, json, os, io, logging, asyncio
+from pydantic import BaseModel, validator
+import pickle, json, io, logging, asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
@@ -43,19 +51,23 @@ app.include_router(mf_router.router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:3000",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=False,
 )
 
-# Return validation errors as JSON with full detail for debugging
+# Return validation errors as JSON (do NOT leak raw request body)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    body = await request.body()
-    logger.error(f"422 Validation error — body: {body!r}  errors: {exc.errors()}")
+    logger.error(f"422 Validation error — errors: {exc.errors()}")
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors(), "body": body.decode("utf-8", errors="replace")},
+        content={"detail": exc.errors()},
     )
 
 BASE_DIR    = Path(__file__).parent.parent
@@ -72,16 +84,30 @@ os.makedirs(STATIC_DIR,         exist_ok=True)
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+# ── Security: path traversal protection ───────────────────────────────────────
+def _safe_filename(name: str) -> str:
+    """Strip path separators and non-alphanumeric chars to prevent path traversal."""
+    name = name.replace("/", "").replace("\\", "").replace("\0", "")
+    name = re.sub(r'[^a-zA-Z0-9._-]', '', name)
+    while name.startswith('.'):
+        name = name.lstrip('.')
+    return name or "invalid"
+
 # ── Load Model (Reload Triggered) ─────────────────────────────────────────────
 MODELS_CACHE = {}
 
 def get_model(model_name: str = "stock_model.pkl"):
     """Load model from file and cache it."""
     global MODELS_CACHE
+    model_name = _safe_filename(model_name)
     if model_name in MODELS_CACHE:
         return MODELS_CACHE[model_name]
     
     path = BASE_DIR / "models" / model_name
+    # Guard against path traversal — resolved path must stay inside models dir
+    if not path.resolve().is_relative_to((BASE_DIR / "models").resolve()):
+        logger.warning(f"Path traversal attempt blocked: {model_name}")
+        return None
     if path.exists():
         try:
             with open(path, "rb") as f:
@@ -89,6 +115,16 @@ def get_model(model_name: str = "stock_model.pkl"):
             # Ensure metrics exist safely
             if "metrics" not in bundle:
                 bundle["metrics"] = {"model": "Unknown", "dir_acc": 0}
+            
+            # Force single-threaded prediction for stability under multi-threaded Uvicorn
+            try:
+                pipe = bundle.get("model")
+                if pipe and hasattr(pipe, "named_steps") and "m" in pipe.named_steps:
+                    estimator = pipe.named_steps["m"]
+                    if hasattr(estimator, "set_params"):
+                        estimator.set_params(n_jobs=1)
+            except Exception as pe:
+                logger.warning(f"Could not set n_jobs=1 on estimator: {pe}")
             
             MODELS_CACHE[model_name] = bundle
             logger.info(f"Model loaded: {model_name} ({bundle['metrics'].get('model', 'Unknown')})")
@@ -362,7 +398,7 @@ def engineer(raw):
             return pd.Series(betas, index=s_ret.index)
         beta_series = rolling_beta(stock_ret, nifty_aligned, 60)
         d["BETA_DISPLAY"] = np.round(beta_series.values, 3)
-    except:
+    except Exception:
         std252 = _r.rolling(252).std()
         d["BETA_DISPLAY"] = (vol60 / std252.replace(0, np.nan)).round(3)
 
@@ -374,6 +410,32 @@ def engineer(raw):
 
     return d
 
+def get_stock_sector(symbol: str) -> str:
+    """Retrieve the sector of a stock from local master data or yfinance fallback."""
+    # 1. Try to load from local master data
+    try:
+        from app.services.momentum_service import get_master_data
+        master = get_master_data()
+        for s in master.get("stocks", []):
+            if s.get("symbol", "").upper() == symbol.upper():
+                sector = s.get("sector")
+                if sector:
+                    return sector
+    except Exception as e:
+        logger.warning(f"Could not read sector from master data: {e}")
+
+    # 2. Try fetching from yfinance info
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker(f"{symbol}.NS")
+        info = ticker.info
+        if info and "sector" in info:
+            return info["sector"]
+    except Exception as e:
+        logger.warning(f"Could not fetch sector from yfinance for {symbol}: {e}")
+
+    return "Unknown"
+
 # ── Generate Signal ───────────────────────────────────────────────────────────
 def generate_signal(d_eng: pd.DataFrame, symbol: str, model_name: str = "stock_model.pkl") -> dict:
     bundle = get_model(model_name)
@@ -384,8 +446,18 @@ def generate_signal(d_eng: pd.DataFrame, symbol: str, model_name: str = "stock_m
     feats = [f for f in feats if f in d_eng.columns]
 
     last  = d_eng.dropna(subset=feats).iloc[-1]
-    X     = last[feats].values.reshape(1, -1)
+    # Create DataFrame to preserve feature names and avoid scikit-learn warning
+    X     = pd.DataFrame([last[feats]], columns=feats)
     pred  = float(pipe.predict(X)[0])
+
+    # Calculate one month back price based on current date
+    current_date = d_eng["DATE"].iloc[-1]
+    target_date = current_date - pd.DateOffset(months=1)
+    past_df = d_eng[d_eng["DATE"] <= target_date]
+    if not past_df.empty:
+        avg_cost = float(past_df["CLOSE"].iloc[-1])
+    else:
+        avg_cost = float(d_eng["CLOSE"].iloc[0])
 
     # ── Probability scoring: P(hit target before stop loss) ───────────────────
     # Uses the classifier's BUY-class probability as a proxy for
@@ -600,6 +672,9 @@ def generate_signal(d_eng: pd.DataFrame, symbol: str, model_name: str = "stock_m
         "prob_hit_target":   prob_hit_target,   # NEW: P(hit target) %
         "date":              str(d_eng["DATE"].iloc[-1])[:10],
         "close":             round(close, 2),
+        "sector":            get_stock_sector(symbol),
+        "avg_cost":          round(avg_cost, 2),
+        "current_price":     round(close, 2),
         "ema10":             round(e10, 2),
         "ema50_high":        round(e50h, 2),
         "ema50_low":         round(e50l, 2),
@@ -1138,7 +1213,7 @@ def build_pdf(result: dict, d_eng: pd.DataFrame) -> str:
                       fontsize=13, fontweight="bold", color=sig_clr)
         try:
             plt.tight_layout(rect=[0, 0.02, 1, 1])
-        except:
+        except Exception:
             plt.subplots_adjust(left=0.08, right=0.92, top=0.9, bottom=0.1, hspace=0.4, wspace=0.3)
         pdf.savefig(fig2, bbox_inches="tight", facecolor=BG)
         plt.close(fig2)
@@ -1297,6 +1372,14 @@ class AnalyzeRequest(BaseModel):
     end_date:   Optional[str]       = None
     model:      Optional[str]       = "stock_model.pkl"
 
+    @validator("model")
+    def validate_model_name(cls, v):
+        if v:
+            v = _safe_filename(v)
+            if not v.endswith(".pkl"):
+                raise ValueError("Model must be a .pkl file")
+        return v
+
     @property
     def safe_period(self) -> str:
         allowed = {"6mo","1y","2y","3y","5y","max"}
@@ -1402,13 +1485,17 @@ def pdf_status(symbol: str):
 
 @app.get("/api/download/{symbol}")
 def download_pdf(symbol: str):
-    pdf_path = PDF_DIR / f"{symbol.upper()}_analysis.pdf"
+    safe_sym = _safe_filename(symbol.upper())
+    pdf_path = PDF_DIR / f"{safe_sym}_analysis.pdf"
+    # Guard against path traversal — resolved path must stay inside PDF_DIR
+    if not pdf_path.resolve().is_relative_to(PDF_DIR.resolve()):
+        raise HTTPException(400, "Invalid symbol.")
     if not pdf_path.exists():
-        raise HTTPException(404, f"Report not found for {symbol}. Analyze first.")
+        raise HTTPException(404, f"Report not found for {safe_sym}. Analyze first.")
     return FileResponse(
         path=str(pdf_path),
         media_type="application/pdf",
-        filename=f"{symbol.upper()}_analysis_{datetime.now().strftime('%Y%m%d')}.pdf"
+        filename=f"{safe_sym}_analysis_{datetime.now().strftime('%Y%m%d')}.pdf"
     )
 
 

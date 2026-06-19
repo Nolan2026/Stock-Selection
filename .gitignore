@@ -1,10 +1,5 @@
 # ── App Data / Runtime Generated Files ────────────────────────────────────────
-data/reports/
-data/search_history.json
-data/portfolio.json
-data/nse_master.json
-data/mf_holdings.json
-data/mf_master.json
+data/
 *.pdf
 *.csv
 *.xlsx
@@ -63,11 +58,14 @@ NSE Signals Calculations.pdf
 .DS_Store
 Thumbs.db
 *.swp
+*.swo
+*~
 
 # ── Temporary Data ────────────────────────────────────────────────────────────
 temp*.json
 info.json
 *.cache
+*.tmp
 
 # ── Image Exports ─────────────────────────────────────────────────────────────
 *.jpg

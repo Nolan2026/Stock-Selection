@@ -27,6 +27,10 @@ os.makedirs(BASE_DIR / "data", exist_ok=True)
 
 
 # ── Pydantic models ────────────────────────────────────────────────────────────
+class FavoritesSync(BaseModel):
+    favorites: List[str]
+
+
 class HoldingIn(BaseModel):
     symbol:         str
     qty:            float = Field(..., gt=0, description="Number of shares held")
@@ -74,10 +78,33 @@ def upsert_holding(h: HoldingIn):
         "avg_cost":  h.avg_cost,
         "sector":    h.sector or "Unknown",
         "notes":     h.notes or "",
+        "favorite":  data["holdings"].get(sym, {}).get("favorite", False),
         "added_at":  data["holdings"].get(sym, {}).get("added_at", datetime.now().isoformat()),
     }
     _write(data)
     return {"ok": True, "holding": data["holdings"][sym]}
+
+
+@router.post("/{symbol}/toggle_favorite")
+def toggle_favorite(symbol: str):
+    """Toggle the favorite status of a stock holding."""
+    data = _read()
+    sym  = symbol.strip().upper()
+    if sym not in data["holdings"]:
+        raise HTTPException(404, f"{sym} not in portfolio")
+    fav = data["holdings"][sym].get("favorite", False)
+    data["holdings"][sym]["favorite"] = not fav
+    _write(data)
+    return {"ok": True, "symbol": sym, "favorite": not fav}
+
+
+@router.delete("/clear")
+def clear_portfolio():
+    """Clear all holdings from the portfolio."""
+    data = _read()
+    data["holdings"] = {}
+    _write(data)
+    return {"ok": True, "message": "All holdings cleared"}
 
 
 @router.delete("/{symbol}")
@@ -96,7 +123,7 @@ def remove_holding(symbol: str):
 async def upload_portfolio_excel(file: UploadFile = File(...)):
     """
     Import holdings from an Excel or CSV file.
-    Expected columns: Symbol, Qty, Avg Cost, [Sector]
+    Expected columns: Symbol, Qty, Entry Price (or Avg Cost), [Sector]
     """
     content = await file.read()
     try:
@@ -125,7 +152,7 @@ async def upload_portfolio_excel(file: UploadFile = File(...)):
             missing = []
             if not col_map['symbol']: missing.append("Symbol")
             if not col_map['qty']: missing.append("Qty")
-            if not col_map['avg_cost']: missing.append("Avg Cost")
+            if not col_map['avg_cost']: missing.append("Entry Price")
             raise HTTPException(400, f"Missing required columns: {', '.join(missing)}")
         
         # 4. Process rows
@@ -153,7 +180,8 @@ async def upload_portfolio_excel(file: UploadFile = File(...)):
                     "avg_cost":  avg_cost,
                     "sector":    sector,
                     "notes":     f"Imported from {file.filename} on {datetime.now().strftime('%Y-%m-%d')}",
-                    "added_at":  datetime.now().isoformat(),
+                    "favorite":  portfolio_data["holdings"].get(sym, {}).get("favorite", False),
+                    "added_at":  portfolio_data["holdings"].get(sym, {}).get("added_at", datetime.now().isoformat()),
                 }
                 import_count += 1
             except (ValueError, TypeError):
@@ -163,6 +191,7 @@ async def upload_portfolio_excel(file: UploadFile = File(...)):
             raise HTTPException(400, "No valid holdings were found in the file.")
             
         # 5. Persist
+        portfolio_data["name"] = f"Imported: {file.filename}"
         _write(portfolio_data)
         
         return {
@@ -174,20 +203,14 @@ async def upload_portfolio_excel(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Excel import failed: {str(e)}")
         if isinstance(e, HTTPException): raise e
-        raise HTTPException(400, f"Failed to process file: {str(e)}")
+        raise HTTPException(400, "Failed to process file. Check structure and content.")
 
 
-# ── Portfolio analysis (re-uses main.py helpers via import) ───────────────────
-@router.post("/analyze")
-async def analyze_portfolio():
-    """
-    Re-fetch live data for every holding, run the signal engine,
-    and return enriched metrics + portfolio-level risk summary.
-    """
+# ── Reusable Portfolio analysis helper ─────────────────────────────────────────
+def run_holdings_analysis(holdings: dict):
     from app.main import fetch_yahoo, engineer, generate_signal, get_model
 
-    data = _read()
-    if not data["holdings"]:
+    if not holdings:
         return {"results": [], "portfolio_metrics": {}, "rebalance_flags": []}
 
     results, errors = [], []
@@ -195,7 +218,7 @@ async def analyze_portfolio():
     total_value     = 0.0
     betas           = []
 
-    for sym, h in data["holdings"].items():
+    for sym, h in holdings.items():
         try:
             df, _ticker  = fetch_yahoo(sym, period="3y")
             d_eng        = engineer(df)
@@ -207,6 +230,13 @@ async def analyze_portfolio():
             current_val   = current_price * qty
             pnl_pct       = round((current_price - cost_basis) / cost_basis * 100, 2)
             pnl_abs       = round((current_price - cost_basis) * qty, 2)
+
+            # Today's P&L calculation
+            close_today = df["CLOSE"].iloc[-1]
+            close_yesterday = df["CLOSE"].iloc[-2] if len(df) >= 2 else close_today
+            today_change = close_today - close_yesterday
+            today_pnl_abs = round(today_change * qty, 2)
+            today_pnl_pct = round((today_change / close_yesterday * 100), 2) if close_yesterday > 0 else 0.0
 
             # Beta from signal result
             beta_val = sig_result.get("beta") or 1.0
@@ -229,9 +259,12 @@ async def analyze_portfolio():
                 "current_value": round(current_val, 2),
                 "pnl_pct":       pnl_pct,
                 "pnl_abs":       pnl_abs,
+                "today_pnl_abs": today_pnl_abs,
+                "today_pnl_pct": today_pnl_pct,
                 "margin_of_safety": mos,
                 "sector":        sector,
                 "notes":         h.get("notes", ""),
+                "favorite":      h.get("favorite", False),
                 # Rebalance flag
                 "rebalance_flag": _rebalance_flag(sig_result["signal"]),
             })
@@ -256,6 +289,10 @@ async def analyze_portfolio():
             w = r["current_value"] / total_value
             agg_mos += w * r["margin_of_safety"]
 
+    total_today_pnl_abs = sum(r["today_pnl_abs"] for r in results)
+    prev_total_value = total_value - total_today_pnl_abs
+    total_today_pnl_pct = round(total_today_pnl_abs / max(prev_total_value, 1) * 100, 2) if prev_total_value > 0 else 0.0
+
     portfolio_metrics = {
         "total_value":      round(total_value, 2),
         "total_pnl_abs":    round(sum(r["pnl_abs"] for r in results), 2),
@@ -264,6 +301,8 @@ async def analyze_portfolio():
             sum(r["pnl_abs"] for r in results) /
             max(sum(r["avg_cost"] * r["qty"] for r in results), 1) * 100, 2
         ),
+        "total_today_pnl_abs": round(total_today_pnl_abs, 2),
+        "total_today_pnl_pct": total_today_pnl_pct,
         "weighted_beta":    round(weighted_beta, 3),
         "beta_regime":      "HIGH" if weighted_beta > 1.2 else
                             "NORMAL" if weighted_beta > 0.8 else "LOW",
@@ -297,6 +336,28 @@ async def analyze_portfolio():
     }
 
 
+# ── Portfolio analysis (re-uses main.py helpers via import) ───────────────────
+@router.post("/analyze")
+async def analyze_portfolio():
+    """
+    Re-fetch live data for every holding, run the signal engine,
+    and return enriched metrics + portfolio-level risk summary.
+    """
+    data = _read()
+    res = run_holdings_analysis(data["holdings"])
+    res["name"] = data.get("name")
+    return res
+
+
+@router.post("/analyze_custom")
+async def analyze_custom_portfolio(holdings: dict):
+    """
+    Analyze a custom portfolio payload (e.g. from local storage saved portfolios)
+    without affecting the active portfolio holdings list.
+    """
+    return run_holdings_analysis(holdings)
+
+
 @router.post("/download_pdf")
 async def download_portfolio_pdf(background_tasks: BackgroundTasks):
     """Generate and download the portfolio report as a colored PDF."""
@@ -321,7 +382,7 @@ async def download_portfolio_pdf(background_tasks: BackgroundTasks):
         )
     except Exception as e:
         logger.error(f"PDF download failed: {str(e)}")
-        raise HTTPException(500, f"Internal server error during PDF generation: {str(e)}")
+        raise HTTPException(500, "Internal server error during PDF generation.")
 
 
 @router.post("/download_jpg")
@@ -348,7 +409,32 @@ async def download_portfolio_jpg(background_tasks: BackgroundTasks):
         )
     except Exception as e:
         logger.error(f"JPG download failed: {str(e)}")
-        raise HTTPException(500, f"Internal server error during JPG generation: {str(e)}")
+        raise HTTPException(500, "Internal server error during JPG generation.")
+
+
+@router.post("/load")
+def load_portfolio(payload: dict):
+    """Overwrite the active portfolio holdings with the provided ones."""
+    if "holdings" in payload and isinstance(payload["holdings"], dict):
+        name = payload.get("name")
+        holdings = payload["holdings"]
+    else:
+        name = None
+        holdings = payload
+    data = {"name": name, "holdings": holdings, "updated_at": datetime.now().isoformat()}
+    _write(data)
+    return {"ok": True}
+
+
+@router.post("/sync_favorites")
+def sync_favorites(payload: FavoritesSync):
+    """Synchronize favorite status with a list of favorite symbols."""
+    data = _read()
+    fav_set = {sym.strip().upper() for sym in payload.favorites}
+    for sym, h in data["holdings"].items():
+        h["favorite"] = (sym in fav_set)
+    _write(data)
+    return {"ok": True, "count": len(fav_set)}
 
 
 def _rebalance_flag(signal: str) -> str:

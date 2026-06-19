@@ -18,6 +18,7 @@ Endpoints:
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List
+from urllib.parse import quote
 import json, os, logging, httpx, asyncio
 from pathlib import Path
 from datetime import datetime, date, timedelta
@@ -36,7 +37,49 @@ MFAPI_SEARCH  = "https://api.mfapi.in/mf/search?q="
 
 # ── Caching & Semaphore ────────────────────────────────────────────────────────
 MF_CACHE = {}
-CACHE_TTL = 3600  # 1 hour
+CACHE_TTL = 43200  # 12 hours (MF NAV changes only once a day)
+CACHE_FILE = BASE_DIR / "data" / "mf_cache.json"
+_CACHE_LOCK = asyncio.Lock()
+
+def _load_disk_cache():
+    global MF_CACHE
+    if CACHE_FILE.exists():
+        try:
+            with open(CACHE_FILE, "r") as f:
+                raw_cache = json.load(f)
+                for k, v in raw_cache.items():
+                    ts = datetime.fromisoformat(v["timestamp"])
+                    MF_CACHE[k] = (ts, v["data"])
+            logger.info(f"Loaded {len(MF_CACHE)} items from MF disk cache.")
+        except Exception as e:
+            logger.warning(f"Failed to load MF disk cache: {e}")
+
+async def _save_disk_cache():
+    async with _CACHE_LOCK:
+        loop = asyncio.get_running_loop()
+        def write_file():
+            try:
+                raw_cache = {}
+                for k, (ts, data) in MF_CACHE.items():
+                    raw_cache[k] = {
+                        "timestamp": ts.isoformat(),
+                        "data": data
+                    }
+                temp_file = CACHE_FILE.with_suffix(".tmp")
+                with open(temp_file, "w") as f:
+                    json.dump(raw_cache, f, indent=2)
+                if temp_file.exists():
+                    if CACHE_FILE.exists():
+                        os.remove(CACHE_FILE)
+                    os.rename(temp_file, CACHE_FILE)
+            except Exception as e:
+                logger.warning(f"Failed to save MF disk cache: {e}")
+        
+        await loop.run_in_executor(None, write_file)
+
+# Load existing disk cache on startup
+_load_disk_cache()
+
 # Lazily created semaphore — must NOT be created at module level in Python 3.10+
 # because asyncio primitives must be bound to a running event loop.
 _API_SEMAPHORE: asyncio.Semaphore | None = None
@@ -45,7 +88,7 @@ def _get_semaphore() -> asyncio.Semaphore:
     """Return (or create) the per-loop API rate-limit semaphore."""
     global _API_SEMAPHORE
     if _API_SEMAPHORE is None:
-        _API_SEMAPHORE = asyncio.Semaphore(5)
+        _API_SEMAPHORE = asyncio.Semaphore(15)  # Concurrency increased to 15
     return _API_SEMAPHORE
 
 async def _fetch_scheme_data(scheme_code: str) -> dict | None:
@@ -61,6 +104,7 @@ async def _fetch_scheme_data(scheme_code: str) -> dict | None:
             data = await _fetch(url, timeout=15)
             if data and "meta" in data and "data" in data:
                 MF_CACHE[scheme_code] = (now, data)
+                await _save_disk_cache()
                 return data
     except Exception as e:
         logger.error(f"Error fetching scheme {scheme_code} from API: {e}")
@@ -168,13 +212,15 @@ async def search_mf(q: str = ""):
     """Search MF schemes by keyword."""
     if not q or len(q) < 2:
         raise HTTPException(400, "Query must be at least 2 characters")
+    if len(q) > 100:
+        raise HTTPException(400, "Query too long (max 100 characters)")
     try:
-        results = await _fetch(f"{MFAPI_SEARCH}{q}")
+        results = await _fetch(f"{MFAPI_SEARCH}{quote(q)}")
         # Returns list of {schemeCode, schemeName}
         return {"results": results[:50], "count": len(results)}
     except Exception as e:
         logger.error(f"MF search failed: {e}")
-        raise HTTPException(503, f"MF search unavailable: {str(e)}")
+        raise HTTPException(503, "MF search temporarily unavailable.")
 
 
 # ── Latest NAV ─────────────────────────────────────────────────────────────────
@@ -204,7 +250,7 @@ async def get_nav(scheme_code: str):
         raise
     except Exception as e:
         logger.error(f"NAV fetch error for {scheme_code}: {e}")
-        raise HTTPException(503, f"NAV fetch failed: {str(e)}")
+        raise HTTPException(503, "NAV fetch failed. API may be offline or scheme code invalid.")
 
 
 # ── SIP Core Calculation (reusable) ────────────────────────────────────────────
@@ -382,6 +428,16 @@ async def _compute_sip_returns(
     years_held      = max((calc_end - first_date).days / 365.25, 0.01)
     cagr            = (((current_value / total_invested) ** (1 / years_held)) - 1) * 100 if total_invested > 0 else 0
 
+    # Calculate today's gain/loss differential
+    today_gain_abs = 0.0
+    today_gain_pct = 0.0
+    if len(nav_list) >= 2:
+        latest_nav = _parse_nav(nav_list[0]["nav"])
+        prev_nav = _parse_nav(nav_list[1]["nav"])
+        if prev_nav > 0:
+            today_gain_pct = ((latest_nav - prev_nav) / prev_nav) * 100
+            today_gain_abs = (latest_nav - prev_nav) * total_units
+
     result = {
         "scheme_code":        scheme_code,
         "scheme_name":        meta.get("scheme_name", ""),
@@ -404,6 +460,8 @@ async def _compute_sip_returns(
         "pct_return":         round(pct_return, 2),
         "cagr":               round(cagr, 2),
         "years_held":         round(years_held, 2),
+        "today_gain_abs":     round(today_gain_abs, 2),
+        "today_gain_pct":     round(today_gain_pct, 2),
     }
 
     if include_transactions:

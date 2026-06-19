@@ -62,6 +62,11 @@ async def get_index_constituents(index_name: str):
 
 @router.post("/scan", response_model=List[MomentumResult])
 async def scan_momentum(req: MomentumRequest):
+    if not req.symbols:
+        raise HTTPException(status_code=400, detail="No symbols provided for scanning.")
+    if len(req.symbols) > 30:
+        raise HTTPException(status_code=400, detail="Maximum 30 symbols per scan request.")
+
     master = momentum_service.get_master_data()
     stocks_meta = {s["symbol"]: s["sector"] for s in master["stocks"]}
     
@@ -88,7 +93,7 @@ async def scan_momentum(req: MomentumRequest):
                     import yfinance as yf
                     ticker = yf.Ticker(f"{symbol}.NS")
                     sector = ticker.info.get("sector", "Unknown")
-                except:
+                except Exception:
                     pass
 
             return MomentumResult(
