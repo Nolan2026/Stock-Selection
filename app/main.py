@@ -36,7 +36,7 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from app.routers import valuation_router, momentum_router, portfolio_router, mf_router
+from app.routers import valuation_router, momentum_router, portfolio_router, mf_router, fno_router
 
 app = FastAPI(
     title="NSE Stock Analysis API",
@@ -48,6 +48,7 @@ app.include_router(valuation_router.router)
 app.include_router(momentum_router.router)
 app.include_router(portfolio_router.router)
 app.include_router(mf_router.router)
+app.include_router(fno_router.router)
 
 app.add_middleware(
     CORSMiddleware,

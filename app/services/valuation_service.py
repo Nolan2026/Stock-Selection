@@ -519,7 +519,7 @@ def create_master_pdf(tech_data, mom_data, val_data, filename: str) -> str:
                 Paragraph("<b>Stop Loss</b>", table_header),
                 Paragraph("<b>Signal</b>", table_header)
             ]]
-            for i, row in enumerate(tech_data_sorted[:20]): # Limit to top 20
+            for i, row in enumerate(tech_data_sorted):
                 t_data.append([
                     Paragraph(str(i+1), table_cell),
                     Paragraph(row.get('symbol', 'N/A'), table_cell),
@@ -531,7 +531,7 @@ def create_master_pdf(tech_data, mom_data, val_data, filename: str) -> str:
                     Paragraph(row.get('signal', 'N/A'), table_cell)
                 ])
             
-            t = Table(t_data, colWidths=[0.5*inch, 1.0*inch, 0.6*inch, 0.8*inch, 0.6*inch, 0.9*inch, 0.9*inch, 1.2*inch])
+            t = Table(t_data, colWidths=[0.5*inch, 1.0*inch, 0.6*inch, 0.8*inch, 0.6*inch, 0.9*inch, 0.9*inch, 1.2*inch], repeatRows=1)
             t.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1e293b")),
                 ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
@@ -558,7 +558,7 @@ def create_master_pdf(tech_data, mom_data, val_data, filename: str) -> str:
                 Paragraph("<b>3M Ret%</b>", table_header),
                 Paragraph("<b>Vol Trend</b>", table_header)
             ]]
-            for i, row in enumerate(mom_data_sorted[:20]):
+            for i, row in enumerate(mom_data_sorted):
                 m_data.append([
                     Paragraph(str(i+1), table_cell),
                     Paragraph(row.get('symbol', 'N/A'), table_cell),
@@ -569,7 +569,7 @@ def create_master_pdf(tech_data, mom_data, val_data, filename: str) -> str:
                     Paragraph(f"{row.get('volume_trend', 'N/A')}x", table_cell)
                 ])
             
-            t = Table(m_data, colWidths=[0.6*inch, 1.2*inch, 0.8*inch, 1.0*inch, 1.0*inch, 1.0*inch, 1.0*inch])
+            t = Table(m_data, colWidths=[0.6*inch, 1.2*inch, 0.8*inch, 1.0*inch, 1.0*inch, 1.0*inch, 1.0*inch], repeatRows=1)
             t.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#0f172a")),
                 ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
@@ -596,7 +596,7 @@ def create_master_pdf(tech_data, mom_data, val_data, filename: str) -> str:
                 Paragraph("<b>ROE%</b>", table_header),
                 Paragraph("<b>D/E</b>", table_header)
             ]]
-            for i, row in enumerate(val_data_sorted[:20]):
+            for i, row in enumerate(val_data_sorted):
                 metrics = row.get('metrics', [])
                 pe = next((m.get('value') for m in metrics if m.get('metric_code') == 'pe_ratio'), 'N/A')
                 roe = next((m.get('value') for m in metrics if m.get('metric_code') == 'roe'), 'N/A')
@@ -612,7 +612,7 @@ def create_master_pdf(tech_data, mom_data, val_data, filename: str) -> str:
                     Paragraph(str(de), table_cell)
                 ])
             
-            t = Table(v_data, colWidths=[0.6*inch, 1*inch, 2*inch, 0.8*inch, 0.8*inch, 0.8*inch, 0.8*inch])
+            t = Table(v_data, colWidths=[0.6*inch, 1*inch, 2*inch, 0.8*inch, 0.8*inch, 0.8*inch, 0.8*inch], repeatRows=1)
             t.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1e293b")),
                 ('GRID', (0,0), (-1,-1), 0.5, colors.grey),

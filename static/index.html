@@ -1815,6 +1815,59 @@
       margin-top: 22px
     }
 
+    /* Tooltip styles */
+    .tooltip-container {
+      display: inline-block;
+      position: relative;
+    }
+    .tooltip-box {
+      visibility: hidden;
+      width: 260px;
+      background-color: var(--panel);
+      border: 1px solid var(--purple);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 12px 14px;
+      position: absolute;
+      z-index: 100;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      font-size: 11px;
+      line-height: 1.5;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      pointer-events: none;
+      text-align: left;
+    }
+    .tooltip-container:hover .tooltip-box {
+      visibility: visible;
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+    .tooltip-box::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -6px;
+      border-width: 6px;
+      border-style: solid;
+      border-color: var(--purple) transparent transparent transparent;
+    }
+    .tooltip-box::before {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: var(--panel) transparent transparent transparent;
+      z-index: 1;
+    }
+
     .modal-apply {
       flex: 1;
       background: var(--teal);
@@ -1994,6 +2047,416 @@
     .no-scrollbar::-webkit-scrollbar {
       display: none; /* Chrome/Safari/Webkit */
     }
+
+    /* ═══ F&O Terminal Styles ═══════════════════════════════════════════════ */
+    .fno-panel { animation: cardIn 0.4s ease-out; }
+
+    .fno-summary-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .fno-summary-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .fno-summary-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--card-gradient, linear-gradient(90deg, var(--teal), var(--purple)));
+    }
+    .fno-row-prime { background: rgba(234, 179, 8, 0.05); }
+    .fno-row-prime td { color: var(--gold) !important; }
+    .fno-row-swing { border-left: 3px solid var(--green); }
+    .fno-row-intraday { border-left: 3px solid var(--purple); }
+    .fno-row-both { border-left: 3px solid var(--blue); }
+    .fno-row-monitor { border-left: 3px solid var(--text-dim); opacity: 0.8; }
+    .fno-row-avoid { opacity: 0.5; }
+
+    .fno-mode-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .fno-mode-swing { background: rgba(52,211,153,0.1); color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
+    .fno-mode-intraday { background: rgba(168,85,247,0.1); color: var(--purple); border: 1px solid rgba(168,85,247,0.2); }
+    .fno-mode-both { background: rgba(59,130,246,0.1); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+    .fno-mode-monitor { background: rgba(156,163,175,0.1); color: var(--text-dim); border: 1px solid rgba(156,163,175,0.2); }
+    .fno-mode-avoid { background: transparent; color: var(--text-faint); border: 1px solid var(--border); }
+    
+    .fno-tag {
+      font-size: 10px;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* Toggle Switch styles */
+    .fno-toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--panel);
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .fno-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+    .fno-switch input { opacity: 0; width: 0; height: 0; }
+    .fno-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--border);
+      transition: .3s;
+      border-radius: 22px;
+    }
+    .fno-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px; width: 16px;
+      left: 3px; bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .fno-slider { background-color: var(--teal); }
+    input:checked + .fno-slider:before { transform: translateX(22px); }
+
+    .fno-summary-card .fno-stat-value {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.1;
+    }
+    .fno-summary-card .fno-stat-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-top: 6px;
+    }
+
+    /* Table */
+    .fno-table-wrap {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .fno-table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(74, 159, 212, 0.03);
+    }
+    .fno-table-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .fno-table-scroll {
+      overflow-x: auto;
+      max-height: 65vh;
+      overflow-y: auto;
+    }
+    .fno-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .fno-table thead { position: sticky; top: 0; z-index: 5; }
+    .fno-table th {
+      background: var(--bg);
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-size: 9px;
+      letter-spacing: 0.8px;
+      font-weight: 700;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s;
+    }
+    .fno-table th:hover { color: var(--teal); }
+    .fno-table th.sorted-asc::after { content: ' ▲'; color: var(--teal); }
+    .fno-table th.sorted-desc::after { content: ' ▼'; color: var(--teal); }
+    .fno-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(26, 37, 53, 0.6);
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .fno-table tr { transition: background 0.15s; }
+    .fno-table tr:hover { background: rgba(74, 159, 212, 0.04); }
+
+    /* Signal legend cards */
+    .fno-legend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .fno-signal-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 11px;
+      line-height: 1.6;
+      transition: border-color 0.2s;
+    }
+    .fno-signal-card:hover { border-color: var(--teal); }
+    .fno-signal-card .fno-sc-symbol {
+      font-weight: 800;
+      font-size: 13px;
+      color: var(--teal);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .fno-signal-card .fno-sc-symbol a {
+      color: var(--teal);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .fno-signal-card .fno-sc-symbol a:hover {
+      color: #00e5ff;
+      text-decoration: underline;
+    }
+    a.fno-tag-link {
+      transition: filter 0.2s, box-shadow 0.2s;
+    }
+    a.fno-tag-link:hover {
+      filter: brightness(1.2);
+      box-shadow: 0 0 6px rgba(74, 159, 212, 0.4);
+      text-decoration: none;
+    }
+    .fno-signal-card .fno-sc-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 2px 0;
+    }
+    .fno-signal-card .fno-sc-label { color: var(--text-dim); }
+    .fno-signal-card .fno-sc-val { font-weight: 600; }
+
+    /* Gate summary */
+    .fno-gate-summary {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .fno-gate-header {
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .fno-gate-header:hover { background: rgba(255,255,255,0.02); }
+    .fno-gate-body { padding: 0 20px 16px; }
+    .fno-gate-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(26,37,53,0.5);
+      font-size: 12px;
+    }
+    .fno-gate-bar:last-child { border-bottom: none; }
+    .fno-gate-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: rgba(74,159,212,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 11px;
+      color: var(--teal);
+      flex-shrink: 0;
+    }
+    .fno-gate-name { flex: 1; color: var(--text-dim); }
+    .fno-gate-elim { color: var(--red); font-weight: 700; min-width: 60px; text-align: right; }
+    .fno-gate-remain { color: var(--green); font-weight: 700; min-width: 60px; text-align: right; }
+    .fno-gate-bar-visual {
+      flex: 2;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .fno-gate-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+
+    /* Risk footer */
+    .fno-risk-footer {
+      background: linear-gradient(135deg, rgba(248,113,113,0.06), rgba(251,191,36,0.06));
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+    .fno-risk-footer .fno-risk-title {
+      font-weight: 800;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 10px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fno-risk-footer ul {
+      list-style: none;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 4px 20px;
+    }
+    .fno-risk-footer li {
+      color: var(--text-dim);
+      padding-left: 16px;
+      position: relative;
+    }
+    .fno-risk-footer li::before {
+      content: '⚠';
+      position: absolute;
+      left: 0;
+      color: var(--gold);
+      font-size: 10px;
+    }
+
+    /* Disclaimer */
+    .fno-disclaimer {
+      background: rgba(167,139,250,0.05);
+      border: 1px solid rgba(167,139,250,0.15);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 10px;
+      color: var(--text-faint);
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* Progress bar */
+    .fno-scan-progress {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .fno-progress-bar-wrap {
+      width: 100%;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 14px 0 10px;
+    }
+    .fno-progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--teal), var(--purple));
+      box-shadow: 0 0 12px var(--teal);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+    .fno-progress-text {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+    }
+    .fno-progress-pct {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--teal);
+      margin-bottom: 4px;
+    }
+
+    /* Refresh timer */
+    .fno-refresh-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 16px;
+      background: rgba(74,159,212,0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 11px;
+    }
+    .fno-refresh-timer { color: var(--text-dim); }
+    .fno-refresh-btn {
+      background: var(--teal);
+      color: var(--bg);
+      border: none;
+      padding: 6px 14px;
+      border-radius: 5px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.15s;
+    }
+    .fno-refresh-btn:hover {
+      background: #6ab8e6;
+      transform: translateY(-1px);
+    }
+    .fno-refresh-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    @keyframes fno-glow {
+      0%, 100% { box-shadow: 0 0 5px rgba(251,191,36,0.2); }
+      50% { box-shadow: 0 0 15px rgba(251,191,36,0.4); }
+    }
+    .fno-prime-glow { animation: fno-glow 2s ease-in-out infinite; }
+
   </style>
 </head>
 
@@ -2055,6 +2518,7 @@
         <button class="mode-btn" id="mode-momentum" onclick="switchMode('momentum')">🚀 Momentum Scanner</button>
         <button class="mode-btn" id="mode-portfolio" onclick="switchMode('portfolio')">📊 Portfolio</button>
         <button class="mode-btn" id="mode-mf" onclick="switchMode('mf')">📈 Mutual Fund</button>
+        <button class="mode-btn" id="mode-fno" onclick="switchMode('fno')">🎯 F&O Segment</button>
       </div>
 
       <div class="search-wrap">
@@ -2445,11 +2909,11 @@
           </div>
           <div>
             <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Qty (shares)</div>
-            <input id="pf-qty" type="number" placeholder="100" min="1" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
+            <input id="pf-qty" type="number" placeholder="100" min="0.000001" step="any" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
           </div>
           <div>
             <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Entry Price (₹)</div>
-            <input id="pf-cost" type="number" placeholder="2450.00" min="0.01" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
+            <input id="pf-cost" type="number" placeholder="2450.00" min="0.000001" step="any" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;">
           </div>
           <div>
             <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Sector (optional)</div>
@@ -2458,7 +2922,19 @@
         </div>
         <button onclick="addHolding()" style="background:var(--teal);color:var(--bg);border:none;padding:10px 24px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;">+ Add Holding</button>
         <button onclick="analyzePortfolio()" id="pf-analyze-btn" style="background:transparent;border:1px solid var(--green);color:var(--green);padding:10px 24px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;margin-left:10px;">⚡ Analyze Portfolio</button>
-        <button onclick="document.getElementById('pf-file-input').click()" style="background:transparent;border:1px solid var(--purple);color:var(--purple);padding:10px 24px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;margin-left:10px;">📤 Import Excel</button>
+        <div class="tooltip-container" style="margin-left:10px;">
+          <button onclick="document.getElementById('pf-file-input').click()" style="background:transparent;border:1px solid var(--purple);color:var(--purple);padding:10px 24px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;">📤 Import Excel/CSV</button>
+          <div class="tooltip-box">
+            <div style="font-weight:700;color:var(--purple);margin-bottom:6px;font-family:var(--font-display);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Required Columns:</div>
+            <ul style="margin:0;padding-left:16px;color:var(--text-dim);margin-bottom:8px;">
+              <li><strong style="color:var(--text);">Symbol / Ticker</strong> (e.g. ASHOKLEY)</li>
+              <li><strong style="color:var(--text);">Qty / Shares</strong> (e.g. 10)</li>
+              <li><strong style="color:var(--text);">Entry Price / Cost</strong> (e.g. 99.31)</li>
+              <li><strong style="color:var(--text);">Sector</strong> (Optional)</li>
+            </ul>
+            <div style="border-top:1px solid var(--border);padding-top:6px;font-size:9.5px;color:var(--red);font-style:italic;line-height:1.3;">⚠️ Warning: Importing will clear and overwrite your active portfolio holdings.</div>
+          </div>
+        </div>
         <input type="file" id="pf-file-input" style="display:none" accept=".xlsx, .xls, .csv" onchange="importPortfolioFile(this)">
       </div>
 
@@ -2713,6 +3189,106 @@
       </div>
     </div>
 
+    <!-- ── F&O Terminal Panel ──────────────────────────────────────────── -->
+    <div id="fno-panel" class="fno-panel" style="display:none">
+
+      <!-- Scan progress (shown during scan) -->
+      <div id="fno-scan-progress" class="fno-scan-progress" style="display:none">
+        <div class="spinner" style="margin:0 auto 8px;"></div>
+        <div class="fno-progress-pct" id="fno-pct">0%</div>
+        <div class="fno-progress-bar-wrap">
+          <div class="fno-progress-bar-fill" id="fno-bar" style="width:0%"></div>
+        </div>
+        <div class="fno-progress-text" id="fno-step">Initializing F&O scan...</div>
+        <button class="fno-refresh-btn" id="fno-stop-btn" onclick="stopFnoScan()" style="margin: 15px auto 0; display: block; background: #e85d5d; color: #fff;">🛑 Stop Engine</button>
+      </div>
+
+      <!-- Refresh bar & Toggle -->
+      <div id="fno-refresh-bar" class="fno-refresh-bar" style="display:none; justify-content:space-between; align-items:center;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="fno-toggle-wrap">
+            <span style="font-size:11px;font-weight:600;color:var(--text-dim)">V1 (Strict)</span>
+            <label class="fno-switch">
+              <input type="checkbox" id="fno-version-toggle" checked onchange="fnoToggleVersion()">
+              <span class="fno-slider"></span>
+            </label>
+            <span style="font-size:11px;font-weight:600;color:var(--teal)">V2 (Scoring)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px; margin-left:10px;">
+            <span style="color:var(--green);font-size:8px;">●</span>
+            <span class="fno-refresh-timer" id="fno-timer">Last scan: --</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="fno-market-badge" style="font-size:9px;padding:2px 8px;border-radius:4px;font-weight:700;"></span>
+          <button class="fno-refresh-btn" id="fno-download-btn" onclick="downloadFnoReport()" style="background:var(--green);" title="Download CSV Report">
+            ⬇ Download CSV
+          </button>
+          <button class="fno-refresh-btn" id="fno-pdf-btn" onclick="downloadFnoPDF()" style="background:var(--purple);" title="Download PDF Report">
+            📄 Download PDF
+          </button>
+          <button class="fno-refresh-btn" id="fno-refresh-btn" onclick="fnoScan(true)">⟳ Refresh Now</button>
+        </div>
+      </div>
+
+      <!-- Panel A: Summary Bar -->
+      <div id="fno-summary-bar" class="fno-summary-bar" style="display:none"></div>
+
+      <!-- Panel B: Main Ranked Table -->
+      <div id="fno-table-wrap" class="fno-table-wrap" style="display:none">
+        <div class="fno-table-header">
+          <div class="fno-table-title">
+            <span style="width:3px;height:18px;background:var(--teal);display:inline-block;border-radius:2px;"></span>
+            🎯 F&O Terminal — Ranked Stocks
+          </div>
+          <div style="font-size:10px;color:var(--text-faint);" id="fno-table-count"></div>
+        </div>
+        <div class="fno-table-scroll" id="fno-table-body"></div>
+      </div>
+
+      <!-- Panel C: Signal Legend -->
+      <div id="fno-legend-section" style="display:none">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+          <span style="width:3px;height:14px;background:var(--purple);display:inline-block;border-radius:2px;"></span>
+          Signal Legend — Detailed View
+        </div>
+        <div id="fno-legend-grid" class="fno-legend-grid"></div>
+      </div>
+
+      <!-- Panel D: Gate Pass Summary (collapsible) -->
+      <div id="fno-gate-panel" class="fno-gate-summary" style="display:none">
+        <div class="fno-gate-header" onclick="toggleFnoGates()">
+          <div style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;">
+            <span style="width:3px;height:14px;background:var(--gold);display:inline-block;border-radius:2px;"></span>
+            🔍 Gate Pass Summary — Pipeline Filter Breakdown
+          </div>
+          <span id="fno-gate-chevron" style="color:var(--text-dim);transition:transform 0.2s;">▼</span>
+        </div>
+        <div id="fno-gate-body" class="fno-gate-body" style="display:none"></div>
+      </div>
+
+      <!-- Risk Rules -->
+      <div class="fno-risk-footer">
+        <div class="fno-risk-title">⚠ Risk Rules — F&O Position Management</div>
+        <ul>
+          <li>Max 1 lot per stock, max 3 positions open simultaneously</li>
+          <li>Exit immediately if Close breaches EMA10</li>
+          <li>Never hold through results — close 2 days before</li>
+          <li>Roll to next expiry only if Momentum Score still in top 40%</li>
+          <li>Book 50% at 1.5× ATM premium, let rest run with stop</li>
+          <li>Intraday trades: strict same-day exit, no overnight carry</li>
+        </ul>
+      </div>
+
+      <!-- Disclaimer -->
+      <div class="fno-disclaimer">
+        ⚖️ <strong>DISCLAIMER</strong> — This terminal is for educational and research purposes only.
+        F&O trading involves significant risk and is not suitable for all investors.
+        This is not investment advice. Verify all data independently before trading.
+        The decision and risk are entirely yours.
+      </div>
+    </div>
+
     <!-- Empty state -->
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">⬇</div>
@@ -2753,16 +3329,17 @@
       document.getElementById('mode-momentum').classList.toggle('active', mode === 'momentum');
       document.getElementById('mode-portfolio').classList.toggle('active', mode === 'portfolio');
       document.getElementById('mode-mf').classList.toggle('active', mode === 'mf');
+      document.getElementById('mode-fno').classList.toggle('active', mode === 'fno');
 
       const techSearchLabel = document.getElementById('tech-search-label');
       const valSearchLabel = document.getElementById('val-search-label');
       if (techSearchLabel) techSearchLabel.style.display = mode === 'tech' ? 'flex' : 'none';
       if (valSearchLabel) valSearchLabel.style.display = mode === 'val' ? 'flex' : 'none';
 
-      // Hide the main search bar in portfolio and mf mode (they have their own inputs)
+      // Hide the main search bar in portfolio, mf, and fno mode (they have their own inputs)
       const searchWrap = document.querySelector('.search-wrap');
       const searchHint = document.querySelector('.search-hint');
-      const hideMainSearch = mode === 'portfolio' || mode === 'mf';
+      const hideMainSearch = mode === 'portfolio' || mode === 'mf' || mode === 'fno';
       if (searchWrap) searchWrap.style.display = hideMainSearch ? 'none' : 'flex';
       if (searchHint) searchHint.style.display = hideMainSearch ? 'none' : '';
 
@@ -2798,10 +3375,13 @@
       const mfPanel = document.getElementById('mf-panel');
       if (mfPanel) mfPanel.style.display = mode === 'mf' ? 'block' : 'none';
 
+      const fnoPanel = document.getElementById('fno-panel');
+      if (fnoPanel) fnoPanel.style.display = mode === 'fno' ? 'block' : 'none';
+
       const hasData = (mode === 'tech' && allResults.length > 0) ||
                       (mode === 'val' && allValuations.length > 0) ||
                       (mode === 'momentum' && momentumResults.length > 0) ||
-                      mode === 'portfolio' || mode === 'mf';
+                      mode === 'portfolio' || mode === 'mf' || mode === 'fno';
       document.getElementById('emptyState').style.display = hasData ? 'none' : 'block';
 
       if (mode === 'tech') {
@@ -2823,6 +3403,9 @@
         loadMfHoldings();
         loadTopFunds('all');
         calcSipReturn(); // auto-calculate with default values
+      }
+      if (mode === 'fno') {
+        fnoScan();
       }
       updateRecentSectionsDisplay();
     }
@@ -4803,9 +5386,18 @@
     }
 
     let confirmCallback = null;
-    function showConfirm(title, message, onOk) {
+    function showConfirm(title, message, onOk, okText = 'Confirm', isDanger = false) {
       document.getElementById('confirmTitle').innerText = title;
       document.getElementById('confirmMessage').innerText = message;
+      
+      const okBtn = document.getElementById('confirmOkBtn');
+      okBtn.innerText = okText;
+      if (isDanger) {
+        okBtn.className = 'modal-apply confirm-btn-danger';
+      } else {
+        okBtn.className = 'modal-apply';
+      }
+      
       document.getElementById('confirmModal').classList.add('open');
       confirmCallback = onOk;
     }
@@ -4841,7 +5433,7 @@
         } catch (e) {
           showError(e.message);
         }
-      });
+      }, 'Remove', true);
     }
 
     async function clearAllHoldings() {
@@ -4859,7 +5451,7 @@
         } catch (e) {
           showError(e.message);
         }
-      });
+      }, 'Clear All', true);
     }
 
     async function toggleFavorite(sym) {
@@ -5100,7 +5692,7 @@
               <thead style="position: sticky; top: 0; z-index: 10; background: var(--panel);"><tr style="background:var(--bg);">
                 <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:left;">Symbol</th>
                 <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">Entry Price</th>
-                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">Price</th>
+                <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">LTP (Close)</th>
                 <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">P&amp;L%</th>
                 <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">P&amp;L ₹</th>
                 <th style="padding:9px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);text-align:right;">Today P&amp;L</th>
@@ -6093,7 +6685,7 @@
         } catch (e) {
           showError('Delete failed: ' + e.message);
         }
-      });
+      }, 'Remove', true);
     }
 
     function loadMfIntoCalc(code, name, amount, initial, startDate, stepUp, missedDates) {
@@ -6623,7 +7215,7 @@
         } finally {
           setLoading(false);
         }
-      });
+      }, 'Load Portfolio', false);
     }
 
     function deleteSavedPortfolio(id) {
@@ -6636,7 +7228,839 @@
         localStorage.setItem('saved_portfolios', JSON.stringify(updated));
         renderSavedPortfoliosList();
         showSuccess(`Portfolio "${p.name}" deleted from local storage`);
+      }, 'Delete', true);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  F&O TERMINAL — JavaScript
+    // ═══════════════════════════════════════════════════════════════════════════
+    let fnoData = null;
+    let fnoSortCol = 'rank';
+    let fnoSortDir = 'asc';
+    let fnoRefreshTimer = null;
+    let fnoRefreshCountdown = 300; // 5 minutes
+    let fnoScanning = false;
+    let fnoGatesOpen = false;
+    let fnoVersion = 'v2';
+
+    function fnoToggleVersion() {
+      const isChecked = document.getElementById('fno-version-toggle').checked;
+      fnoVersion = isChecked ? 'v2' : 'v1';
+      fnoScan(true); // Force refresh when toggling
+    }
+
+    async function fnoScan(forceRefresh = false) {
+      if (fnoScanning) return;
+
+      // If we already have data and not forcing refresh, just re-render
+      if (fnoData && !forceRefresh) {
+        renderFnoTerminal(fnoData);
+        return;
+      }
+
+      fnoScanning = true;
+      const progressEl = document.getElementById('fno-scan-progress');
+      const refreshBar = document.getElementById('fno-refresh-bar');
+      const refreshBtn = document.getElementById('fno-refresh-btn');
+
+      if (progressEl) progressEl.style.display = 'block';
+      if (refreshBar) refreshBar.style.display = 'none';
+      if (refreshBtn) refreshBtn.disabled = true;
+
+      // Hide result panels during scan
+      ['fno-summary-bar', 'fno-table-wrap', 'fno-legend-section', 'fno-gate-panel'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
       });
+
+      // Start background scan and poll progress
+      try {
+        const forceParam = forceRefresh ? '&force=true' : '';
+        fetch(`${API}/api/fno/scan/start?version=${fnoVersion}${forceParam}`).catch(() => {});
+      } catch(e) {}
+
+      // Poll progress
+      const pollId = setInterval(async () => {
+        try {
+          const resp = await fetch(`${API}/api/fno/progress`);
+          const prog = await resp.json();
+          const pct = prog.pct || 0;
+          const step = prog.message || prog.step || '';
+          document.getElementById('fno-pct').textContent = `${pct}%`;
+          document.getElementById('fno-bar').style.width = `${pct}%`;
+          document.getElementById('fno-step').textContent = step;
+        } catch(e) {}
+      }, 1500);
+
+      // Fetch full result (this blocks until scan completes)
+      try {
+        const resp = await fetch(`${API}/api/fno/scan?version=${fnoVersion}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        fnoData = await resp.json();
+        clearInterval(pollId);
+
+        // Update progress to 100%
+        document.getElementById('fno-pct').textContent = '100%';
+        document.getElementById('fno-bar').style.width = '100%';
+        document.getElementById('fno-step').textContent = 'Scan complete!';
+
+        await new Promise(r => setTimeout(r, 500));
+        renderFnoTerminal(fnoData);
+      } catch (e) {
+        clearInterval(pollId);
+        document.getElementById('fno-step').textContent = `Scan failed: ${e.message}`;
+        document.getElementById('fno-bar').style.background = 'var(--red)';
+      } finally {
+        fnoScanning = false;
+        if (refreshBtn) refreshBtn.disabled = false;
+      }
+    }
+
+    async function stopFnoScan() {
+      try {
+        await fetch(`${API}/api/fno/scan/stop`);
+        document.getElementById('fno-step').textContent = 'Scan stopping...';
+      } catch (e) {
+        console.error('Failed to stop scan:', e);
+      }
+    }
+
+    function downloadFnoReport() {
+      if (!fnoData || !fnoData.stocks || fnoData.stocks.length === 0) {
+        alert('No data to download. Please run a scan first.');
+        return;
+      }
+
+      const btn = document.getElementById('fno-download-btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating...'; }
+
+      try {
+        const summary = fnoData.summary || {};
+        const stocks = fnoData.stocks || [];
+        const scanTime = summary.scan_time
+          ? new Date(summary.scan_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+          : new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+        // ── CSV Header ──
+        const headers = [
+          'Rank', 'Symbol', 'CMP (₹)', 'Change %',
+          'Mode', 'Signal', 'Composite Score', 'Tag',
+          'Beta', 'Beta Tag', 'Momentum Score',
+          'OI Tag', 'OI Score', 'Vol Tag', 'Vol Score', 'Vol % of Avg',
+          'ATM Strike', 'ATM CE Price', 'ATM PE Price', 'IV %', 'PCR',
+          'EMA10 Pass', 'EMA50H Pass', 'EMA50L Pass',
+          'Prime Pick',
+        ];
+
+        const rows = stocks.map(s => [
+          s.rank,
+          s.symbol,
+          s.cmp,
+          s.change_pct,
+          s.mode,
+          `"${s.signal}"`,
+          s.composite_score,
+          s.composite_tag,
+          s.beta ?? 'N/A',
+          s.beta_tag || 'NORMAL',
+          s.momentum_score,
+          s.oi_tag || 'N/A',
+          s.oi_score ?? 0,
+          s.vol_tag || 'N/A',
+          s.vol_score ?? 0,
+          s.vol_pct_of_avg ?? 0,
+          s.atm_strike || 0,
+          s.atm_ce_price || 0,
+          s.atm_pe_price || 0,
+          s.iv_pct || 0,
+          s.pcr || 0,
+          (s.ema_status?.ema10 ? 'YES' : 'NO'),
+          (s.ema_status?.ema50h ? 'YES' : 'NO'),
+          (s.ema_status?.ema50l ? 'YES' : 'NO'),
+          (s.is_prime_pick ? 'YES' : 'NO'),
+        ]);
+
+        // ── Build CSV string ──
+        const metaLines = [
+          `"NSE F&O Terminal Report"`,
+          `"Scan Time: ${scanTime}"`,
+          `"Total Scanned: ${summary.total_scanned || 0} | Passed All Gates: ${summary.passed_all_gates || 0} | Prime Picks: ${summary.prime_picks || 0}"`,
+          `"Intraday: ${summary.intraday_count || 0} | Swing: ${summary.swing_count || 0}"`,
+          `""`,
+        ];
+
+        const csvContent = [
+          ...metaLines,
+          headers.join(','),
+          ...rows.map(r => r.join(',')),
+        ].join('\n');
+
+        // ── Trigger download ──
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const dateStr = new Date().toISOString().slice(0, 10);
+        link.href = url;
+        link.download = `FnO_Terminal_Report_${dateStr}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error('Download failed:', e);
+        alert('Download failed: ' + e.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '⬇ Download CSV'; }
+      }
+    }
+
+    async function downloadFnoPDF() {
+      if (!fnoData || !fnoData.stocks || fnoData.stocks.length === 0) {
+        alert('No data to download. Please run a scan first.');
+        return;
+      }
+      const btn = document.getElementById('fno-pdf-btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating...'; }
+      try {
+        const { jsPDF } = window.jspdf;
+        if (!jsPDF) { showError('PDF library not loaded.'); return; }
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const W = 297, H = 210;
+        const margin = 15;
+        doc.setFillColor(8, 12, 20);
+        doc.rect(0, 0, W, H, 'F');
+        doc.setFillColor(12, 18, 32);
+        doc.rect(0, 0, W, 22, 'F');
+        doc.setTextColor(74, 159, 212);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('NSE F&O Terminal — Market Report', margin, 11);
+        const summary = fnoData.summary || {};
+        const scanTime = summary.scan_time
+          ? new Date(summary.scan_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+          : new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        doc.setFontSize(8);
+        doc.setTextColor(160, 180, 200);
+        doc.text(`Scan Time: ${scanTime}  |  Scanned: ${summary.total_scanned || 0}  |  Passed: ${summary.passed_all_gates || 0}  |  Primes: ${summary.prime_picks || 0}`, margin, 18);
+        let y = 30;
+        const version = fnoVersion || 'v2';
+        let cols = [
+          { key: 'rank', label: '#' },
+          { key: 'symbol', label: 'Symbol' },
+          { key: 'cmp', label: 'CMP (₹)' },
+          { key: 'change_pct', label: 'Chg%' },
+          { key: 'atm_strike', label: 'ATM Strike' },
+          { key: 'atm_ce_price', label: 'CE ₹' },
+          { key: 'atm_pe_price', label: 'PE ₹' },
+          { key: 'pcr', label: 'PCR' }
+        ];
+        if (version === 'v2') {
+          cols.push(
+            { key: 'composite_score', label: 'Comp%' },
+            { key: 'beta_tag', label: 'Beta' },
+            { key: 'oi_tag', label: 'OI Score' },
+            { key: 'vol_tag', label: 'Volume' },
+            { key: 'mode', label: 'Mode' }
+          );
+        } else {
+          cols.push(
+            { key: 'iv_pct', label: 'IV%' },
+            { key: 'oi_trend', label: 'OI Trend' },
+            { key: 'beta', label: 'Beta' },
+            { key: 'momentum_score', label: 'Mom%' },
+            { key: 'mode', label: 'Mode' }
+          );
+        }
+        const colWidths = {
+          rank: 10,
+          symbol: 26,
+          cmp: 20,
+          change_pct: 18,
+          atm_strike: 22,
+          atm_ce_price: 20,
+          atm_pe_price: 20,
+          pcr: 16,
+          composite_score: 20,
+          beta_tag: 24,
+          oi_tag: 24,
+          vol_tag: 30,
+          iv_pct: 16,
+          oi_trend: 22,
+          beta: 18,
+          momentum_score: 20,
+          mode: 22
+        };
+        let totalWidth = 0;
+        cols.forEach(c => {
+          totalWidth += colWidths[c.key] || 20;
+        });
+        const startX = (W - totalWidth) / 2;
+        const headerHeight = 8;
+        doc.setFillColor(26, 37, 53);
+        doc.rect(startX, y, totalWidth, headerHeight, 'F');
+        doc.setTextColor(74, 159, 212);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        let cx = startX + 2;
+        cols.forEach(c => {
+          doc.text(c.label, cx, y + 5);
+          cx += colWidths[c.key] || 20;
+        });
+        y += headerHeight;
+        const stocksList = fnoData.stocks || [];
+        const sorted = [...stocksList].sort((a, b) => {
+          let va = a[fnoSortCol], vb = b[fnoSortCol];
+          if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb||'').toLowerCase(); }
+          if (va < vb) return fnoSortDir === 'asc' ? -1 : 1;
+          if (va > vb) return fnoSortDir === 'asc' ? 1 : -1;
+          return 0;
+        });
+        sorted.forEach((s, ri) => {
+          if (y > H - 15) {
+            doc.addPage();
+            doc.setFillColor(8, 12, 20);
+            doc.rect(0, 0, W, H, 'F');
+            doc.setFillColor(26, 37, 53);
+            doc.rect(startX, 15, totalWidth, headerHeight, 'F');
+            doc.setTextColor(74, 159, 212);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            let cx = startX + 2;
+            cols.forEach(c => {
+              doc.text(c.label, cx, 15 + 5);
+              cx += colWidths[c.key] || 20;
+            });
+            y = 15 + headerHeight;
+          }
+          const rowBg = (ri % 2 === 0) ? [12, 18, 32] : [8, 12, 20];
+          doc.setFillColor(...rowBg);
+          doc.rect(startX, y, totalWidth, 5.2, 'F');
+          doc.setFontSize(7.5);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(220, 235, 255);
+          let cx = startX + 2;
+          cols.forEach(c => {
+            let val = s[c.key];
+            if (c.key === 'rank') {
+              doc.setTextColor(74, 159, 212);
+              doc.setFont('helvetica', 'bold');
+              doc.text(String(val), cx, y + 3.8);
+            } else if (c.key === 'symbol') {
+              doc.setTextColor(247, 249, 252);
+              doc.setFont('helvetica', 'bold');
+              const primeIcon = s.is_prime_pick ? ' *' : '';
+              doc.text(String(val) + primeIcon, cx, y + 3.8);
+            } else if (c.key === 'cmp') {
+              doc.setTextColor(220, 235, 255);
+              doc.text('Rs.' + fmtNum(val), cx, y + 3.8);
+            } else if (c.key === 'change_pct') {
+              const chgColor = val >= 0 ? [52, 211, 153] : [248, 113, 113];
+              doc.setTextColor(...chgColor);
+              doc.setFont('helvetica', 'bold');
+              doc.text((val >= 0 ? '+' : '') + val.toFixed(2) + '%', cx, y + 3.8);
+            } else if (c.key === 'atm_strike') {
+              doc.setTextColor(220, 235, 255);
+              doc.text(String(val), cx, y + 3.8);
+            } else if (c.key === 'atm_ce_price') {
+              doc.setTextColor(52, 211, 153);
+              doc.text('Rs.' + fmtNum(val), cx, y + 3.8);
+            } else if (c.key === 'atm_pe_price') {
+              doc.setTextColor(248, 113, 113);
+              doc.text('Rs.' + fmtNum(val), cx, y + 3.8);
+            } else if (c.key === 'pcr') {
+              doc.setTextColor(220, 235, 255);
+              doc.text(val.toFixed(2), cx, y + 3.8);
+            } else if (c.key === 'composite_score') {
+              doc.setTextColor(74, 159, 212);
+              doc.setFont('helvetica', 'bold');
+              doc.text((val?.toFixed(1) || 0) + '%', cx, y + 3.8);
+            } else if (c.key === 'beta_tag') {
+              const bColor = val === 'HIGH MOMENTUM' ? [167, 139, 250] : val === 'LOW BETA' ? [160, 180, 200] : val === 'EXTREME VOLATILE' ? [248, 113, 113] : [247, 249, 252];
+              doc.setTextColor(...bColor);
+              doc.setFontSize(6.5);
+              doc.text(String(val || ''), cx, y + 3.8);
+              doc.setFontSize(7.5);
+            } else if (c.key === 'oi_tag') {
+              let oiCol = [247, 249, 252];
+              if (s.oi_score === 3) oiCol = [52, 211, 153];
+              else if (s.oi_score === 2) oiCol = [251, 191, 36];
+              else if (s.oi_score === 1) oiCol = [251, 146, 60];
+              else if (s.oi_score === 0) oiCol = [248, 113, 113];
+              doc.setTextColor(...oiCol);
+              doc.setFont('helvetica', 'bold');
+              doc.text(String(val || ''), cx, y + 3.8);
+            } else if (c.key === 'vol_tag') {
+              let volCol = [160, 180, 200];
+              if (s.vol_score === 2) volCol = [251, 191, 36];
+              else if (s.vol_score === 1) volCol = [74, 159, 212];
+              doc.setTextColor(...volCol);
+              doc.setFont('helvetica', 'bold');
+              doc.text(String(val || ''), cx, y + 3.8);
+            } else if (c.key === 'iv_pct') {
+              doc.setTextColor(220, 235, 255);
+              doc.text(val.toFixed(1) + '%', cx, y + 3.8);
+            } else if (c.key === 'oi_trend') {
+              const oiColor = val === 'RISING' ? [52, 211, 153] : val === 'FALLING_PE' ? [251, 191, 36] : [160, 180, 200];
+              doc.setTextColor(...oiColor);
+              doc.setFont('helvetica', 'bold');
+              doc.text(String(val), cx, y + 3.8);
+            } else if (c.key === 'beta') {
+              doc.setTextColor(220, 235, 255);
+              doc.text(val != null ? val.toFixed(2) : 'N/A', cx, y + 3.8);
+            } else if (c.key === 'momentum_score') {
+              doc.setTextColor(val > 5 ? [52, 211, 153] : val > 0 ? [251, 191, 36] : [248, 113, 113]);
+              doc.setFont('helvetica', 'bold');
+              doc.text(val.toFixed(1) + '%', cx, y + 3.8);
+            } else if (c.key === 'mode') {
+              let modeBadgeCol = [160, 180, 200];
+              if (val === 'SWING') modeBadgeCol = [52, 211, 153];
+              else if (val === 'INTRADAY') modeBadgeCol = [167, 139, 250];
+              else if (val === 'BOTH') modeBadgeCol = [59, 130, 246];
+              doc.setTextColor(...modeBadgeCol);
+              doc.setFont('helvetica', 'bold');
+              doc.text(String(val), cx, y + 3.8);
+            }
+            cx += colWidths[c.key] || 20;
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(220, 235, 255);
+          });
+          y += 5.2;
+        });
+        const cards = sorted.slice(0, 15);
+        const cardW = 85;
+        const cardH = 50;
+        const gapX = 6;
+        const gapY = 6;
+        cards.forEach((s, ci) => {
+          const colIdx = ci % 3;
+          const rowIdx = Math.floor(ci / 3) % 3;
+          if (ci % 9 === 0) {
+            doc.addPage();
+            doc.setFillColor(8, 12, 20);
+            doc.rect(0, 0, W, H, 'F');
+            doc.setFillColor(12, 18, 32);
+            doc.rect(0, 0, W, 22, 'F');
+            doc.setTextColor(74, 159, 212);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('NSE F&O Terminal — Signal Legend & Detailed View' + (ci > 0 ? ' (Cont.)' : ''), margin, 11);
+            doc.setFontSize(8);
+            doc.setTextColor(160, 180, 200);
+            doc.text('Detailed technical and option chain metrics for top symbols', margin, 18);
+          }
+          const bx = margin + colIdx * (cardW + gapX);
+          const by = 30 + rowIdx * (cardH + gapY);
+          doc.setFillColor(12, 18, 32);
+          if (s.is_prime_pick) {
+            doc.setDrawColor(251, 191, 36);
+            doc.setLineWidth(0.5);
+            doc.roundedRect(bx, by, cardW, cardH, 2, 2, 'FD');
+            doc.setDrawColor(0);
+          } else {
+            doc.roundedRect(bx, by, cardW, cardH, 2, 2, 'F');
+          }
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setTextColor(74, 159, 212);
+          const modeIcon = s.mode === 'SWING' ? '📈 SWING' : s.mode === 'INTRADAY' ? '🎯 INTRADAY' : s.mode === 'BOTH' ? '🎯📈 DUAL' : s.mode === 'MONITOR' ? '👁️ MONITOR' : '⛔ AVOID';
+          const primeTag = s.is_prime_pick ? ' PRIME' : '';
+          doc.text(`${s.symbol} -> ${modeIcon}${primeTag}`, bx + 4, by + 6);
+          doc.setDrawColor(26, 37, 53);
+          doc.setLineWidth(0.2);
+          doc.line(bx + 4, by + 8, bx + cardW - 4, by + 8);
+          doc.setDrawColor(0);
+          doc.setFontSize(7.5);
+          const ema10Chk = s.ema_status?.ema10 ? 'YES' : 'NO';
+          const ema50hChk = s.ema_status?.ema50h ? 'YES' : 'NO';
+          const ema50lChk = s.ema_status?.ema50l ? 'YES' : 'NO';
+          const cardRows = [
+            { label: 'ATM CE', val: 'Rs.' + fmtNum(s.atm_ce_price), valColor: [52, 211, 153] },
+            { label: 'ATM PE', val: 'Rs.' + fmtNum(s.atm_pe_price), valColor: [248, 113, 113] },
+            { label: 'IV / PCR', val: `${s.iv_pct.toFixed(1)}% / ${s.pcr.toFixed(2)}`, valColor: [220, 235, 255] },
+            { label: 'EMA Status', val: `${ema10Chk} EMA10 | ${ema50hChk} EMA50H | ${ema50lChk} EMA50L`, valColor: [220, 235, 255] },
+            { label: 'OI / Vol', val: `${s.oi_trend} | ${s.vol_pct_of_avg.toFixed(0)}% of avg`, valColor: [220, 235, 255] },
+            { label: 'Stop Loss', val: String(s.stop_loss || 'N/A'), valColor: [248, 113, 113] },
+            { label: 'Beta / Mom', val: `${s.beta != null ? s.beta.toFixed(2) : 'N/A'} / ${s.momentum_score.toFixed(1)}%`, valColor: [220, 235, 255] }
+          ];
+          let cy = by + 12;
+          cardRows.forEach(cr => {
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(160, 180, 200);
+            doc.text(cr.label, bx + 4, cy);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...cr.valColor);
+            doc.text(cr.val, bx + cardW - 4, cy, { align: 'right' });
+            cy += 5.2;
+          });
+        });
+        const dateStr = new Date().toISOString().slice(0, 10);
+        doc.save(`FnO_Terminal_Report_${dateStr}.pdf`);
+      } catch (e) {
+        console.error('PDF Generation failed:', e);
+        alert('PDF Generation failed: ' + e.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📄 Download PDF'; }
+      }
+    }
+
+    function renderFnoTerminal(data) {
+      const progressEl = document.getElementById('fno-scan-progress');
+      if (progressEl) progressEl.style.display = 'none';
+
+      const summary = data.summary || {};
+      const stocks = data.stocks || [];
+      const gateStats = data.gate_stats || {};
+
+      // Show all panels
+      ['fno-summary-bar', 'fno-table-wrap', 'fno-gate-panel'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = '';
+      });
+
+      // Show legend only if we have stocks
+      const legendEl = document.getElementById('fno-legend-section');
+      if (legendEl) legendEl.style.display = stocks.length ? '' : 'none';
+
+      renderFnoSummaryBar(summary);
+      renderFnoTable(stocks);
+      renderFnoLegend(stocks);
+      renderFnoGateSummary(gateStats, summary.total_scanned || 0);
+      renderFnoRefreshBar(summary);
+    }
+
+    // ── Panel A: Summary Bar ────────────────────────────────────────────────
+    function renderFnoSummaryBar(s) {
+      const el = document.getElementById('fno-summary-bar');
+      if (!el) return;
+      el.style.display = 'grid';
+
+      const cards = [
+        { value: s.total_scanned || 0, label: 'Total F&O Stocks', gradient: 'linear-gradient(90deg, var(--teal), #2563eb)' },
+        { value: s.passed_all_gates || 0, label: 'Passed All Gates', gradient: 'linear-gradient(90deg, var(--green), #059669)' },
+        { value: s.prime_picks || 0, label: '🔥 Prime Picks', gradient: 'linear-gradient(90deg, var(--gold), var(--orange))' },
+        { value: s.intraday_count || 0, label: '🎯 Intraday', gradient: 'linear-gradient(90deg, var(--teal), var(--purple))' },
+        { value: s.swing_count || 0, label: '📈 Swing', gradient: 'linear-gradient(90deg, var(--green), var(--teal))' },
+      ];
+
+      el.innerHTML = cards.map(c => `
+        <div class="fno-summary-card" style="--card-gradient:${c.gradient}">
+          <div class="fno-stat-value">${c.value}</div>
+          <div class="fno-stat-label">${c.label}</div>
+        </div>
+      `).join('');
+    }
+
+    // ── Panel B: Ranked Table ───────────────────────────────────────────────
+    function renderFnoTable(stocks) {
+      const wrap = document.getElementById('fno-table-wrap');
+      const body = document.getElementById('fno-table-body');
+      const countEl = document.getElementById('fno-table-count');
+      if (!wrap || !body) return;
+
+      let activeStocks = stocks;
+      let monitorStocks = [];
+      
+      if (fnoVersion === 'v2') {
+        activeStocks = stocks.filter(s => s.mode !== 'MONITOR');
+        monitorStocks = stocks.filter(s => s.mode === 'MONITOR');
+      }
+
+      if (countEl) countEl.textContent = `${activeStocks.length} stocks`;
+      
+      const monSec = document.getElementById('fno-monitor-section');
+      if (monSec) {
+        monSec.style.display = monitorStocks.length > 0 ? 'block' : 'none';
+        document.getElementById('fno-monitor-count').textContent = monitorStocks.length;
+      }
+
+      if (!activeStocks.length) {
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);font-size:12px;">No active stocks passed all gates.</div>';
+      } else {
+        body.innerHTML = buildTableHtml(activeStocks, fnoSortCol, fnoSortDir, fnoVersion);
+      }
+      
+      if (monitorStocks.length > 0) {
+        document.getElementById('fno-monitor-body').innerHTML = buildTableHtml(monitorStocks, 'rank', 'asc', fnoVersion, true);
+      }
+    }
+    
+    function buildTableHtml(stocksList, sortCol, sortDir, version, isMonitor = false) {
+      // Sort
+      const sorted = [...stocksList].sort((a, b) => {
+        let va = a[sortCol], vb = b[sortCol];
+        if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb||'').toLowerCase(); }
+        if (va < vb) return sortDir === 'asc' ? -1 : 1;
+        if (va > vb) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      let cols = [
+        { key: 'rank', label: '#', align: 'center' },
+        { key: 'symbol', label: 'Symbol' },
+        { key: 'cmp', label: 'CMP (₹)' },
+        { key: 'change_pct', label: 'Chg%' },
+        { key: 'atm_strike', label: 'ATM Strike' },
+        { key: 'atm_ce_price', label: 'CE ₹' },
+        { key: 'atm_pe_price', label: 'PE ₹' },
+        { key: 'pcr', label: 'PCR' }
+      ];
+      
+      if (version === 'v2') {
+        cols.push(
+          { key: 'composite_score', label: 'Comp%' },
+          { key: 'beta_tag', label: 'Beta' },
+          { key: 'oi_tag', label: 'OI Score' },
+          { key: 'vol_tag', label: 'Volume' },
+          { key: 'mode', label: 'Mode' }
+        );
+      } else {
+        cols.push(
+          { key: 'iv_pct', label: 'IV%' },
+          { key: 'oi_trend', label: 'OI Trend' },
+          { key: 'beta', label: 'Beta' },
+          { key: 'momentum_score', label: 'Mom%' },
+          { key: 'mode', label: 'Mode' }
+        );
+      }
+
+      const thCls = (key) => {
+        if (!isMonitor && key === sortCol) return sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc';
+        return '';
+      };
+
+      let html = '<table class="fno-table"><thead><tr>';
+      cols.forEach(c => {
+        const click = isMonitor ? '' : `onclick="fnoSortBy('${c.key}')"`;
+        html += `<th class="${thCls(c.key)}" ${click} style="text-align:${c.align || 'left'}">${c.label}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+
+      sorted.forEach(s => {
+        let rowCls = '';
+        if (s.mode === 'SWING') rowCls += 'fno-row-swing ';
+        else if (s.mode === 'INTRADAY') rowCls += 'fno-row-intraday ';
+        else if (s.mode === 'BOTH') rowCls += 'fno-row-both ';
+        else if (s.mode === 'MONITOR') rowCls += 'fno-row-monitor ';
+        else rowCls += 'fno-row-avoid ';
+        
+        if (s.is_prime_pick && !isMonitor) rowCls += 'fno-row-prime ';
+
+        let modeBadgeCls = 'fno-mode-avoid';
+        let modeIcon = '⛔';
+        if (s.mode === 'SWING') { modeBadgeCls = 'fno-mode-swing'; modeIcon = '📈'; }
+        else if (s.mode === 'INTRADAY') { modeBadgeCls = 'fno-mode-intraday'; modeIcon = '🎯'; }
+        else if (s.mode === 'BOTH') { modeBadgeCls = 'fno-mode-both'; modeIcon = '🎯📈'; }
+        else if (s.mode === 'MONITOR') { modeBadgeCls = 'fno-mode-monitor'; modeIcon = '👁️'; }
+
+        const primeIcon = s.is_prime_pick ? ' 🔥' : '';
+        const chgColor = s.change_pct >= 0 ? 'var(--green)' : 'var(--red)';
+
+        html += `<tr class="${rowCls.trim()}">`;
+        html += `<td style="text-align:center;font-weight:700;color:var(--teal)">${s.rank}</td>`;
+        html += `<td style="font-weight:800">${s.symbol}${primeIcon}</td>`;
+        html += `<td>₹${fmtNum(s.cmp)}</td>`;
+        html += `<td style="color:${chgColor};font-weight:700">${s.change_pct >= 0 ? '+' : ''}${s.change_pct.toFixed(2)}%</td>`;
+        html += `<td>${s.atm_strike}</td>`;
+        html += `<td style="color:var(--green)">₹${fmtNum(s.atm_ce_price)}</td>`;
+        html += `<td style="color:var(--red)">₹${fmtNum(s.atm_pe_price)}</td>`;
+        html += `<td>${s.pcr.toFixed(2)}</td>`;
+        
+        if (version === 'v2') {
+          html += `<td style="font-weight:800;color:var(--teal)">${s.composite_score?.toFixed(1) || 0}%</td>`;
+          const bColor = s.beta_tag === 'HIGH MOMENTUM' ? 'var(--purple)' : s.beta_tag === 'LOW BETA' ? 'var(--text-dim)' : s.beta_tag === 'EXTREME VOLATILE' ? 'var(--red)' : 'var(--text)';
+          html += `<td style="color:${bColor};font-size:11px;">${s.beta_tag || ''}</td>`;
+          
+          let oiCol = 'var(--text)';
+          if (s.oi_score === 3) oiCol = 'var(--green)'; else if (s.oi_score === 2) oiCol = 'var(--gold)'; else if (s.oi_score === 1) oiCol = 'var(--orange)'; else if (s.oi_score === 0) oiCol = 'var(--red)';
+          html += `<td><a class="fno-tag fno-tag-link" href="https://www.nseindia.com/get-quotes/derivatives?symbol=${encodeURIComponent(s.symbol)}" target="_blank" style="background:transparent;border:1px solid ${oiCol};color:${oiCol};text-decoration:none;display:inline-block;cursor:pointer;">${s.oi_tag || ''}</a></td>`;
+          
+          let volCol = 'var(--text-dim)';
+          if (s.vol_score === 2) volCol = 'var(--gold)'; else if (s.vol_score === 1) volCol = 'var(--teal)';
+          html += `<td style="color:${volCol};font-size:11px;font-weight:600">${s.vol_tag || ''}</td>`;
+        } else {
+          const oiColor = s.oi_trend === 'RISING' ? 'var(--green)' : s.oi_trend === 'FALLING_PE' ? 'var(--gold)' : 'var(--text-dim)';
+          html += `<td>${s.iv_pct.toFixed(1)}%</td>`;
+          html += `<td><a href="https://www.nseindia.com/get-quotes/derivatives?symbol=${encodeURIComponent(s.symbol)}" target="_blank" style="color:${oiColor};font-weight:600;text-decoration:none;cursor:pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${s.oi_trend}</a></td>`;
+          html += `<td>${s.beta != null ? s.beta.toFixed(2) : 'N/A'}</td>`;
+          html += `<td style="font-weight:700;color:${s.momentum_score > 5 ? 'var(--green)' : s.momentum_score > 0 ? 'var(--gold)' : 'var(--red)'}">${s.momentum_score.toFixed(1)}%</td>`;
+        }
+        
+        html += `<td><span class="fno-mode-badge ${modeBadgeCls}">${modeIcon} ${s.mode}</span></td>`;
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      return html;
+    }
+
+    function fnoSortBy(col) {
+      if (fnoSortCol === col) {
+        fnoSortDir = fnoSortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        fnoSortCol = col;
+        fnoSortDir = col === 'rank' ? 'asc' : 'desc';
+      }
+      if (fnoData) renderFnoTable(fnoData.stocks || []);
+    }
+
+    function fmtNum(n) {
+      if (n == null || isNaN(n)) return '0';
+      return Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    }
+
+    function fmtLakh(n) {
+      if (n == null || isNaN(n)) return '0';
+      if (n >= 100000) return (n / 100000).toFixed(2) + 'L';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return Number(n).toLocaleString('en-IN');
+    }
+
+    // ── Panel C: Signal Legend ───────────────────────────────────────────────
+    function renderFnoLegend(stocks) {
+      const el = document.getElementById('fno-legend-grid');
+      if (!el) return;
+
+      // Show top 15 stocks max in legend
+      const show = stocks.slice(0, 15);
+      el.innerHTML = show.map(s => {
+        const ema10Chk = s.ema_status?.ema10 ? '✅' : '❌';
+        const ema50hChk = s.ema_status?.ema50h ? '✅' : '❌';
+        const ema50lChk = s.ema_status?.ema50l ? '✅' : '❌';
+        const modeIcon = s.mode === 'SWING' ? '📈 SWING' : s.mode === 'INTRADAY' ? '🎯 INTRADAY' : s.mode === 'BOTH' ? '🎯📈 DUAL' : s.mode === 'MONITOR' ? '👁️ MONITOR' : '⛔ AVOID';
+        const primeTag = s.is_prime_pick ? '<span style="color:var(--gold);font-weight:800;">🔥 PRIME</span>' : '';
+        const betaTag = (fnoVersion === 'v2' && s.beta_tag === 'HIGH MOMENTUM') || (fnoVersion === 'v1' && s.is_high_beta) ? '<span style="color:var(--purple);font-weight:700;">⚡ HIGH β</span>' : '';
+
+        return `
+          <div class="fno-signal-card ${s.is_prime_pick ? 'fno-prime-glow' : ''}">
+            <div class="fno-sc-symbol">
+              <a href="https://in.tradingview.com/chart/?symbol=NSE:${s.symbol}" target="_blank">${s.symbol}</a> → ${modeIcon} ${primeTag} ${betaTag}
+            </div>
+            <div class="fno-sc-row"><span class="fno-sc-label">ATM CE</span><span class="fno-sc-val" style="color:var(--green)">₹${fmtNum(s.atm_ce_price)}</span></div>
+            <div class="fno-sc-row"><span class="fno-sc-label">ATM PE</span><span class="fno-sc-val" style="color:var(--red)">₹${fmtNum(s.atm_pe_price)}</span></div>
+            <div class="fno-sc-row"><span class="fno-sc-label">IV</span><span class="fno-sc-val">${s.iv_pct.toFixed(1)}%</span></div>
+            <div class="fno-sc-row"><span class="fno-sc-label">PCR</span><span class="fno-sc-val">${s.pcr.toFixed(2)}</span></div>
+            <div class="fno-sc-row"><span class="fno-sc-label">EMA Status</span><span class="fno-sc-val">${ema10Chk} EMA10 ${ema50hChk} EMA50H ${ema50lChk} EMA50L</span></div>
+            <div class="fno-sc-row"><span class="fno-sc-label">OI</span><span class="fno-sc-val">${s.oi_trend}</span></div>
+            <div class="fno-sc-row"><span class="fno-sc-label">Vol</span><span class="fno-sc-val">${s.vol_pct_of_avg.toFixed(0)}% of avg</span></div>
+            <div class="fno-sc-row"><span class="fno-sc-label">Stop</span><span class="fno-sc-val" style="color:var(--red)">${s.stop_loss}</span></div>
+            <div class="fno-sc-row"><span class="fno-sc-label">Beta</span><span class="fno-sc-val">${s.beta != null ? s.beta.toFixed(2) : 'N/A'}</span></div>
+            <div class="fno-sc-row"><span class="fno-sc-label">Momentum</span><span class="fno-sc-val" style="color:${s.momentum_score > 0 ? 'var(--green)' : 'var(--red)'}">${s.momentum_score.toFixed(1)}%</span></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ── Panel D: Gate Summary ────────────────────────────────────────────────
+    function renderFnoGateSummary(gateStats, totalScanned) {
+      const body = document.getElementById('fno-gate-body');
+      if (!body) return;
+
+      const gates = [
+        { key: 'gate1_ban', num: 1, name: 'F&O Ban Check', icon: '🚫' },
+        { key: 'gate2_ema', num: 2, name: 'EMA Trend Filter', icon: '📊' },
+        { key: 'gate3_beta', num: 3, name: 'Beta Quality Filter', icon: '⚡' },
+        { key: 'gate4_oi', num: 4, name: 'Open Interest Confirmation', icon: '📈' },
+        { key: 'gate5_volume', num: 5, name: 'Volume & Liquidity Check', icon: '💧' },
+        { key: 'gate6_momentum', num: 6, name: 'Momentum Score Rank', icon: '🔥' },
+      ];
+
+      let html = '';
+      gates.forEach(g => {
+        const stat = gateStats[g.key] || {};
+        const elim = stat.eliminated || 0;
+        const remain = stat.remaining || 0;
+        const total = elim + remain;
+        const pct = total > 0 ? (remain / total * 100) : 100;
+        const barColor = pct > 60 ? 'var(--green)' : pct > 30 ? 'var(--gold)' : 'var(--red)';
+
+        html += `
+          <div class="fno-gate-bar">
+            <div class="fno-gate-num">${g.icon}</div>
+            <div class="fno-gate-name">Gate ${g.num}: ${g.name}</div>
+            <div class="fno-gate-elim">-${elim}</div>
+            <div class="fno-gate-bar-visual">
+              <div class="fno-gate-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+            </div>
+            <div class="fno-gate-remain">${remain} left</div>
+          </div>
+        `;
+      });
+
+      // Final count
+      const finalCount = (gateStats.gate6_momentum || {}).remaining || 0;
+      html += `
+        <div style="text-align:center;padding:10px 0 4px;font-size:12px;color:var(--text);">
+          <span style="color:var(--text-dim);">Total scanned:</span>
+          <span style="font-weight:800;color:var(--teal);">${totalScanned}</span>
+          <span style="color:var(--text-dim);margin:0 6px;">→</span>
+          <span style="color:var(--text-dim);">Final list:</span>
+          <span style="font-weight:800;color:var(--green);">${finalCount} stocks</span>
+        </div>
+      `;
+
+      body.innerHTML = html;
+    }
+
+    function toggleFnoGates() {
+      fnoGatesOpen = !fnoGatesOpen;
+      const body = document.getElementById('fno-gate-body');
+      const chevron = document.getElementById('fno-gate-chevron');
+      if (body) body.style.display = fnoGatesOpen ? 'block' : 'none';
+      if (chevron) chevron.style.transform = fnoGatesOpen ? 'rotate(180deg)' : '';
+    }
+
+    // ── Refresh Bar ─────────────────────────────────────────────────────────
+    function renderFnoRefreshBar(summary) {
+      const bar = document.getElementById('fno-refresh-bar');
+      const timer = document.getElementById('fno-timer');
+      const badge = document.getElementById('fno-market-badge');
+      if (!bar) return;
+
+      bar.style.display = 'flex';
+
+      // Format scan time
+      if (summary.scan_time) {
+        const d = new Date(summary.scan_time);
+        timer.textContent = `Last scan: ${d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
+      }
+
+      // Market status badge
+      if (badge) {
+        if (summary.market_open) {
+          badge.textContent = '🟢 MARKET OPEN';
+          badge.style.background = 'rgba(52,211,153,0.15)';
+          badge.style.color = 'var(--green)';
+          badge.style.border = '1px solid rgba(52,211,153,0.3)';
+        } else {
+          badge.textContent = '🔴 MARKET CLOSED';
+          badge.style.background = 'rgba(248,113,113,0.15)';
+          badge.style.color = 'var(--red)';
+          badge.style.border = '1px solid rgba(248,113,113,0.3)';
+        }
+      }
+
+      // Start countdown timer (5 min)
+      if (fnoRefreshTimer) clearInterval(fnoRefreshTimer);
+      fnoRefreshCountdown = 300;
+
+      fnoRefreshTimer = setInterval(() => {
+        fnoRefreshCountdown--;
+        if (fnoRefreshCountdown <= 0) {
+          clearInterval(fnoRefreshTimer);
+          fnoRefreshTimer = null;
+          // Auto-refresh only if still on fno tab and market is open
+          if (currentMode === 'fno' && summary.market_open) {
+            fnoScan(true);
+          }
+          return;
+        }
+        const min = Math.floor(fnoRefreshCountdown / 60);
+        const sec = fnoRefreshCountdown % 60;
+        if (timer) {
+          const scanTime = summary.scan_time ? new Date(summary.scan_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '--';
+          timer.textContent = `Last scan: ${scanTime} · Next refresh: ${min}:${sec.toString().padStart(2, '0')}`;
+        }
+      }, 1000);
     }
 
     // ── Boot ──────────────────────────────────────────────────────────────────────

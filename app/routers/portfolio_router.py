@@ -157,6 +157,7 @@ async def upload_portfolio_excel(file: UploadFile = File(...)):
         
         # 4. Process rows
         portfolio_data = _read()
+        portfolio_data["holdings"] = {}  # Clear existing holdings for clean import
         import_count = 0
         
         for _, row in df.iterrows():
@@ -224,17 +225,33 @@ def run_holdings_analysis(holdings: dict):
             d_eng        = engineer(df)
             sig_result   = generate_signal(d_eng, sym)
 
-            current_price = sig_result["close"]
+            # Fetch the actual unadjusted current closing price from yfinance fast_info/info
+            import yfinance as yf
+            ticker_obj = yf.Ticker(_ticker)
+            current_price = None
+            try:
+                current_price = float(ticker_obj.fast_info['last_price'])
+            except Exception as fe:
+                logger.warning(f"Failed to fetch fast_info['last_price'] for {sym}: {fe}")
+                try:
+                    info = ticker_obj.info
+                    current_price = float(info.get('currentPrice') or info.get('regularMarketPrice'))
+                except Exception as ie:
+                    logger.warning(f"Failed to fetch info price for {sym}: {ie}")
+
+            if current_price is None or pd.isna(current_price) or current_price <= 0:
+                current_price = sig_result["close"]
+
             cost_basis    = h["avg_cost"]
             qty           = h["qty"]
             current_val   = current_price * qty
             pnl_pct       = round((current_price - cost_basis) / cost_basis * 100, 2)
             pnl_abs       = round((current_price - cost_basis) * qty, 2)
 
-            # Today's P&L calculation
-            close_today = df["CLOSE"].iloc[-1]
-            close_yesterday = df["CLOSE"].iloc[-2] if len(df) >= 2 else close_today
-            today_change = close_today - close_yesterday
+            # Today's P&L calculation using official closing price from history
+            close_yesterday = df["CLOSE"].iloc[-2] if len(df) >= 2 else current_price
+
+            today_change = current_price - close_yesterday
             today_pnl_abs = round(today_change * qty, 2)
             today_pnl_pct = round((today_change / close_yesterday * 100), 2) if close_yesterday > 0 else 0.0
 
@@ -254,9 +271,9 @@ def run_holdings_analysis(holdings: dict):
                 **sig_result,
                 # Portfolio-specific fields
                 "qty":           qty,
-                "avg_cost":      round(cost_basis, 2),
+                "avg_cost":      cost_basis,
                 "current_price": current_price,
-                "current_value": round(current_val, 2),
+                "current_value": current_val,
                 "pnl_pct":       pnl_pct,
                 "pnl_abs":       pnl_abs,
                 "today_pnl_abs": today_pnl_abs,

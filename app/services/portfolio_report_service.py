@@ -146,7 +146,7 @@ def create_portfolio_report(data: dict, format: str = "pdf") -> str:
     ax_tab.axis("off")
     ax_tab.set_title("  LIVE HOLDINGS ANALYSIS", fontsize=11, fontweight="bold", pad=20, loc="left", color=GOLD)
     
-    headers = ["SYMBOL", "ENTRY PRICE", "PRICE", "P&L %", "P&L ₹", "TODAY P&L", "GAIN/SHARE", "VALUE", "SIGNAL", "P(TARGET)", "MOS %", "ACTION", "BETA"]
+    headers = ["SYMBOL", "ENTRY PRICE", "LTP (CLOSE)", "P&L %", "P&L ₹", "TODAY P&L", "GAIN/SHARE", "VALUE", "SIGNAL", "P(TARGET)", "MOS %", "ACTION", "BETA"]
     table_data = []
     cell_colors = []
     
