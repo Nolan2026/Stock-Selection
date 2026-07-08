@@ -159,12 +159,29 @@ def _set_progress(status: str, step: str, pct: int, message: str = "") -> None:
 # NSE's API is behind Akamai WAF and frequently blocks non-browser requests.
 # This fallback list ensures the scanner always works.
 _FNO_SYMBOLS = [
+    # 0-30
     "RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS",
     "BHARTIARTL", "SBIN", "AXISBANK", "KOTAKBANK", "LT",
     "TATAMOTORS", "TATASTEEL", "BAJFINANCE", "MARUTI", "SUNPHARMA",
     "HCLTECH", "WIPRO", "ADANIENT", "ADANIPORTS", "TITAN",
     "HINDUNILVR", "ITC", "BAJAJFINSV", "NTPC", "POWERGRID",
     "JSWSTEEL", "TATACONSUM", "DRREDDY", "CIPLA", "COALINDIA",
+    # 30-60
+    "M&M", "ULTRACEMCO", "ASIANPAINT", "GRASIM", "EICHERMOT",
+    "TECHM", "INDUSINDBK", "BAJAJA-AUTO", "ONGC", "HINDALCO",
+    "NESTLEIND", "SBILIFE", "HDFCLIFE", "BRITANNIA", "APOLLOHOSP",
+    "HEROMOTOCO", "BPCL", "SHREECEM", "DIVISLAB", "LTIM",
+    "UPL", "TRENT", "TORNTPHARM", "VEDL", "BHARATFORG",
+    "TVSMOTOR", "GODREJCP", "INDIGO", "SIEMENS", "PIDILITIND",
+    # 60-100
+    "HAVELLS", "BANKBARODA", "PNB", "CANBK", "CHOLAFIN",
+    "SRF", "TATACHEM", "BHEL", "GAIL", "HAL",
+    "BEL", "PFC", "RECLTD", "MANAPPURAM", "MUTHOOTFIN",
+    "M&MFIN", "AMBUJACEM", "ACC", "BANDHANBNK", "IDFCFIRSTB",
+    "AUROPHARMA", "LUPIN", "BIOCON", "IGL", "MGL",
+    "PETRONET", "COROMANDEL", "DEEPAKNTR", "ABFRL", "ASTRAL",
+    "DIXON", "ESCORTS", "IDEA", "INDIACEM", "VOLTAS",
+    "ZEEL", "NAVINFLUOR", "POLYCAB", "MCX", "PIIND"
 ]
 
 
@@ -197,27 +214,29 @@ def _fetch_yf_quote(symbol: str) -> dict | None:
         return None
 
 
-async def fetch_fno_universe() -> list[dict]:
-    """Step 1A — Fetch top 30 F&O stocks via yfinance (fast, always works)."""
-    cached = _cache_get("fno_universe")
+async def fetch_fno_universe(start_idx: int = 0, end_idx: int = 30) -> list[dict]:
+    """Step 1A — Fetch a batch of F&O stocks via yfinance (fast, always works)."""
+    cache_key = f"fno_universe_{start_idx}_{end_idx}"
+    cached = _cache_get(cache_key)
     if cached:
         return cached
 
-    _set_progress("scanning", "fetch_universe", 5, f"Fetching {len(_FNO_SYMBOLS)} F&O stocks via yfinance...")
-    logger.info(f"Fetching {len(_FNO_SYMBOLS)} F&O stocks via yfinance")
+    subset = _FNO_SYMBOLS[start_idx:end_idx]
+    _set_progress("scanning", "fetch_universe", 5, f"Fetching {len(subset)} F&O stocks ({start_idx}-{end_idx}) via yfinance...")
+    logger.info(f"Fetching {len(subset)} F&O stocks ({start_idx}-{end_idx}) via yfinance")
 
     loop = asyncio.get_event_loop()
-    sem = asyncio.Semaphore(15)  # fetch all 30 in parallel
+    sem = asyncio.Semaphore(15)  # fetch up to 15 in parallel
 
     async def _get_quote(sym: str):
         async with sem:
             return await loop.run_in_executor(None, _fetch_yf_quote, sym)
 
-    results = await asyncio.gather(*[_get_quote(s) for s in _FNO_SYMBOLS])
+    results = await asyncio.gather(*[_get_quote(s) for s in subset])
     stocks = [r for r in results if r]
 
-    _cache_set("fno_universe", stocks)
-    logger.info(f"F&O universe ready: {len(stocks)}/{len(_FNO_SYMBOLS)} stocks fetched")
+    _cache_set(cache_key, stocks)
+    logger.info(f"F&O universe ready: {len(stocks)}/{len(subset)} stocks fetched for batch {start_idx}-{end_idx}")
     return stocks
 
 
@@ -723,12 +742,7 @@ def _get_signal_text(mode: str, stock: dict) -> str:
     else:
         return "Avoid — conditions unfavorable"
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 4 — FULL TERMINAL ORCHESTRATOR
-# ═══════════════════════════════════════════════════════════════════════════════
-
-async def get_full_fno_terminal(version: str = "v2") -> dict:
+async def get_full_fno_terminal(version: str = "v2", start_idx: int = 0, end_idx: int = 30) -> dict:
     """
     Main orchestrator:
       1. Fetch F&O universe + ban list
@@ -740,7 +754,7 @@ async def get_full_fno_terminal(version: str = "v2") -> dict:
       7. Return ranked terminal data
     """
     # Check cache
-    cache_key = f"fno_terminal_full_{version}"
+    cache_key = f"fno_terminal_full_{version}_{start_idx}_{end_idx}"
     cached = _cache_get(cache_key)
     if cached:
         _set_progress("done", "complete", 100, "Cached result")
@@ -753,7 +767,7 @@ async def get_full_fno_terminal(version: str = "v2") -> dict:
     try:
         # ── Step 1: Fetch universe + ban list concurrently ──
         universe, banned = await asyncio.gather(
-            fetch_fno_universe(),
+            fetch_fno_universe(start_idx=start_idx, end_idx=end_idx),
             fetch_fno_ban_list(),
         )
 
@@ -941,6 +955,10 @@ async def get_full_fno_terminal(version: str = "v2") -> dict:
             },
             "gate_stats": gate_stats,
             "stocks": output_stocks,
+            # Enriched internal dicts with 'technicals' and 'option_chain'
+            # sub-dicts — used by the directional bias service to avoid
+            # redundant data fetches.
+            "enriched_stocks": stocks,
         }
 
         _cache_set(cache_key, result)

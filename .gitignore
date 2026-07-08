@@ -46,6 +46,7 @@ test_*.py
 *_test.py
 test.py
 test*.js
+tests/
 gf.html
 cell17_*.py
 scratch/

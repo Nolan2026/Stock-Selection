@@ -29,7 +29,7 @@ _scan_task: asyncio.Task | None = None
 
 
 @router.get("/scan")
-async def fno_scan(version: str = "v2"):
+async def fno_scan(version: str = "v2", start_idx: int = 0, end_idx: int = 30):
     """
     Trigger a full F&O universe scan.
     Returns the ranked terminal data directly.
@@ -37,7 +37,7 @@ async def fno_scan(version: str = "v2"):
     global _scan_task
 
     # If there's already a cached result, return immediately
-    cache_key = f"fno_terminal_full_{version}"
+    cache_key = f"fno_terminal_full_{version}_{start_idx}_{end_idx}"
     cached = _cache_get(cache_key)
     if cached:
         return cached
@@ -62,7 +62,7 @@ async def fno_scan(version: str = "v2"):
 
     # Run scan if it wasn't running
     try:
-        result = await get_full_fno_terminal(version=version)
+        result = await get_full_fno_terminal(version=version, start_idx=start_idx, end_idx=end_idx)
         return result
     except asyncio.CancelledError:
         logger.warning("F&O scan was cancelled by the user")
@@ -79,7 +79,7 @@ async def fno_scan(version: str = "v2"):
 
 
 @router.get("/scan/start")
-async def fno_scan_start(background_tasks: BackgroundTasks, version: str = "v2", force: bool = False):
+async def fno_scan_start(background_tasks: BackgroundTasks, version: str = "v2", force: bool = False, start_idx: int = 0, end_idx: int = 30):
     """
     Start a scan in the background.  The frontend can poll /progress
     to track progress, then call /scan to get the final result.
@@ -98,7 +98,7 @@ async def fno_scan_start(background_tasks: BackgroundTasks, version: str = "v2",
 
     # Launch in background
     async def _run_scan():
-        await get_full_fno_terminal(version=version)
+        await get_full_fno_terminal(version=version, start_idx=start_idx, end_idx=end_idx)
 
     _scan_task = asyncio.create_task(_run_scan())
     return {"status": "started", "message": "Scan started in background"}
